@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="assets/portal.css?v=3" />
+    <link rel="stylesheet" href="assets/portal.css?v=4" />
     <style>
       /* تنسيقات خاصة بالصفحة الرئيسية فقط */
       .accessbar {
@@ -510,8 +510,12 @@
     </main>
 
     <footer class="site-footer">
-      <span class="credit">إعداد مدير العيادات الخارجية: خالد رميح الرميح</span>مستشفى الرس العام — تطبيق العيادات الخارجية<br />Integrated
-      Leadership Operating System – ILOS
+      <p class="site-line">مستشفى الرس العام — تطبيق العيادات الخارجية<br />Integrated Leadership Operating System – ILOS</p>
+      <div class="credit" dir="ltr">
+        <span>Prepared by</span>
+        <strong>Khalid Rumayh Alrumayh</strong>
+        <span>Information Systems Specialist</span>
+      </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
@@ -559,7 +563,6 @@
           statusNames = { pending: "بانتظار الاعتماد", approved: "معتمد", rejected: "مرفوض", suspended: "موقوف" };
         const translations = {
           "بانتظار التحديد": "Not assigned",
-          "إعداد مدير العيادات الخارجية: خالد رميح الرميح": "Prepared by the Outpatient Clinics Director: Khalid Rumayh Alrumayh",
           "ابحث عن خدمة أو نظام...": "Search services or systems...",
           "البحث عن الخدمات": "Search services",
           "بانتظار الاعتماد": "Awaiting approval",
