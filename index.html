@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#0f3a57" />
     <meta name="description" content="تطبيق العيادات الخارجية - مستشفى الرس العام" />
     <title>تطبيق العيادات الخارجية | مستشفى الرس العام</title>
     <link rel="icon" href="assets/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="assets/portal.css?v=2" />
+    <link rel="stylesheet" href="assets/portal.css?v=3" />
     <style>
       /* تنسيقات خاصة بالصفحة الرئيسية فقط */
       .accessbar {
@@ -24,6 +24,21 @@
         background: var(--surface);
         border: 1px solid var(--line);
         border-radius: var(--radius-lg);
+      }
+      .accessbar .who {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .who-ico {
+        display: grid;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: #e8f4fb;
+        color: var(--action);
       }
       .accessbar strong {
         display: block;
@@ -286,9 +301,16 @@
 
     <main class="page wrap">
       <div class="accessbar">
-        <div>
-          <strong id="access-title">دخول المستخدمين وإدارة النظام</strong>
-          <small id="access-info">سجّل دخولك بالبريد الإلكتروني لعرض صلاحياتك</small>
+        <div class="who">
+          <span class="who-ico" aria-hidden="true"
+            ><svg class="i" viewBox="0 0 24 24">
+              <circle cx="12" cy="8" r="5" />
+              <path d="M20 21a8 8 0 0 0-16 0" /></svg
+          ></span>
+          <div>
+            <strong id="access-title">دخول المستخدمين وإدارة النظام</strong>
+            <small id="access-info">سجّل دخولك بالبريد الإلكتروني لعرض صلاحياتك</small>
+          </div>
         </div>
         <label id="view-as-wrap" class="hidden"
           >التصفح كـ
@@ -487,7 +509,10 @@
       </aside>
     </main>
 
-    <footer class="site-footer">مستشفى الرس العام — تطبيق العيادات الخارجية<br />Integrated Leadership Operating System – ILOS</footer>
+    <footer class="site-footer">
+      <span class="credit">إعداد مدير العيادات الخارجية: خالد رميح الرميح</span>مستشفى الرس العام — تطبيق العيادات الخارجية<br />Integrated
+      Leadership Operating System – ILOS
+    </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
     <script>
@@ -534,6 +559,7 @@
           statusNames = { pending: "بانتظار الاعتماد", approved: "معتمد", rejected: "مرفوض", suspended: "موقوف" };
         const translations = {
           "بانتظار التحديد": "Not assigned",
+          "إعداد مدير العيادات الخارجية: خالد رميح الرميح": "Prepared by the Outpatient Clinics Director: Khalid Rumayh Alrumayh",
           "ابحث عن خدمة أو نظام...": "Search services or systems...",
           "البحث عن الخدمات": "Search services",
           "بانتظار الاعتماد": "Awaiting approval",
