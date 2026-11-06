@@ -94,6 +94,13 @@
       .authpanel .msg:empty {
         display: none;
       }
+      #auth-staff .line .rec-meta {
+        flex-basis: 100%;
+        margin: 0;
+      }
+      #auth-onboard .grid {
+        margin-top: 8px;
+      }
       #auth-admin h3 {
         margin-top: 20px;
       }
@@ -357,9 +364,28 @@
         </div>
         <div id="auth-onboard" class="hidden">
           <h3>تسجيل مستخدم جديد</h3>
-          <div class="line">
-            <input id="auth-name" placeholder="الاسم الكامل" /><button id="auth-register" type="button">إرسال طلب الاعتماد</button>
+          <p class="page-note">أكمل بياناتك ليتعرف عليك المدير ويعطيك الصلاحية المناسبة.</p>
+          <div class="grid">
+            <label><span>الاسم الكامل</span><input id="auth-name" maxlength="120" autocomplete="name" /></label>
+            <label><span>الرقم الوظيفي</span><input id="auth-empno" maxlength="20" inputmode="numeric" dir="ltr" /></label>
+            <label
+              ><span>الوظيفة</span
+              ><select id="auth-job">
+                <option value="">اختر الوظيفة</option>
+                <option value="doctor">طبيب</option>
+                <option value="nurse">تمريض</option>
+                <option value="scheduler">موظف مواعيد</option>
+                <option value="pe_agent">موظف تجربة المريض</option>
+                <option value="supervisor">مشرف</option>
+                <option value="other">أخرى</option>
+              </select></label
+            >
+            <label><span>القسم أو العيادة</span><input id="auth-dept" maxlength="120" /></label>
+            <label
+              ><span>رقم الجوال (اختياري)</span><input id="auth-phone" maxlength="20" inputmode="tel" dir="ltr" placeholder="05xxxxxxxx"
+            /></label>
           </div>
+          <button id="auth-register" type="button">إرسال طلب الاعتماد</button>
         </div>
         <div id="auth-user" class="hidden">
           <div class="toolbar">
@@ -560,9 +586,32 @@
             supervisor: "مشرف",
             admin: "مدير النظام",
           },
+          jobNames = {
+            doctor: "طبيب",
+            nurse: "تمريض",
+            scheduler: "موظف مواعيد",
+            pe_agent: "موظف تجربة المريض",
+            supervisor: "مشرف",
+            other: "أخرى",
+          },
           statusNames = { pending: "بانتظار الاعتماد", approved: "معتمد", rejected: "مرفوض", suspended: "موقوف" };
         const translations = {
           "بانتظار التحديد": "Not assigned",
+          "أكمل بياناتك ليتعرف عليك المدير ويعطيك الصلاحية المناسبة.":
+            "Complete your details so the administrator can identify you and grant the right access.",
+          "الاسم الكامل": "Full name",
+          "الرقم الوظيفي": "Employee number",
+          الوظيفة: "Job",
+          "اختر الوظيفة": "Choose job",
+          أخرى: "Other",
+          "القسم أو العيادة": "Department or clinic",
+          القسم: "Department",
+          الجوال: "Mobile",
+          "رقم الجوال (اختياري)": "Mobile number (optional)",
+          "اكتب الاسم الكامل": "Enter your full name",
+          "اكتب الرقم الوظيفي (أرقام فقط)": "Enter your employee number (digits only)",
+          "اكتب القسم أو العيادة": "Enter your department or clinic",
+          "رقم الجوال غير صحيح": "Mobile number is not valid",
           "ابحث عن خدمة أو نظام...": "Search services or systems...",
           "البحث عن الخدمات": "Search services",
           "بانتظار الاعتماد": "Awaiting approval",
@@ -852,7 +901,10 @@
             msg.textContent = "أدخل البريد الإلكتروني";
             return;
           }
-          const { error } = await api.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: location.origin + location.pathname } });
+          const { error } = await api.auth.signInWithOtp({
+            email,
+            options: { shouldCreateUser: true, emailRedirectTo: location.origin + location.pathname },
+          });
           msg.textContent = error ? error.message : "تم إرسال الرمز إلى بريدك";
           if (!error) byId("auth-verify-box").classList.remove("hidden");
         };
@@ -865,16 +917,43 @@
           msg.textContent = error ? error.message : "";
           if (!error) await check();
         };
+        byId("auth-onboard").addEventListener("input", (e) => e.target.classList?.remove("invalid"));
+        byId("auth-onboard").addEventListener("change", (e) => e.target.classList?.remove("invalid"));
         byId("auth-register").onclick = async () => {
           if (!currentUser) return;
-          const name = byId("auth-name").value.trim();
-          if (name.length < 3) {
-            msg.textContent = "اكتب الاسم الكامل";
+          const name = byId("auth-name").value.trim(),
+            empNo = byId("auth-empno").value.trim(),
+            job = byId("auth-job").value,
+            dept = byId("auth-dept").value.trim(),
+            phone = byId("auth-phone").value.trim();
+          const problem =
+            name.length < 3
+              ? ["auth-name", "اكتب الاسم الكامل"]
+              : !/^\d{4,12}$/.test(empNo)
+                ? ["auth-empno", "اكتب الرقم الوظيفي (أرقام فقط)"]
+                : !job
+                  ? ["auth-job", "اختر الوظيفة"]
+                  : dept.length < 2
+                    ? ["auth-dept", "اكتب القسم أو العيادة"]
+                    : phone && !/^\+?\d{9,15}$/.test(phone)
+                      ? ["auth-phone", "رقم الجوال غير صحيح"]
+                      : null;
+          if (problem) {
+            msg.textContent = problem[1];
+            byId(problem[0]).classList.add("invalid");
+            byId(problem[0]).focus();
             return;
           }
-          const { error } = await api
-            .from("opd_appt_members")
-            .insert({ user_id: currentUser.id, full_name: name, role: "pending", status: "pending" });
+          const { error } = await api.from("opd_appt_members").insert({
+            user_id: currentUser.id,
+            full_name: name,
+            employee_no: empNo,
+            job_title: job,
+            department: dept,
+            phone: phone || null,
+            role: "pending",
+            status: "pending",
+          });
           msg.textContent = error ? error.message : "تم إرسال طلبك للمدير";
           if (!error) await check();
         };
@@ -891,7 +970,7 @@
           render();
         };
         async function staff() {
-          const { data, error } = await api.rpc("opd_appt_members_for_admin");
+          const { data, error } = await api.rpc("opd_appt_members_for_admin_v2");
           const root = byId("auth-staff");
           root.replaceChildren();
           const peResult = await api.from("opd_pe_access").select("user_id,role,active");
@@ -905,10 +984,31 @@
             line.className = "line";
             const label = document.createElement("small");
             label.textContent = (m.full_name || "مستخدم") + " — " + (statusNames[m.status] || m.status);
+            const info = document.createElement("p");
+            info.className = "rec-meta";
+            for (const [k, v] of [
+              ["الرقم الوظيفي", m.employee_no],
+              ["الوظيفة", jobNames[m.job_title] || m.job_title],
+              ["القسم", m.department],
+              ["الجوال", m.phone],
+            ]) {
+              if (!v) continue;
+              const span = document.createElement("span"),
+                key = document.createElement("span"),
+                val = document.createElement("b");
+              key.textContent = k;
+              val.textContent = v;
+              val.dir = "auto";
+              span.append(key, ": ", val);
+              info.append(span);
+            }
             const role = document.createElement("select"),
               status = document.createElement("select");
             for (const v of ["pending", "doctor", "nurse", "scheduler", "supervisor", "admin"]) role.add(new Option(roleNames[v] || v, v));
             role.value = m.role;
+            /* اقتراح الدور حسب الوظيفة المسجلة للحساب الجديد */
+            const suggested = m.role === "pending" && ["doctor", "nurse", "scheduler", "supervisor"].includes(m.job_title);
+            if (suggested) role.value = m.job_title;
             for (const v of ["pending", "approved", "rejected", "suspended"]) status.add(new Option(statusNames[v] || v, v));
             status.value = m.status;
             const save = document.createElement("button");
@@ -928,7 +1028,7 @@
               ["admin", "مدير تجربة المريض"],
             ])
               peRole.add(new Option(name, v));
-            peRole.value = pe?.active ? pe.role : "none";
+            peRole.value = pe?.active ? pe.role : m.status === "pending" && m.job_title === "pe_agent" ? "agent" : "none";
             const peSave = document.createElement("button");
             peSave.textContent = "حفظ صلاحية تجربة المريض";
             peSave.onclick = async () => {
@@ -943,7 +1043,7 @@
               msg.textContent = error ? error.message : "تم حفظ صلاحية تجربة المريض";
               if (!error) await staff();
             };
-            line.append(label, role, status, save, peRole, peSave);
+            line.append(label, info, role, status, save, peRole, peSave);
             root.append(line);
           }
         }
