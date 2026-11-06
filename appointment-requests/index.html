@@ -388,7 +388,7 @@
           for (const o of $("statusFilter").options)
             o.textContent = o.value === "all" ? labels[lang].filterAll.status : L("status", o.value);
           fillClinics();
-          if ($("doctorSelect").options[0]) $("doctorSelect").options[0].textContent = tr[lang].chooseDoctor;
+          fillDoctors();
         }
         function translate() {
           document.documentElement.lang = lang;
@@ -444,247 +444,216 @@
           "Ophthalmology 2": "العيون 2",
           "Ophthalmology 3": "العيون 3",
         };
-        /* الأطباء حسب العيادة: يُقرأ من جدول دليل الموظف الذكي (مصدر واحد يتحدث أسبوعيًا).
-           هذه نسخة احتياطية تُستخدم فقط إذا تعذر الوصول إلى الجدول. كل عنصر: [الاسم المختصر، الاسم الكامل] */
-        const FALLBACK_DOCTORS = {
-          Anesthesia: [["Dr. BAHAA MOHAMMED", ""]],
+        /* الأطباء حسب العيادة: الأسماء العربية والإنجليزية من دليل أطباء المستشفى.
+           كل عنصر: [الاسم بالعربي، الاسم بالإنجليزي]. القيمة المحفوظة في الطلب هي الاسم الإنجليزي.
+           لإضافة طبيب أو نقله: عدّل القائمة هنا. */
+        const CLINIC_DOCTORS = {
+          Anesthesia: [["بهاء محمد محمود ناجي", "Bahaa Mohammed Mahmoud Najy"]],
           Chest: [
-            ["Dr. Abeer", "ABEER FAROUK AZHARI HASSAN"],
-            ["Dr. Ramadan Rajab", "RAMADAN RAGAB RAGAB HIBA"],
-            ["Dr. ASAD JAVAID", "ASAD JAVAID Humayun Jawaid"],
-            ["Dr. Ramadan Shawqi", "RAMADAN SHAWKY ABDELAZIZ ALAWADY"],
+            ["عبير فاروق ازهري", "Abyr Farouk Azhry"],
+            ["رمضان رجب هيبة", "Ramadan Rajab Haibah"],
+            ["أسد جاويد همايون", "Asad Javed Humayun"],
+            ["رمضان شوقي عبدالعزيز العوضي", "Ramadan Shwqy Abdulaziz Alawdy"],
           ],
-          "Infectious disease": [["Dr. Ahlam", "AHLAM HAMDAN MATROUK ALGUHANI"]],
-          Hematology: [["Dr. Fatima Hassn", ""]],
+          "Infectious disease": [["أحلام حمدان الجهني", "Ahlam Hamdan Aljhny"]],
+          Hematology: [["فاطمة حسن الوصيبي", "Fatimah Hassan Alwsyby"]],
           Pediatric: [
-            ["Dr. Eman Abdulkarim", "EMAN ABDELKAREEM ABDELRAHMAN ALLAM"],
-            ["Dr. Sami ullah", "SAMI ULLAH NAQIB ULLAH NAQIB ULLAH"],
-            ["Dr. Esam", "ASIM AMJAD HUSSAIN"],
-            ["Dr. Nihal", "NEHAL FATHALLA AHMED ELSHOBAKY"],
-            ["DR. Fatima Mohammed", "FATIMAH MOHAMMAD IBRAHIM ALOLAYAN"],
-            ["Dr. Jamal", "JAMAL ABDULMAJID SALEM"],
+            ["إيمان عبدالكريم علام", "Eman Abdulkareem Alam"],
+            ["سميع الله نقيب الله", "Smya Allah Nqyb Allah"],
+            ["عاصم أمجد", "Asem Amjad"],
+            ["نهال فتح الله أحمد الشوبكي", "Nahal Fath Allah Ahmed Alshwbky"],
+            ["فاطمة محمد العليان", "Fatimah Mohammed Alolayan"],
+            ["جمال عبدالمجيد سالم", "Jamal Abdulmajeed Salem"],
           ],
-          "Dev. & Beh. Disorder": [["Dr. Jamal", "JAMAL ABDULMAJID SALEM"]],
-          Newborn: [["Dr. MAHMOUD", "MAHMOUD ABDELRAHEEM MAHMOUD SAYED"]],
-          "Physical Medicine & Rehabilitation": [["Dr. Abeer", "ABEER FAROUK AZHARI HASSAN"]],
+          "Dev. & Beh. Disorder": [["جمال عبدالمجيد سالم", "Jamal Abdulmajeed Salem"]],
+          Newborn: [["محمود عبدالرحيم محمود", "Mahmoud Abdulraheem Mahmoud"]],
+          "Physical Medicine & Rehabilitation": [["عبير فاروق ازهري", "Abyr Farouk Azhry"]],
           Neurosurgery: [
-            ["Dr. Faizab", "Faizab Ahmed Abbasi"],
-            ["Dr. Asef", "MUHAMMAD ASIF RAZA GHULAM SARWAR"],
-            ["Dr.Taha", "TAHA AHMED ALI MOHAMED"],
+            ["فيزاب أحمد عباسي", "Fyzab Ahmed Abasy"],
+            ["محمد آصف رازا", "Mohammed Asif Raza"],
+            ["طه أحمد علي محمد", "Taha Ahmed Ali Mohammed"],
           ],
           Psychiatric: [
-            ["DR.Ahmad", "AHMAD SALEH A ALGHOFAILY"],
-            ["DR.Adnan", "ADNAN KHALIFAH S ALKHALIFAH"],
-            ["DR.Fatima Hassanen", "FATMA HASSANEIN ADAM MAHGOUB"],
-            ["DR.Reham", "REHAM ABDELHAMEED ABDELHAMEED ABDELKAREEM"],
+            ["أحمد صالح الغفيلي", "Ahmed Saleh Alghfyly"],
+            ["عدنان خليفة الخليفة", "Adnan Khalifa Alkhalifa"],
+            ["فاطمة حسنين ادم محجوب", "Fatimah Hsnyn Adam Mahjoub"],
+            ["ريهام عبدالحميد عبدالكريم", "Ryham Abdulhameed Abdulkareem"],
           ],
           Gastroenterology: [
-            ["Dr. Fekri", "MOHAMED FEKRY MOHAMED MORSHED"],
-            ["Dr. Yahya", "YAHYA MUSTAFA CHEHADEH ALCHUMARI"],
-            ["Dr. Hamady", "MOHAMMED HAMDY GALAL HASSAN"],
-            ["Dr. Majeda", "MAJED THAAR KHALID ALHARBI"],
-            ["Dr. Amro", "AMR ABDELHALIM SHARAWY MOSTAFA"],
-            ["Dr. Osama", ""],
+            ["محمد فكري محمد سعد مرشد", "Mohammed Fikri Mohammed Saad Murshid"],
+            ["يحي مصطفى الشمري", "Yhy Mustafa Alshammari"],
+            ["محمد حمدي جلال", "Mohammed Hamdy Jalal"],
+            ["ماجد ذعار الحربي", "Majed Dhaar Alhrby"],
+            ["عمرو محمد زغلول هاشم", "Amr Mohammed Zghlwl Hashem"],
+            ["أسامة محمد مرعي", "Osama Mohammed Mray"],
           ],
           "OB/Gyn": [
-            ["Dr. MAHMOUD", "MAHMOUD ABDELRAHEEM MAHMOUD SAYED"],
-            ["Dr. Amro", "AMR ABDELHALIM SHARAWY MOSTAFA"],
-            ["Dr. Basila", "BASLA SAMER ALOMAR"],
-            ["Dr. Saif", "SAIFEDIN ABDALLAH MOHAMED LAMADIN"],
-            ["Dr. Fatima Kaneez", "KANEEZ FATIMA MUHAMMAD NAQASH"],
-            ["Dr. Saadia", "SADIA RAZAQ ALI GAUHAR"],
-            ["Dr. Moji", "OLUMIDE MOJISOLA AYANKUNLE"],
+            ["محمود عبدالرحيم محمود", "Mahmoud Abdulraheem Mahmoud"],
+            ["عمرو عبدالحليم شعراوي مصطفى", "Amr Abdalhlym Sharawy Mustafa"],
+            ["باسله سمير العمر", "Baslh Smyr Alamr"],
+            ["سيف الدين عبدالله محمد", "Saif Aldeen Abdullah Mohammed"],
+            ["كانيز فاطمة محمد نكواشي", "Kanyz Fatimah Mohammed Nkwashy"],
+            ["سعدية رزاق علي جوهر", "Saadia Razzaq Ali Jawhar"],
+            ["اولوميد موجيسولا ايانكونل", "Awlwmyd Mwjyswla Ayankwnl"],
           ],
           Medical: [
-            ["Dr. Noor", "NOUR AHMED ELSHARIF ABDELGADIR"],
-            ["Dr. Ahmad Kamal", "AHMED KAMEL ABDELHAMEID WAHBA"],
-            ["Dr. Othman", "OSMAN AMIN ALI ELHENDI"],
-            ["Dr. Taqwa", "TAGWA ANWER BASHEIR DERAR"],
-            ["Dr. QURRAT ALAIN", "QURAT UL AIN MUHAMMAD ARIF"],
+            ["نور أحمد الشريف عبدالقادر", "Noor Ahmed Alshryf Abdulqader"],
+            ["أحمد كامل عبدالحميد فرج", "Ahmed Kamel Abdulhameed Faraj"],
+            ["عثمان أمين علي الهندي", "Othman Amyn Ali Alhndy"],
+            ["تقوى أنور بشير", "Taqwa Anwar Bshyr"],
+            ["قرة العين محمد نايب", "Qurra Alayn Mohammed Nayb"],
           ],
           Cardiology: [
-            ["Dr. Abdulhamid", "MOHAMMED ABDALHAMED MOHAMMED AHMED"],
-            ["Dr. SHIMAA", "SHIMAA MOHAMMED ABDELDAIM KHATAM"],
-            ["Dr. Mostafa Ibrahim", "MOSTAFA IBRAHIM IBRAHIM SAAD"],
-            ["Dr. Ayman", "AYMAN ALI ABDELGHAFOUR ZAYED"],
-            ["Dr. Shoja", "SYED SHUJAUDDIN SYED JALALUDDIN"],
-            ["Dr. Mohmed Moqbl", "MOHAMMED MUQBIL SHUJAA ALHARBI"],
-            ["Dr. Sulaiman", "SULAIMAN SHULAYWIH SANAT ALHARBI"],
+            ["محمد عبدالحميد محمد", "Mohammed Abdulhameed Mohammed"],
+            ["شيماء محمد عبدالدايم", "Shaimaa Mohammed Abdaldaym"],
+            ["مصطفى إبراهيم إبراهيم سعد", "Mustafa Ibrahim Ibrahim Saad"],
+            ["أيمن محمد محمد عثمان الكيلاني", "Ayman Mohammed Mohammed Othman Alkylany"],
+            ["سيد شجاع الدين", "Sayed Shuja Aldeen"],
+            ["محمد مقبل شجاع الحربي", "Mohammed Muqbil Shuja Alhrby"],
+            ["سليمان شليويح الحربي", "Suleiman Shlywyh Alhrby"],
           ],
-          "Minor Surgery": [["Dr. AHMAD ISSA", ""]],
+          "Minor Surgery": [["أحمد عيسى عيسى", "Ahmed Issa Issa"]],
           "Pediatric Surgery": [
-            ["Dr. Fayaz", "FAYAZ UR RAHMAN FAZAL SUBHAN"],
-            ["Dr. Mohammed Sharif", ""],
-            ["Dr. Mohammad Fawzy", "MOHAMMED AHMED MOHAMMED FAWZY SALLAM"],
-            ["Dr. Nassem", "NASEEM KHAN GHULAM KHAN"],
+            ["فياض الرحمن فضل صبحان", "Fayyad Alrahman Fadl Sbhan"],
+            ["محمد شريف أحمد دين", "Mohammed Shryf Ahmed Dyn"],
+            ["محمد أحمد محمد فوزي", "Mohammed Ahmed Mohammed Fawzy"],
+            ["نسيم خان غلام خان", "Naseem Khan Ghlam Khan"],
           ],
           Surgery: [
-            ["Dr. Bassam", "BASSAM MOHAMMED HINDI"],
-            ["Dr. Yousef", "MOHAMED YOUSEF AHMED MOHAMED"],
-            ["Dr. Ataallah", "ATTA ULLAH JAMAL JAMAL DIN"],
-            ["Dr. YAZID", "YAZID k GACEM"],
-            ["Dr. Mohammed Ali", "MUHAMMAD ALI SAFDAR MIAN"],
-            ["Dr. Tanzeel", "TANZEEL UZ ZAMAN HAKIM BASHIR AHMED"],
-            ["Dr. A.Sattar", "ABDALSATAR ALSHRAFI"],
-            ["Dr. Abdulhakim", "ABDULHAKIM MOHAMMADMAZHAR ALMASRI"],
+            ["بسام محمد علي هندي", "Bassam Mohammed Ali Hindi"],
+            ["محمد يوسف أحمد محمد", "Mohammed Yousef Ahmed Mohammed"],
+            ["عطاءالله جمال جمال الدين", "Ata'allh Jamal Jamal Aldeen"],
+            ["يزيد كمال قاسم", "Yazeed Kamal Qasim"],
+            ["محمد علي صفدار", "Mohammed Ali Safdar"],
+            ["تنزيل اوز الزمان حكيم", "Tnzyl Awz Alzman Hakeem"],
+            ["عبدالستار الشرافي", "Abdalstar Alshrafy"],
+            ["عبدالحكيم محمد مظهر", "Abdulhakeem Mohammed Mazhar"],
           ],
           Urology: [
-            ["Dr. Ayman", "AYMAN ALI ABDELGHAFOUR ZAYED"],
-            ["Dr. Ashraf", "ASHRAF ATTIA HUSSEIN ABD EL TAWAB"],
-            ["Dr. Abdullah", "ABDALLA KHALAF MESHREF"],
-            ["Dr. Ramadan Rajab", "RAMADAN RAGAB RAGAB HIBA"],
-            ["Dr. Reyadh", "RIYAD ABDAL RASOL ALWICHYAN"],
-            ["Dr. KHAWAR ALI", "KHAWAR ALI SARFRAZ AHMED"],
-            ["Dr. KAMRAN", "KAMRAM ABID ABID HUSSAIN"],
+            ["أيمن علي زايد", "Ayman Ali Zayed"],
+            ["أشرف عطية عبد التواب", "Ashraf Attia Abdul Altawab"],
+            ["عبدالله خلف ابراهيم المشرف", "Abdullah Khalaf Ibrahim Almshrf"],
+            ["رمضان رجب هيبة", "Ramadan Rajab Haibah"],
+            ["رياض عبدالرسول الوخيان", "Riyadh Abdulrasool Alwkhyan"],
+            ["خاوار علي", "Khawar Ali"],
+            ["كامران عابد كامران", "Kamran Abed Kamran"],
           ],
           "Orthopedic 1": [
-            ["Dr. KAMRAN", "KAMRAM ABID ABID HUSSAIN"],
-            ["Dr. Nedal", ""],
-            ["Dr. Waqas", "WAQAS RAZA MUHAMMAD JEHANZEB"],
+            ["كامران سعيد سعيد أحمد", "Kamran Saeed Saeed Ahmed"],
+            ["نضال أحمد عبدالخالق", "Nidal Ahmed Abdulkhaliq"],
+            ["وقاص رازا محمد", "Wqas Raza Mohammed"],
           ],
           "Orthopedic 2": [
-            ["Dr. Razvi", "ZARNIGAR RIZVI HASSAN RAZA RIZVI"],
-            ["Dr. Oun", "AHMED MOHAMED MAHMOUD OUN"],
-            ["Dr. Alaa", "ALAA ZENHOM MAHMOUD HASSAN"],
-            ["Dr. Hamado", "HAMDO AL HASSAN"],
-            ["Dr. KAMRAN", "KAMRAM ABID ABID HUSSAIN"],
-            ["Dr. Thamer", "TAMER ALI AHMED MUSLEH"],
-            ["Dr. Waqas", "WAQAS RAZA MUHAMMAD JEHANZEB"],
+            ["زر نجار رزق حسن رزا", "Zr Najjar Rzq Hassan Rza"],
+            ["أحمد محمد محمود عون", "Ahmed Mohammed Mahmoud Awn"],
+            ["علاء زينهم محمود حسن", "Alaa Zeinhom Mahmoud Hassan"],
+            ["حمدو أمين الحسن", "Hamdo Amyn Alhassan"],
+            ["كامران سعيد سعيد أحمد", "Kamran Saeed Saeed Ahmed"],
+            ["تامر علي أحمد مصلح", "Tamer Ali Ahmed Musleh"],
+            ["وقاص رازا محمد", "Wqas Raza Mohammed"],
           ],
-          Audiology: [["M. Otibi", "MOHAMMED OWAIDH GHAZAI ALOTAIBI"]],
+          Audiology: [["MOHAMMED OWAIDH GHAZAI ALOTAIBI", "MOHAMMED OWAIDH GHAZAI ALOTAIBI"]],
           ENT: [
-            ["Dr. Hamada", "HAMADA MAHMOUD ALHUSSIN"],
-            ["DR. Mohammed Noor", "MOHAMED NURELDIN MOHAMED MOHAMED FARAH"],
-            ["Dr. Amjad", "AMJAD ALI OMAR SYED RASHID ALI SYED"],
-            ["Dr. MOHAMMAD QAMAR", "MOHAMMAD QAMAR NASIR NASIR AZIZ"],
-            ["Dr. Loay", "LOAY KASEM ABDELMOATY MACLID"],
-            ["Dr. Hassan", ""],
+            ["حماده محمود الحسين", "Hmadh Mahmoud Alhsyn"],
+            ["محمد نور الدين محمد فرح", "Mohammed Noor Aldeen Mohammed Farah"],
+            ["أمجد علي عمر سيد", "Amjad Ali Omar Sayed"],
+            ["محمد كمر ناصر", "Mohammed Kmr Nasser"],
+            ["لؤي قاسم عبد المعطي", "Loai Qasim Abdul Almaty"],
+            ["حسن ماجد باقي", "Hassan Majed Baqy"],
           ],
-          "Quality of work life": [["Ashaq", "ASHAK SAAD B ALHARBI"]],
+          "Quality of work life": [["عشق الحربي", "ASHAK SAAD B ALHARBI"]],
           Psychotherapy: [
-            ["Manahel", "MANAHEL ABDULRAHMAN A ALTWAIJRY"],
-            ["Ashaq", "ASHAK SAAD B ALHARBI"],
-            ["Naif", "NAIF JELOOD A ALHARBI"],
+            ["مناهل التويجري", "MANAHEL ABDULRAHMAN A ALTWAIJRY"],
+            ["عشق الحربي", "ASHAK SAAD B ALHARBI"],
+            ["نايف الحربي", "NAIF JELOOD A ALHARBI"],
           ],
           Dermatology: [
-            ["DR. Fatima Mohammed", "FATIMAH MOHAMMAD IBRAHIM ALOLAYAN"],
-            ["Dr. Naji", "NAGI MOHAMED ELHADI GINAWI"],
-            ["Dr. Mohammed", "MOHAMMED RMAIH M ALRMAIH"],
-            ["Dr. Rasha", "RASHA MOHAMED ALI ABOUZITHAR"],
-            ["DR. HASAN", "HASSAN MOHAMED ALI"],
-            ["Dr. Nayrah", "NAIRA MOHAMED ABDELAZIZ KASEM"],
+            ["فاطمة محمد أحمد محمد الحسن", "Fatimah Mohammed Ahmed Mohammed Alhassan"],
+            ["ناجي محمد الهادي قناوى", "Najy Mohammed Alhadi Qnawa"],
+            ["محمد رميح محمد الرميح", "Mohammed Rmyh Mohammed Alrmyh"],
+            ["رشا أبو زيتحار محمد علي", "Rasha Abu Zythar Mohammed Ali"],
+            ["حسن محمد إبراهيم علي", "Hassan Mohammed Ibrahim Ali"],
+            ["نيرة محمد عبدالعزيز قاسم", "Nyrah Mohammed Abdulaziz Qasim"],
           ],
           Nephrology: [
-            ["Dr. GHADA", "GHADA MOHAMED AHMED ABDALLA"],
-            ["Dr. Mostafa", "MOSTAFA ABDELFATTAH SAYED OMAR"],
-            ["Dr. Amal", "AMAL MOHAMED SALAHELDIN ANAN"],
-            ["Dr. Mohammed", "MOHAMMED RMAIH M ALRMAIH"],
+            ["غادة محمد أحمد", "Ghada Mohammed Ahmed"],
+            ["مصطفى عبدالفتاح سيد عمر", "Mustafa Abdulfattah Sayed Omar"],
+            ["أمل محمد صلاح الدين أحمد", "Amal Mohammed Slah Aldeen Ahmed"],
+            ["محمد صبري عامر", "Mohammed Sbry Amer"],
           ],
-          Neurology: [["Dr. Dina", "DINA KHALID ASHMAWI ASHMAWI"]],
+          Neurology: [["دينا خالد عشماوي أحمد", "Dina Khalid Ashmawy Ahmed"]],
           Rheumatology: [
-            ["Dr. Abdullah", "ABDALLA KHALAF MESHREF"],
-            ["Dr. Hisham", "HISHAM ABDULRAHMAN M ALTASSAN"],
-            ["Dr. Omar", "OMAR ABDULRAHMAN SALEH ALTASAN"],
-            ["Dr. Eman Rashed", "EMAN ABDELKARIM RASHAD MOHAMED"],
+            ["عبدالله حمد المطيري", "Abdullah Hamad Almtyry"],
+            ["هشام عبد الرحمن الطاسان", "Hisham Abdul Alrahman Altasan"],
+            ["عمر عبدالرحمن الطاسان", "Omar Abdulrahman Altasan"],
+            ["إيمان عبدالكريم رشاد", "Eman Abdulkareem Rashad"],
           ],
           "Plastic Surgery": [
-            ["Dr. Sadaka", "MOHAMED SAAD ABDELHAKIM SADAKA"],
-            ["Dr. Talha", "AHMED TALHA ISMAIL ELBARKY"],
+            ["محمد سعد عبدالحكيم", "Mohammed Saad Abdulhakeem"],
+            ["أحمد طلحة البرقي", "Ahmed Talha Albrqy"],
           ],
           "Optometry 1": [
-            ["ALI", "ALI HUSAIN S ALMALKI"],
-            ["Aziz", "AZIZ ABDULAZIZ HASSAN ALZAHRANI"],
-            ["YOUSEF", ""],
-            ["Adel", "ADEL ABDULLAH MENWER ALHARBI"],
+            ["علي بن حسين المالكي", "ALI HUSAIN S ALMALKI"],
+            ["عزيز بن عبدالعزيز الزهراني", "AZIZ ABDULAZIZ HASSAN ALZAHRANI"],
+            ["يوسف صالح الحربي", "YOUSEF SALEH ALHARBI"],
+            ["عادل بن عبدالله الحربي", "ADEL ABDULLAH MENWER ALHARBI"],
           ],
           "Optometry 2": [
-            ["YOUSEF", ""],
-            ["AbdRahman", "ABDULRAHMAN JAZAA OBAID ALHARBI"],
+            ["يوسف صالح الحربي", "YOUSEF SALEH ALHARBI"],
+            ["عبدالرحمن بن جزاء الحربي", "ABDULRAHMAN JAZAA OBAID ALHARBI"],
           ],
           "Optometry 3": [
-            ["Bader", "BADER BASHEER MAYUF ALMUTAIRI"],
-            ["Mohammed", "MOHAMMED MUNEER HAMEED ALHARBI"],
-            ["AbdRahman", "ABDULRAHMAN JAZAA OBAID ALHARBI"],
+            ["بدر بن بشير المطيري", "BADER BASHEER MAYUF ALMUTAIRI"],
+            ["محمد منير الحربي", "MOHAMMED MUNEER HAMEED ALHARBI"],
+            ["عبدالرحمن بن جزاء الحربي", "ABDULRAHMAN JAZAA OBAID ALHARBI"],
           ],
           "Ophthalmology 1": [
-            ["Dr. Thiqah", "THIGA AHMED ELBASHIR AHMED"],
-            ["Dr. Amjad", "AMJAD ALI OMAR SYED RASHID ALI SYED"],
-            ["Dr. Hajar", "HAJAR SULAIMAN ALI ALMURAYS"],
-            ["Dr. Abdullah", "ABDALLA KHALAF MESHREF"],
-            ["Dr. Moath", "MOAAZ ABDELLATIF ABDELHADY MOHAMEDELNAGGAR"],
+            ["ثقه أحمد البشير", "Thqh Ahmed Albshyr"],
+            ["أمجد علي عمر سيد", "Amjad Ali Omar Sayed"],
+            ["هاجر سليمان علي المريس", "Hajar Suleiman Ali Almrys"],
+            ["عبدالله عامر عبدالله الأصقه", "Abdullah Amer Abdullah Alasqh"],
+            ["معاذ عبداللطيف الهادي", "Muath Abdullatif Alhadi"],
           ],
           "Ophthalmology 2": [
-            ["DR.Ahmad", "AHMAD SALEH A ALGHOFAILY"],
-            ["Dr. Moath", "MOAAZ ABDELLATIF ABDELHADY MOHAMEDELNAGGAR"],
-            ["Dr. Abdullah", "ABDALLA KHALAF MESHREF"],
-            ["Dr. Hajar", "HAJAR SULAIMAN ALI ALMURAYS"],
-            ["Dr. Rayan", "RAYAN SULIMAN A ALKHALIFAH"],
-            ["Dr. Amjad", "AMJAD ALI OMAR SYED RASHID ALI SYED"],
-            ["Dr. Thiqah", "THIGA AHMED ELBASHIR AHMED"],
+            ["أحمد خيري السيد عثمان", "Ahmed Khyry Alsayed Othman"],
+            ["معاذ عبداللطيف الهادي", "Muath Abdullatif Alhadi"],
+            ["عبدالله عامر عبدالله الأصقه", "Abdullah Amer Abdullah Alasqh"],
+            ["هاجر سليمان علي المريس", "Hajar Suleiman Ali Almrys"],
+            ["ريان سليمان الخليفة", "Rayan Suleiman Alkhalifa"],
+            ["أمجد علي عمر سيد", "Amjad Ali Omar Sayed"],
+            ["ثقه أحمد البشير", "Thqh Ahmed Albshyr"],
           ],
           "Ophthalmology 3": [
-            ["Dr. Hajar", "HAJAR SULAIMAN ALI ALMURAYS"],
-            ["Dr. Moath", "MOAAZ ABDELLATIF ABDELHADY MOHAMEDELNAGGAR"],
-            ["Dr. Amjad", "AMJAD ALI OMAR SYED RASHID ALI SYED"],
-            ["Dr. ABDULLAHI IDRIS", "ABDULLAHI IDRIS HOOD IDRIS"],
+            ["هاجر سليمان علي المريس", "Hajar Suleiman Ali Almrys"],
+            ["معاذ عبداللطيف الهادي", "Muath Abdullatif Alhadi"],
+            ["أمجد علي عمر سيد", "Amjad Ali Omar Sayed"],
+            ["عبدالله إدريس هود إدريس", "Abdullah Idris Hood Idris"],
           ],
         };
-        /* أسماء كاملة غير موثوقة في الجدول (مكررة لأكثر من طبيب)، يُعرض الاسم المختصر لها */
-        const SHORT_ONLY = new Set(["Dr. Abdullah"]);
-        function buildClinics(src) {
-          const out = {};
-          for (const [clinic, docs] of Object.entries(src)) {
-            const names = [];
-            for (const [shortName, fullName] of docs) {
-              const n = fullName && !SHORT_ONLY.has(shortName) ? fullName.trim() : shortName.trim();
-              if (n && !names.includes(n)) names.push(n);
-            }
-            if (names.length) out[clinic] = names;
-          }
-          return out;
-        }
-        let clinicDoctors = buildClinics(FALLBACK_DOCTORS);
         const clinicSelect = $("clinicSelect"),
           doctorSelect = $("doctorSelect");
-        function fillSelect(select, values, placeholder) {
-          select.replaceChildren(new Option(placeholder, ""));
-          values.forEach((v) => select.add(new Option(v, v)));
-        }
         function fillClinics() {
           const current = clinicSelect.value;
           clinicSelect.replaceChildren(new Option(tr[lang].chooseClinic, ""));
-          for (const c of Object.keys(clinicDoctors)) clinicSelect.add(new Option(lang === "ar" ? clinicAr[c] || c : c, c));
-          if (current && clinicDoctors[current]) clinicSelect.value = current;
+          for (const c of Object.keys(CLINIC_DOCTORS)) clinicSelect.add(new Option(lang === "ar" ? clinicAr[c] || c : c, c));
+          if (current && CLINIC_DOCTORS[current]) clinicSelect.value = current;
         }
         function fillDoctors() {
-          fillSelect(doctorSelect, clinicDoctors[clinicSelect.value] || [], tr[lang].chooseDoctor);
+          const current = doctorSelect.value;
+          doctorSelect.replaceChildren(new Option(tr[lang].chooseDoctor, ""));
+          for (const [ar, en] of CLINIC_DOCTORS[clinicSelect.value] || []) doctorSelect.add(new Option(lang === "ar" ? ar : en, en));
+          if (current) doctorSelect.value = current;
         }
-        async function loadDoctorsFromGuide() {
-          try {
-            const r = await fetch("../../opd-smart-guide/", { cache: "no-store" });
-            if (!r.ok) return;
-            const text = await r.text();
-            const src = {};
-            for (const raw of text.match(/\{"name":"[^{}]*?"clinic":"[^{}]*?\}/g) || []) {
-              try {
-                const j = JSON.parse(raw);
-                (src[j.clinic] ||= []).push([j.name || "", j.fullName || ""]);
-              } catch (e) {}
-            }
-            const built = buildClinics(src);
-            if (Object.keys(built).length >= 10) {
-              const keepDoctor = doctorSelect.value;
-              clinicDoctors = built;
-              fillClinics();
-              fillDoctors();
-              if (keepDoctor) doctorSelect.value = keepDoctor;
-            }
-          } catch (e) {}
-        }
+        /* عرض اسم الطبيب المحفوظ (بالإنجليزي) بلغة الصفحة */
+        const doctorAr = {};
+        for (const docs of Object.values(CLINIC_DOCTORS)) for (const [ar, en] of docs) doctorAr[en] = ar;
+        const doctorLabel = (en) => (lang === "ar" && doctorAr[en]) || en;
         fillClinics();
-        clinicSelect.onchange = fillDoctors;
+        clinicSelect.onchange = () => {
+          doctorSelect.value = "";
+          fillDoctors();
+        };
         fillDoctors();
-        loadDoctorsFromGuide();
 
         const arrival = {
           ar: { morning: "10:30 ص", noon: "02:30 م", evening: "06:30 م" },
@@ -935,7 +904,7 @@
               head,
               meta([
                 [tr[lang].clinic, lang === "ar" ? clinicAr[r.clinic_name] || r.clinic_name : r.clinic_name],
-                [tr[lang].doctor, r.doctor_name],
+                [tr[lang].doctor, doctorLabel(r.doctor_name)],
                 [tr[lang].date, r.clinic_date],
                 [tr[lang].period, L("period", r.period)],
               ]),
@@ -1088,7 +1057,7 @@
               meta([
                 [tr[lang].date, r.request_day],
                 [tr[lang].referring, r.referring_doctor],
-                [tr[lang].doctor, r.receiving_doctor],
+                [tr[lang].doctor, doctorLabel(r.receiving_doctor)],
               ]),
             );
             root.append(box);
