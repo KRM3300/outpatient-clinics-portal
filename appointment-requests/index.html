@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../assets/portal.css?v=3" />
+    <link rel="stylesheet" href="../assets/portal.css?v=4" />
   </head>
   <body>
     <header class="site-header">
@@ -170,8 +170,14 @@
     </main>
 
     <footer class="site-footer">
-      <span class="credit" data-i="credit">إعداد مدير العيادات الخارجية: خالد رميح الرميح</span
-      ><span data-i="siteFooter">مستشفى الرس العام — تطبيق العيادات الخارجية</span><br />Integrated Leadership Operating System – ILOS
+      <p class="site-line">
+        <span data-i="siteFooter">مستشفى الرس العام — تطبيق العيادات الخارجية</span><br />Integrated Leadership Operating System – ILOS
+      </p>
+      <div class="credit" dir="ltr">
+        <span>Prepared by</span>
+        <strong>Khalid Rumayh Alrumayh</strong>
+        <span>Information Systems Specialist</span>
+      </div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
@@ -226,7 +232,6 @@
             statusFilter: "تصفية حسب الحالة",
             footer: "مرحلة اختبار: لا تُستخدم بيانات مرضى حقيقية.",
             siteFooter: "مستشفى الرس العام — تطبيق العيادات الخارجية",
-            credit: "إعداد مدير العيادات الخارجية: خالد رميح الرميح",
             sent: "تم إرسال رمز التحقق إلى بريدك الإلكتروني.",
             created: "تم رفع الطلب. الحجز لم يؤكد بعد.",
             failed: "تعذر إكمال العملية",
@@ -284,7 +289,6 @@
             statusFilter: "Filter by status",
             footer: "Testing phase: do not use real patient data.",
             siteFooter: "Al Rass General Hospital — Outpatient Clinics Portal",
-            credit: "Prepared by the Outpatient Clinics Director: Khalid Rumayh Alrumayh",
             sent: "A verification code was sent to your email.",
             created: "Request submitted. Booking is not yet confirmed.",
             failed: "Operation failed",
