@@ -208,10 +208,29 @@ html[dir="ltr"] .site-actions a.back svg {
   padding: 20px 0 28px;
   line-height: 2;
 }
+.site-footer .site-line {
+  margin: 0;
+}
 .site-footer .credit {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: fit-content;
+  margin: 14px auto 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  line-height: 1.6;
+  font-family: "IBM Plex Sans Arabic", "Segoe UI", sans-serif;
+}
+.site-footer .credit span {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.site-footer .credit strong {
+  font-size: 15px;
+  font-weight: 600;
   color: var(--ink);
-  font-weight: 500;
 }
 
 /* ===== الأزرار والحقول ===== */
