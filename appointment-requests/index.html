@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#0f3a57" />
     <title>طلبات المواعيد | العيادات الخارجية</title>
     <link rel="icon" href="../assets/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../assets/portal.css?v=2" />
+    <link rel="stylesheet" href="../assets/portal.css?v=3" />
   </head>
   <body>
     <header class="site-header">
@@ -170,7 +170,8 @@
     </main>
 
     <footer class="site-footer">
-      <span data-i="siteFooter">مستشفى الرس العام — تطبيق العيادات الخارجية</span><br />Integrated Leadership Operating System – ILOS
+      <span class="credit" data-i="credit">إعداد مدير العيادات الخارجية: خالد رميح الرميح</span
+      ><span data-i="siteFooter">مستشفى الرس العام — تطبيق العيادات الخارجية</span><br />Integrated Leadership Operating System – ILOS
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
@@ -225,6 +226,7 @@
             statusFilter: "تصفية حسب الحالة",
             footer: "مرحلة اختبار: لا تُستخدم بيانات مرضى حقيقية.",
             siteFooter: "مستشفى الرس العام — تطبيق العيادات الخارجية",
+            credit: "إعداد مدير العيادات الخارجية: خالد رميح الرميح",
             sent: "تم إرسال رمز التحقق إلى بريدك الإلكتروني.",
             created: "تم رفع الطلب. الحجز لم يؤكد بعد.",
             failed: "تعذر إكمال العملية",
@@ -282,6 +284,7 @@
             statusFilter: "Filter by status",
             footer: "Testing phase: do not use real patient data.",
             siteFooter: "Al Rass General Hospital — Outpatient Clinics Portal",
+            credit: "Prepared by the Outpatient Clinics Director: Khalid Rumayh Alrumayh",
             sent: "A verification code was sent to your email.",
             created: "Request submitted. Booking is not yet confirmed.",
             failed: "Operation failed",
