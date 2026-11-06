@@ -14,6 +14,8 @@
   --paper: #f3f6f8; /* خلفية الصفحة */
   --surface: #ffffff; /* البطاقات */
   --surface-alt: #f7fafc;
+  --header: #0f3a57; /* شريط الترويسة */
+  --header-soft: #b7d3e6;
   --line: #dbe4ea;
   --line-strong: #c3d1db;
 
@@ -118,40 +120,43 @@ svg.i {
 
 /* ===== الترويسة الموحّدة ===== */
 .site-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
+  background: var(--header);
+  color: #fff;
+  border-bottom: 4px solid var(--brand);
 }
 .site-header .wrap {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding-block: 16px;
+  gap: 20px;
+  padding-block: 20px;
 }
 .site-logo {
   display: block;
-  height: 64px;
+  height: 76px;
   width: auto;
   flex: 0 0 auto;
+  padding: 8px 10px;
+  background: #fff;
+  border-radius: 12px;
 }
 .site-titles {
   flex: 1 1 auto;
   min-width: 0;
-  padding-inline-start: 18px;
-  border-inline-start: 1px solid var(--line);
 }
 .site-titles .crumb {
   display: block;
   font-size: 13px;
-  color: var(--ink-soft);
+  color: var(--header-soft);
   margin-bottom: 2px;
 }
 .site-titles h1 {
   margin: 0;
+  color: #fff;
 }
 .site-titles p {
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   font-size: 14px;
-  color: var(--ink-soft);
+  color: var(--header-soft);
 }
 .site-actions {
   display: flex;
@@ -159,26 +164,39 @@ svg.i {
   gap: 8px;
   flex: 0 0 auto;
 }
+.site-header button.alt {
+  background: transparent;
+  color: #fff;
+  border-color: rgb(255 255 255 / 0.35);
+}
+.site-header button.alt:hover {
+  background: rgb(255 255 255 / 0.1);
+  border-color: #fff;
+}
 .site-actions a.back {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
   border-radius: var(--radius);
+  color: #fff;
   text-decoration: none;
   font-weight: 500;
   font-size: 14px;
 }
 .site-actions a.back:hover {
-  background: var(--surface-alt);
+  background: rgb(255 255 255 / 0.1);
 }
 html[dir="ltr"] .site-actions a.back svg {
   transform: scaleX(-1);
 }
+.site-header :focus-visible {
+  outline-color: #fff;
+}
 
 .page {
   flex: 1 0 auto;
-  padding-block: 24px 48px;
+  padding-block: 28px 48px;
 }
 
 .site-footer {
@@ -189,6 +207,11 @@ html[dir="ltr"] .site-actions a.back svg {
   text-align: center;
   padding: 20px 0 28px;
   line-height: 2;
+}
+.site-footer .credit {
+  display: block;
+  color: var(--ink);
+  font-weight: 500;
 }
 
 /* ===== الأزرار والحقول ===== */
@@ -474,13 +497,15 @@ html[dir="ltr"] .rec-id {
     padding-block: 12px;
   }
   .site-logo {
-    height: 48px;
+    height: 58px;
+    padding: 6px 8px;
   }
   .site-titles {
     order: 3;
     flex-basis: 100%;
-    padding-inline-start: 0;
-    border-inline-start: 0;
+  }
+  .site-header .wrap {
+    padding-block: 14px 18px;
   }
   .site-actions {
     margin-inline-start: auto;
