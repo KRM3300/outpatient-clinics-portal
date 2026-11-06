@@ -852,7 +852,7 @@
             msg.textContent = "أدخل البريد الإلكتروني";
             return;
           }
-          const { error } = await api.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+          const { error } = await api.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: location.origin + location.pathname } });
           msg.textContent = error ? error.message : "تم إرسال الرمز إلى بريدك";
           if (!error) byId("auth-verify-box").classList.remove("hidden");
         };
