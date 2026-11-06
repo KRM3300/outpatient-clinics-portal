@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="../assets/portal.css?v=4" />
+    <link rel="stylesheet" href="../assets/portal.css?v=5" />
   </head>
   <body>
     <header class="site-header">
@@ -33,7 +33,8 @@
 
     <main class="page wrap">
       <div id="alert" class="card note" role="status" aria-live="polite" data-i="warning">
-        لا توجد قناة رسائل أو ربط مع نظام المواعيد الفعلي. الطلب ليس حجزًا مؤكدًا.
+        لا توجد قناة رسائل أو ربط مع نظام المواعيد الفعلي. الطلب ليس حجزًا مؤكدًا. الرجاء تبليغ المراجع بالمعلومات الكاملة، وسيقوم موظف
+        العيادات الخارجية بإكمال الحجز وتبليغ المراجع.
       </div>
 
       <section id="login" class="card">
@@ -73,14 +74,24 @@
             <button id="showQueue" class="alt" type="button" data-i="requests">الطلبات</button>
             <button id="showStats" class="alt" type="button" data-i="stats">إحصائيات الطوارئ</button>
             <button id="showAdmin" class="alt hide" type="button" data-i="staff">اعتماد الموظفين</button>
+            <a id="showSchedule" class="btn-link hide" href="../../opd-smart-guide/#scheduleLayer" target="_blank" rel="noopener"
+              ><svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 2v4" />
+                <path d="M16 2v4" />
+                <rect width="18" height="18" x="3" y="4" rx="2" />
+                <path d="M3 10h18" /></svg
+              ><span data-i="schedule">جدول الأطباء</span></a
+            >
           </nav>
         </div>
 
         <section id="entry" class="card hide">
           <h2 id="entryTitle"></h2>
-          <form id="requestForm">
+          <form id="requestForm" novalidate>
             <div class="grid">
-              <label><span data-i="identifier">رقم الملف أو الهوية</span><input name="patient_identifier" maxlength="30" required /></label>
+              <label
+                ><span data-i="identifier">رقم الملف</span><input name="patient_identifier" maxlength="30" inputmode="numeric" required
+              /></label>
               <label><span data-i="patient">اسم المراجع</span><input name="patient_name" maxlength="120" required minlength="2" /></label>
               <label
                 ><span data-i="clinic">العيادة</span
@@ -97,7 +108,8 @@
               <label><span data-i="date">تاريخ العيادة</span><input name="clinic_date" type="date" required /></label>
               <label
                 ><span data-i="period">الفترة</span
-                ><select name="period" id="periodSelect">
+                ><select name="period" id="periodSelect" required>
+                  <option value="">اختر الفترة</option>
                   <option value="morning">صباحية</option>
                   <option value="noon">ظهرية</option>
                   <option value="evening">مسائية</option>
@@ -107,8 +119,10 @@
             <div id="emergencyFields">
               <div id="arrivalPreview" class="note ok" role="status" aria-live="polite"></div>
               <div class="grid">
-                <label><span data-i="referring">اسم طبيب الطوارئ المحوِّل</span><input name="referring_doctor" maxlength="120" /></label>
-                <label><span data-i="specialty">التخصص المطلوب</span><input name="referring_specialty" maxlength="100" /></label>
+                <label
+                  ><span data-i="referring">اسم طبيب الطوارئ المحوِّل</span><input name="referring_doctor" maxlength="120" required
+                /></label>
+                <label><span data-i="specialty">التخصص المطلوب</span><input name="referring_specialty" maxlength="100" required /></label>
               </div>
               <label style="font-weight: 400; margin-bottom: 16px"
                 ><input type="checkbox" id="ack" required /><span data-i="ack"
@@ -116,6 +130,7 @@
                 ></label
               >
             </div>
+            <p id="formError" class="form-error" role="alert"></p>
             <button type="submit" data-i="submit">رفع الطلب</button>
           </form>
         </section>
@@ -164,8 +179,6 @@
           <div id="staffList"></div>
         </section>
       </section>
-
-      <p class="page-note" data-i="footer">مرحلة اختبار: لا تُستخدم بيانات مرضى حقيقية.</p>
     </main>
 
     <footer class="site-footer">
@@ -195,7 +208,8 @@
           ar: {
             crumb: "تطبيق العيادات الخارجية",
             title: "إدارة طلبات المواعيد",
-            warning: "لا توجد قناة رسائل أو ربط مع نظام المواعيد الفعلي. الطلب ليس حجزًا مؤكدًا.",
+            warning:
+              "لا توجد قناة رسائل أو ربط مع نظام المواعيد الفعلي. الطلب ليس حجزًا مؤكدًا. الرجاء تبليغ المراجع بالمعلومات الكاملة، وسيقوم موظف العيادات الخارجية بإكمال الحجز وتبليغ المراجع.",
             back: "العودة للتطبيق",
             login: "دخول الموظف",
             email: "البريد الإلكتروني",
@@ -217,7 +231,7 @@
             referring: "اسم طبيب الطوارئ المحوِّل",
             specialty: "التخصص المطلوب",
             ack: "سأبلغ المراجع باليوم والتاريخ ووقت الحضور، وأن المراجعة بنظام الانتظار والأولوية لأصحاب المواعيد المسبقة.",
-            identifier: "رقم الملف أو الهوية",
+            identifier: "رقم الملف",
             patient: "اسم المراجع",
             clinic: "العيادة",
             doctor: "الطبيب",
@@ -228,7 +242,6 @@
             refresh: "تحديث",
             kindFilter: "تصفية حسب الخدمة",
             statusFilter: "تصفية حسب الحالة",
-            footer: "مرحلة اختبار: لا تُستخدم بيانات مرضى حقيقية.",
             siteFooter: "مستشفى الرس العام — تطبيق العيادات الخارجية",
             sent: "تم إرسال رمز التحقق إلى بريدك الإلكتروني.",
             created: "تم رفع الطلب. الحجز لم يؤكد بعد.",
@@ -247,11 +260,16 @@
             total: "إجمالي طلبات الطوارئ",
             chooseClinic: "اختر العيادة",
             chooseDoctor: "اختر الطبيب",
+            choosePeriod: "اختر الفترة",
+            schedule: "جدول الأطباء",
+            missing: "أكمل هذا الحقل قبل رفع الطلب: ",
+            ackField: "تأكيد تبليغ المراجع",
           },
           en: {
             crumb: "Outpatient Clinics Portal",
             title: "Clinic appointment requests",
-            warning: "No SMS or hospital scheduling integration. Requests are not confirmed bookings.",
+            warning:
+              "No SMS or hospital scheduling integration. Requests are not confirmed bookings. Please give the patient the full details; outpatient clinic staff will complete the booking and notify the patient.",
             back: "Back to portal",
             login: "Employee sign in",
             email: "Email",
@@ -273,7 +291,7 @@
             referring: "Referring emergency doctor",
             specialty: "Requested specialty",
             ack: "I will inform the patient of the day, date and arrival time, and that visits are on a waiting basis with priority for patients with booked appointments.",
-            identifier: "File number or ID",
+            identifier: "File number",
             patient: "Patient name",
             clinic: "Clinic",
             doctor: "Doctor",
@@ -284,7 +302,6 @@
             refresh: "Refresh",
             kindFilter: "Filter by service",
             statusFilter: "Filter by status",
-            footer: "Testing phase: do not use real patient data.",
             siteFooter: "Al Rass General Hospital — Outpatient Clinics Portal",
             sent: "A verification code was sent to your email.",
             created: "Request submitted. Booking is not yet confirmed.",
@@ -303,6 +320,10 @@
             total: "Total emergency requests",
             chooseClinic: "Choose clinic",
             chooseDoctor: "Choose doctor",
+            choosePeriod: "Choose session",
+            schedule: "Doctors schedule",
+            missing: "Complete this field before submitting: ",
+            ackField: "Patient notice confirmation",
           },
         };
 
@@ -311,7 +332,7 @@
           ar: {
             kind: { emergency: "طوارئ", followup: "متابعة" },
             status: { pending: "بانتظار الحجز", processing: "قيد المعالجة", booked: "تم الحجز", unable: "تعذر الحجز" },
-            period: { morning: "صباحية", noon: "ظهرية", evening: "مسائية" },
+            period: { morning: "صباحية (10:30 ص)", noon: "ظهرية (02:30 م)", evening: "مسائية (06:30 م)" },
             role: {
               pending: "بانتظار التحديد",
               doctor: "طبيب",
@@ -327,7 +348,7 @@
           en: {
             kind: { emergency: "Emergency", followup: "Follow-up" },
             status: { pending: "Pending", processing: "Processing", booked: "Booked", unable: "Unable" },
-            period: { morning: "Morning", noon: "Midday", evening: "Evening" },
+            period: { morning: "Morning (10:30 AM)", noon: "Midday (02:30 PM)", evening: "Evening (06:30 PM)" },
             role: {
               pending: "Not assigned",
               doctor: "Doctor",
@@ -362,11 +383,11 @@
           for (const b of ["newE", "newF", "showQueue", "showStats", "showAdmin"]) $(b).toggleAttribute("aria-current", b === current);
         }
         function translateOptions() {
-          for (const o of $("periodSelect").options) o.textContent = L("period", o.value);
+          for (const o of $("periodSelect").options) o.textContent = o.value ? L("period", o.value) : tr[lang].choosePeriod;
           for (const o of $("kindFilter").options) o.textContent = o.value === "all" ? labels[lang].filterAll.kind : L("kind", o.value);
           for (const o of $("statusFilter").options)
             o.textContent = o.value === "all" ? labels[lang].filterAll.status : L("status", o.value);
-          if ($("clinicSelect").options[0]) $("clinicSelect").options[0].textContent = tr[lang].chooseClinic;
+          fillClinics();
           if ($("doctorSelect").options[0]) $("doctorSelect").options[0].textContent = tr[lang].chooseDoctor;
         }
         function translate() {
@@ -385,80 +406,295 @@
           msg((e && e.message) || tr[lang].failed);
         }
 
-        const clinicDoctors = {
-          Anesthesia: ["Dr. BAHAA MOHAMMED"],
-          Chest: ["Dr. Abeer", "Dr. Ramadan Rajab", "Dr. ASAD JAVAID", "Dr. Ramadan Shawqi"],
-          "Infectious disease": ["Dr. Ahlam"],
-          Hematology: ["Dr. Fatima Hassn"],
-          Pediatric: ["Dr. Eman Abdulkarim", "Dr. Sami ullah", "Dr. Esam", "Dr. Nihal", "DR. Fatima Mohammed", "Dr. Jamal"],
-          "Dev. & Beh. Disorder": ["Dr. Jamal"],
-          Newborn: ["Dr. MAHMOUD"],
-          "Physical Medicine & Rehabilitation": ["Dr. Abeer"],
-          Neurosurgery: ["Dr. Faizab", "Dr. Asef"],
-          Psychiatric: [],
-          Gastroenterology: ["Dr. Fekri", "Dr. Yahya", "Dr. Hamady", "Dr. Majeda", "Dr. Amro", "Dr. Osama"],
-          "OB/Gyn": ["Dr. MAHMOUD", "Dr. Amro", "Dr. Basila", "Dr. Saif", "Dr. Fatima Kaneez", "Dr. Saadia", "Dr. Moji"],
-          Medical: ["Dr. Noor", "Dr. Ahmad Kamal", "Dr. Othman", "Dr. Taqwa", "Dr. QURRAT ALAIN"],
-          Cardiology: ["Dr. Abdulhamid", "Dr. SHIMAA", "Dr. Mostafa Ibrahim", "Dr. Ayman", "Dr. Shoja", "Dr. Mohmed Moqbl", "Dr. Sulaiman"],
-          "Minor Surgery": ["Dr. AHMAD ISSA"],
-          "Pediatric Surgery": ["Dr. Fayaz", "Dr. Mohammed Sharif", "Dr. Mohammad Fawzy", "Dr. Nassem"],
-          Surgery: [
-            "Dr. Bassam",
-            "Dr. Yousef",
-            "Dr. Ataallah",
-            "Dr. YAZID",
-            "Dr. Mohammed Ali",
-            "Dr. Tanzeel",
-            "Dr. A.Sattar",
-            "Dr. Abdulhakim",
-          ],
-          Urology: ["Dr. Ayman", "Dr. Ashraf", "Dr. Abdullah", "Dr. Ramadan Rajab", "Dr. Reyadh", "Dr. KHAWAR ALI", "Dr. KAMRAN"],
-          "Orthopedic 1": ["Dr. KAMRAN", "Dr. Nedal", "Dr. Waqas"],
-          "Orthopedic 2": ["Dr. Razvi", "Dr. Oun", "Dr. Alaa", "Dr. Hamado", "Dr. KAMRAN", "Dr. Thamer", "Dr. Waqas"],
-          ECG: [],
-          ABR: [],
-          Tympanometry: [],
-          Audiology: [],
-          ENT: ["Dr. Hamada", "DR. Mohammed Noor", "Dr. Amjad", "Dr. MOHAMMAD QAMAR", "Dr. Loay", "Dr. Hassan"],
-          "Quality of work life": [],
-          Psychotherapy: [],
-          Phototherapy: [],
-          Dermatology: ["DR. Fatima Mohammed", "Dr. Naji", "Dr. Mohammed", "Dr. Rasha", "DR. HASAN", "Dr. Nayrah"],
-          Nephrology: ["Dr. GHADA", "Dr. Mostafa", "Dr. Amal", "Dr. Mohammed"],
-          Neurology: ["Dr. Dina"],
-          Rheumatology: ["Dr. Abdullah", "Dr. Hisham", "Dr. Omar", "Dr. Eman Rashed"],
-          "Plastic Surgery": ["Dr. Sadaka", "Dr. Talha"],
-          "Technical Supervisor": [],
-          "Operations Coordination": [],
-          "OPD Director": [],
-          "Nursing Supervisor": [],
-          "Optometry 1": [],
-          "Optometry 2": [],
-          "Optometry 3": [],
-          "Ophthalmology 1": ["Dr. Thiqah", "Dr. Amjad", "Dr. Hajar", "Dr. Abdullah", "Dr. Moath"],
-          "Ophthalmology 2": ["Dr. Moath", "Dr. Abdullah", "Dr. Hajar", "Dr. Rayan", "Dr. Amjad", "Dr. Thiqah"],
-          "Ophthalmology 3": ["Dr. Hajar", "Dr. Moath", "Dr. Amjad", "Dr. ABDULLAHI IDRIS"],
-          "Ophthalmology (Laser)": [],
+        /* أسماء العيادات بالعربي (القيمة المحفوظة في قاعدة البيانات تبقى بالإنجليزي) */
+        const clinicAr = {
+          Anesthesia: "التخدير",
+          Chest: "الصدرية",
+          "Infectious disease": "الأمراض المعدية",
+          Hematology: "أمراض الدم",
+          Pediatric: "الأطفال",
+          "Dev. & Beh. Disorder": "اضطرابات النمو والسلوك",
+          Newborn: "حديثي الولادة",
+          "Physical Medicine & Rehabilitation": "الطب الطبيعي والتأهيل",
+          Neurosurgery: "جراحة المخ والأعصاب",
+          Psychiatric: "الطب النفسي",
+          Gastroenterology: "الجهاز الهضمي",
+          "OB/Gyn": "النساء والولادة",
+          Medical: "الباطنية",
+          Cardiology: "القلب",
+          "Minor Surgery": "الجراحة الصغرى",
+          "Pediatric Surgery": "جراحة الأطفال",
+          Surgery: "الجراحة العامة",
+          Urology: "المسالك البولية",
+          "Orthopedic 1": "العظام 1",
+          "Orthopedic 2": "العظام 2",
+          Audiology: "السمعيات",
+          ENT: "الأنف والأذن والحنجرة",
+          "Quality of work life": "جودة الحياة الوظيفية",
+          Psychotherapy: "العلاج النفسي",
+          Dermatology: "الجلدية",
+          Nephrology: "الكلى",
+          Neurology: "المخ والأعصاب",
+          Rheumatology: "الروماتيزم",
+          "Plastic Surgery": "جراحة التجميل",
+          "Optometry 1": "البصريات 1",
+          "Optometry 2": "البصريات 2",
+          "Optometry 3": "البصريات 3",
+          "Ophthalmology 1": "العيون 1",
+          "Ophthalmology 2": "العيون 2",
+          "Ophthalmology 3": "العيون 3",
         };
+        /* الأطباء حسب العيادة: يُقرأ من جدول دليل الموظف الذكي (مصدر واحد يتحدث أسبوعيًا).
+           هذه نسخة احتياطية تُستخدم فقط إذا تعذر الوصول إلى الجدول. كل عنصر: [الاسم المختصر، الاسم الكامل] */
+        const FALLBACK_DOCTORS = {
+          Anesthesia: [["Dr. BAHAA MOHAMMED", ""]],
+          Chest: [
+            ["Dr. Abeer", "ABEER FAROUK AZHARI HASSAN"],
+            ["Dr. Ramadan Rajab", "RAMADAN RAGAB RAGAB HIBA"],
+            ["Dr. ASAD JAVAID", "ASAD JAVAID Humayun Jawaid"],
+            ["Dr. Ramadan Shawqi", "RAMADAN SHAWKY ABDELAZIZ ALAWADY"],
+          ],
+          "Infectious disease": [["Dr. Ahlam", "AHLAM HAMDAN MATROUK ALGUHANI"]],
+          Hematology: [["Dr. Fatima Hassn", ""]],
+          Pediatric: [
+            ["Dr. Eman Abdulkarim", "EMAN ABDELKAREEM ABDELRAHMAN ALLAM"],
+            ["Dr. Sami ullah", "SAMI ULLAH NAQIB ULLAH NAQIB ULLAH"],
+            ["Dr. Esam", "ASIM AMJAD HUSSAIN"],
+            ["Dr. Nihal", "NEHAL FATHALLA AHMED ELSHOBAKY"],
+            ["DR. Fatima Mohammed", "FATIMAH MOHAMMAD IBRAHIM ALOLAYAN"],
+            ["Dr. Jamal", "JAMAL ABDULMAJID SALEM"],
+          ],
+          "Dev. & Beh. Disorder": [["Dr. Jamal", "JAMAL ABDULMAJID SALEM"]],
+          Newborn: [["Dr. MAHMOUD", "MAHMOUD ABDELRAHEEM MAHMOUD SAYED"]],
+          "Physical Medicine & Rehabilitation": [["Dr. Abeer", "ABEER FAROUK AZHARI HASSAN"]],
+          Neurosurgery: [
+            ["Dr. Faizab", "Faizab Ahmed Abbasi"],
+            ["Dr. Asef", "MUHAMMAD ASIF RAZA GHULAM SARWAR"],
+            ["Dr.Taha", "TAHA AHMED ALI MOHAMED"],
+          ],
+          Psychiatric: [
+            ["DR.Ahmad", "AHMAD SALEH A ALGHOFAILY"],
+            ["DR.Adnan", "ADNAN KHALIFAH S ALKHALIFAH"],
+            ["DR.Fatima Hassanen", "FATMA HASSANEIN ADAM MAHGOUB"],
+            ["DR.Reham", "REHAM ABDELHAMEED ABDELHAMEED ABDELKAREEM"],
+          ],
+          Gastroenterology: [
+            ["Dr. Fekri", "MOHAMED FEKRY MOHAMED MORSHED"],
+            ["Dr. Yahya", "YAHYA MUSTAFA CHEHADEH ALCHUMARI"],
+            ["Dr. Hamady", "MOHAMMED HAMDY GALAL HASSAN"],
+            ["Dr. Majeda", "MAJED THAAR KHALID ALHARBI"],
+            ["Dr. Amro", "AMR ABDELHALIM SHARAWY MOSTAFA"],
+            ["Dr. Osama", ""],
+          ],
+          "OB/Gyn": [
+            ["Dr. MAHMOUD", "MAHMOUD ABDELRAHEEM MAHMOUD SAYED"],
+            ["Dr. Amro", "AMR ABDELHALIM SHARAWY MOSTAFA"],
+            ["Dr. Basila", "BASLA SAMER ALOMAR"],
+            ["Dr. Saif", "SAIFEDIN ABDALLAH MOHAMED LAMADIN"],
+            ["Dr. Fatima Kaneez", "KANEEZ FATIMA MUHAMMAD NAQASH"],
+            ["Dr. Saadia", "SADIA RAZAQ ALI GAUHAR"],
+            ["Dr. Moji", "OLUMIDE MOJISOLA AYANKUNLE"],
+          ],
+          Medical: [
+            ["Dr. Noor", "NOUR AHMED ELSHARIF ABDELGADIR"],
+            ["Dr. Ahmad Kamal", "AHMED KAMEL ABDELHAMEID WAHBA"],
+            ["Dr. Othman", "OSMAN AMIN ALI ELHENDI"],
+            ["Dr. Taqwa", "TAGWA ANWER BASHEIR DERAR"],
+            ["Dr. QURRAT ALAIN", "QURAT UL AIN MUHAMMAD ARIF"],
+          ],
+          Cardiology: [
+            ["Dr. Abdulhamid", "MOHAMMED ABDALHAMED MOHAMMED AHMED"],
+            ["Dr. SHIMAA", "SHIMAA MOHAMMED ABDELDAIM KHATAM"],
+            ["Dr. Mostafa Ibrahim", "MOSTAFA IBRAHIM IBRAHIM SAAD"],
+            ["Dr. Ayman", "AYMAN ALI ABDELGHAFOUR ZAYED"],
+            ["Dr. Shoja", "SYED SHUJAUDDIN SYED JALALUDDIN"],
+            ["Dr. Mohmed Moqbl", "MOHAMMED MUQBIL SHUJAA ALHARBI"],
+            ["Dr. Sulaiman", "SULAIMAN SHULAYWIH SANAT ALHARBI"],
+          ],
+          "Minor Surgery": [["Dr. AHMAD ISSA", ""]],
+          "Pediatric Surgery": [
+            ["Dr. Fayaz", "FAYAZ UR RAHMAN FAZAL SUBHAN"],
+            ["Dr. Mohammed Sharif", ""],
+            ["Dr. Mohammad Fawzy", "MOHAMMED AHMED MOHAMMED FAWZY SALLAM"],
+            ["Dr. Nassem", "NASEEM KHAN GHULAM KHAN"],
+          ],
+          Surgery: [
+            ["Dr. Bassam", "BASSAM MOHAMMED HINDI"],
+            ["Dr. Yousef", "MOHAMED YOUSEF AHMED MOHAMED"],
+            ["Dr. Ataallah", "ATTA ULLAH JAMAL JAMAL DIN"],
+            ["Dr. YAZID", "YAZID k GACEM"],
+            ["Dr. Mohammed Ali", "MUHAMMAD ALI SAFDAR MIAN"],
+            ["Dr. Tanzeel", "TANZEEL UZ ZAMAN HAKIM BASHIR AHMED"],
+            ["Dr. A.Sattar", "ABDALSATAR ALSHRAFI"],
+            ["Dr. Abdulhakim", "ABDULHAKIM MOHAMMADMAZHAR ALMASRI"],
+          ],
+          Urology: [
+            ["Dr. Ayman", "AYMAN ALI ABDELGHAFOUR ZAYED"],
+            ["Dr. Ashraf", "ASHRAF ATTIA HUSSEIN ABD EL TAWAB"],
+            ["Dr. Abdullah", "ABDALLA KHALAF MESHREF"],
+            ["Dr. Ramadan Rajab", "RAMADAN RAGAB RAGAB HIBA"],
+            ["Dr. Reyadh", "RIYAD ABDAL RASOL ALWICHYAN"],
+            ["Dr. KHAWAR ALI", "KHAWAR ALI SARFRAZ AHMED"],
+            ["Dr. KAMRAN", "KAMRAM ABID ABID HUSSAIN"],
+          ],
+          "Orthopedic 1": [
+            ["Dr. KAMRAN", "KAMRAM ABID ABID HUSSAIN"],
+            ["Dr. Nedal", ""],
+            ["Dr. Waqas", "WAQAS RAZA MUHAMMAD JEHANZEB"],
+          ],
+          "Orthopedic 2": [
+            ["Dr. Razvi", "ZARNIGAR RIZVI HASSAN RAZA RIZVI"],
+            ["Dr. Oun", "AHMED MOHAMED MAHMOUD OUN"],
+            ["Dr. Alaa", "ALAA ZENHOM MAHMOUD HASSAN"],
+            ["Dr. Hamado", "HAMDO AL HASSAN"],
+            ["Dr. KAMRAN", "KAMRAM ABID ABID HUSSAIN"],
+            ["Dr. Thamer", "TAMER ALI AHMED MUSLEH"],
+            ["Dr. Waqas", "WAQAS RAZA MUHAMMAD JEHANZEB"],
+          ],
+          Audiology: [["M. Otibi", "MOHAMMED OWAIDH GHAZAI ALOTAIBI"]],
+          ENT: [
+            ["Dr. Hamada", "HAMADA MAHMOUD ALHUSSIN"],
+            ["DR. Mohammed Noor", "MOHAMED NURELDIN MOHAMED MOHAMED FARAH"],
+            ["Dr. Amjad", "AMJAD ALI OMAR SYED RASHID ALI SYED"],
+            ["Dr. MOHAMMAD QAMAR", "MOHAMMAD QAMAR NASIR NASIR AZIZ"],
+            ["Dr. Loay", "LOAY KASEM ABDELMOATY MACLID"],
+            ["Dr. Hassan", ""],
+          ],
+          "Quality of work life": [["Ashaq", "ASHAK SAAD B ALHARBI"]],
+          Psychotherapy: [
+            ["Manahel", "MANAHEL ABDULRAHMAN A ALTWAIJRY"],
+            ["Ashaq", "ASHAK SAAD B ALHARBI"],
+            ["Naif", "NAIF JELOOD A ALHARBI"],
+          ],
+          Dermatology: [
+            ["DR. Fatima Mohammed", "FATIMAH MOHAMMAD IBRAHIM ALOLAYAN"],
+            ["Dr. Naji", "NAGI MOHAMED ELHADI GINAWI"],
+            ["Dr. Mohammed", "MOHAMMED RMAIH M ALRMAIH"],
+            ["Dr. Rasha", "RASHA MOHAMED ALI ABOUZITHAR"],
+            ["DR. HASAN", "HASSAN MOHAMED ALI"],
+            ["Dr. Nayrah", "NAIRA MOHAMED ABDELAZIZ KASEM"],
+          ],
+          Nephrology: [
+            ["Dr. GHADA", "GHADA MOHAMED AHMED ABDALLA"],
+            ["Dr. Mostafa", "MOSTAFA ABDELFATTAH SAYED OMAR"],
+            ["Dr. Amal", "AMAL MOHAMED SALAHELDIN ANAN"],
+            ["Dr. Mohammed", "MOHAMMED RMAIH M ALRMAIH"],
+          ],
+          Neurology: [["Dr. Dina", "DINA KHALID ASHMAWI ASHMAWI"]],
+          Rheumatology: [
+            ["Dr. Abdullah", "ABDALLA KHALAF MESHREF"],
+            ["Dr. Hisham", "HISHAM ABDULRAHMAN M ALTASSAN"],
+            ["Dr. Omar", "OMAR ABDULRAHMAN SALEH ALTASAN"],
+            ["Dr. Eman Rashed", "EMAN ABDELKARIM RASHAD MOHAMED"],
+          ],
+          "Plastic Surgery": [
+            ["Dr. Sadaka", "MOHAMED SAAD ABDELHAKIM SADAKA"],
+            ["Dr. Talha", "AHMED TALHA ISMAIL ELBARKY"],
+          ],
+          "Optometry 1": [
+            ["ALI", "ALI HUSAIN S ALMALKI"],
+            ["Aziz", "AZIZ ABDULAZIZ HASSAN ALZAHRANI"],
+            ["YOUSEF", ""],
+            ["Adel", "ADEL ABDULLAH MENWER ALHARBI"],
+          ],
+          "Optometry 2": [
+            ["YOUSEF", ""],
+            ["AbdRahman", "ABDULRAHMAN JAZAA OBAID ALHARBI"],
+          ],
+          "Optometry 3": [
+            ["Bader", "BADER BASHEER MAYUF ALMUTAIRI"],
+            ["Mohammed", "MOHAMMED MUNEER HAMEED ALHARBI"],
+            ["AbdRahman", "ABDULRAHMAN JAZAA OBAID ALHARBI"],
+          ],
+          "Ophthalmology 1": [
+            ["Dr. Thiqah", "THIGA AHMED ELBASHIR AHMED"],
+            ["Dr. Amjad", "AMJAD ALI OMAR SYED RASHID ALI SYED"],
+            ["Dr. Hajar", "HAJAR SULAIMAN ALI ALMURAYS"],
+            ["Dr. Abdullah", "ABDALLA KHALAF MESHREF"],
+            ["Dr. Moath", "MOAAZ ABDELLATIF ABDELHADY MOHAMEDELNAGGAR"],
+          ],
+          "Ophthalmology 2": [
+            ["DR.Ahmad", "AHMAD SALEH A ALGHOFAILY"],
+            ["Dr. Moath", "MOAAZ ABDELLATIF ABDELHADY MOHAMEDELNAGGAR"],
+            ["Dr. Abdullah", "ABDALLA KHALAF MESHREF"],
+            ["Dr. Hajar", "HAJAR SULAIMAN ALI ALMURAYS"],
+            ["Dr. Rayan", "RAYAN SULIMAN A ALKHALIFAH"],
+            ["Dr. Amjad", "AMJAD ALI OMAR SYED RASHID ALI SYED"],
+            ["Dr. Thiqah", "THIGA AHMED ELBASHIR AHMED"],
+          ],
+          "Ophthalmology 3": [
+            ["Dr. Hajar", "HAJAR SULAIMAN ALI ALMURAYS"],
+            ["Dr. Moath", "MOAAZ ABDELLATIF ABDELHADY MOHAMEDELNAGGAR"],
+            ["Dr. Amjad", "AMJAD ALI OMAR SYED RASHID ALI SYED"],
+            ["Dr. ABDULLAHI IDRIS", "ABDULLAHI IDRIS HOOD IDRIS"],
+          ],
+        };
+        /* أسماء كاملة غير موثوقة في الجدول (مكررة لأكثر من طبيب)، يُعرض الاسم المختصر لها */
+        const SHORT_ONLY = new Set(["Dr. Abdullah"]);
+        function buildClinics(src) {
+          const out = {};
+          for (const [clinic, docs] of Object.entries(src)) {
+            const names = [];
+            for (const [shortName, fullName] of docs) {
+              const n = fullName && !SHORT_ONLY.has(shortName) ? fullName.trim() : shortName.trim();
+              if (n && !names.includes(n)) names.push(n);
+            }
+            if (names.length) out[clinic] = names;
+          }
+          return out;
+        }
+        let clinicDoctors = buildClinics(FALLBACK_DOCTORS);
         const clinicSelect = $("clinicSelect"),
           doctorSelect = $("doctorSelect");
         function fillSelect(select, values, placeholder) {
           select.replaceChildren(new Option(placeholder, ""));
           values.forEach((v) => select.add(new Option(v, v)));
         }
-        fillSelect(clinicSelect, Object.keys(clinicDoctors), tr[lang].chooseClinic);
+        function fillClinics() {
+          const current = clinicSelect.value;
+          clinicSelect.replaceChildren(new Option(tr[lang].chooseClinic, ""));
+          for (const c of Object.keys(clinicDoctors)) clinicSelect.add(new Option(lang === "ar" ? clinicAr[c] || c : c, c));
+          if (current && clinicDoctors[current]) clinicSelect.value = current;
+        }
         function fillDoctors() {
           fillSelect(doctorSelect, clinicDoctors[clinicSelect.value] || [], tr[lang].chooseDoctor);
         }
+        async function loadDoctorsFromGuide() {
+          try {
+            const r = await fetch("../../opd-smart-guide/", { cache: "no-store" });
+            if (!r.ok) return;
+            const text = await r.text();
+            const src = {};
+            for (const raw of text.match(/\{"name":"[^{}]*?"clinic":"[^{}]*?\}/g) || []) {
+              try {
+                const j = JSON.parse(raw);
+                (src[j.clinic] ||= []).push([j.name || "", j.fullName || ""]);
+              } catch (e) {}
+            }
+            const built = buildClinics(src);
+            if (Object.keys(built).length >= 10) {
+              const keepDoctor = doctorSelect.value;
+              clinicDoctors = built;
+              fillClinics();
+              fillDoctors();
+              if (keepDoctor) doctorSelect.value = keepDoctor;
+            }
+          } catch (e) {}
+        }
+        fillClinics();
         clinicSelect.onchange = fillDoctors;
         fillDoctors();
+        loadDoctorsFromGuide();
 
-        const arrival = { morning: "10:30", noon: "14:30", evening: "18:30" };
+        const arrival = {
+          ar: { morning: "10:30 ص", noon: "02:30 م", evening: "06:30 م" },
+          en: { morning: "10:30 AM", noon: "02:30 PM", evening: "06:30 PM" },
+        };
         function arrivalText() {
           const f = $("requestForm"),
             date = f.elements.clinic_date.value,
             period = f.elements.period.value,
-            clock = arrival[period],
+            clock = arrival[lang][period] || "—",
             d = date ? new Date(date + "T12:00:00") : null,
             day =
               d && !Number.isNaN(d.getTime())
@@ -488,7 +724,10 @@
         $("send").onclick = async () => {
           const email = $("email").value.trim();
           if (!email) return;
-          const { error: e } = await api.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: location.origin + location.pathname } });
+          const { error: e } = await api.auth.signInWithOtp({
+            email,
+            options: { shouldCreateUser: true, emailRedirectTo: location.origin + location.pathname },
+          });
           if (e) return error(e);
           $("verifyBox").classList.remove("hide");
           $("code").focus();
@@ -531,6 +770,7 @@
           $("newE").classList.toggle("hide", !["doctor", "nurse", "admin"].includes(m.role));
           $("newF").classList.toggle("hide", !["doctor", "nurse", "admin"].includes(m.role));
           $("showStats").classList.toggle("hide", !["scheduler", "supervisor", "admin"].includes(m.role));
+          $("showSchedule").classList.toggle("hide", !["doctor", "nurse", "scheduler", "supervisor", "admin"].includes(m.role));
           panel("queue");
           await requests();
           /* فتح نموذج الخدمة مباشرة عند القدوم من بطاقة الخدمة في الصفحة الرئيسية */
@@ -570,8 +810,43 @@
             panel("entry");
           };
 
+        /* كل الحقول إجبارية: يتوقف الرفع عند أول حقل ناقص ويُوضَّح اسمه */
+        function validateRequest(form) {
+          const fields = [
+            ["patient_identifier", "identifier"],
+            ["patient_name", "patient"],
+            ["clinic_name", "clinic"],
+            ["doctor_name", "doctor"],
+            ["clinic_date", "date"],
+            ["period", "period"],
+          ];
+          if (kind === "emergency") fields.push(["referring_doctor", "referring"], ["referring_specialty", "specialty"]);
+          for (const [name, key] of fields) {
+            const input = form.elements[name];
+            if (!String(input.value || "").trim()) return [input, tr[lang][key]];
+          }
+          if (kind === "emergency" && !$("ack").checked) return [$("ack"), tr[lang].ackField];
+          return null;
+        }
+        function showFieldError(input, label) {
+          $("formError").textContent = tr[lang].missing + label;
+          input.classList.add("invalid");
+          input.focus({ preventScroll: true });
+          input.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        $("requestForm").addEventListener("input", (e) => {
+          e.target.classList?.remove("invalid");
+          $("formError").textContent = "";
+        });
+        $("requestForm").addEventListener("change", (e) => {
+          e.target.classList?.remove("invalid");
+          $("formError").textContent = "";
+        });
+
         $("requestForm").onsubmit = async (e) => {
           e.preventDefault();
+          const missing = validateRequest(e.target);
+          if (missing) return showFieldError(...missing);
           const f = new FormData(e.target),
             data = Object.fromEntries(f.entries());
           data.kind = kind;
@@ -582,7 +857,11 @@
             month: "2-digit",
             day: "2-digit",
           }).format(new Date());
-          if (data.clinic_date < localToday) return msg(lang === "ar" ? "لا يمكن اختيار تاريخ سابق" : "Past dates are not allowed");
+          if (data.clinic_date < localToday) {
+            $("formError").textContent = lang === "ar" ? "لا يمكن اختيار تاريخ سابق" : "Past dates are not allowed";
+            e.target.elements.clinic_date.classList.add("invalid");
+            return e.target.elements.clinic_date.focus();
+          }
           if (kind === "emergency") {
             if (!data.referring_doctor.trim() || !data.referring_specialty.trim() || !$("ack").checked)
               return msg(lang === "ar" ? "أكمل بيانات الطبيب المحوّل وأكد تنبيه المراجع" : "Complete referring doctor and patient notice");
@@ -597,6 +876,7 @@
           const { error: e2 } = await api.from("opd_appt_requests").insert(data);
           if (e2) return error(e2);
           e.target.reset();
+          $("formError").textContent = "";
           fillDoctors();
           arrivalText();
           msg(
@@ -654,12 +934,10 @@
             box.append(
               head,
               meta([
-                [tr[lang].clinic, r.clinic_name],
+                [tr[lang].clinic, lang === "ar" ? clinicAr[r.clinic_name] || r.clinic_name : r.clinic_name],
                 [tr[lang].doctor, r.doctor_name],
                 [tr[lang].date, r.clinic_date],
-                r.kind === "emergency"
-                  ? [tr[lang].arrival, arrival[r.period] || L("period", r.period)]
-                  : [tr[lang].period, L("period", r.period)],
+                [tr[lang].period, L("period", r.period)],
               ]),
             );
             if (r.booking_reference) box.append(meta([[tr[lang].booking, r.booking_reference]]));
