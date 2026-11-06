@@ -465,6 +465,47 @@ html[dir="ltr"] .rec-id {
   text-align: left;
 }
 
+/* الحقول الناقصة */
+input.invalid,
+select.invalid,
+textarea.invalid {
+  border-color: var(--danger);
+  outline: 3px solid color-mix(in srgb, var(--danger) 18%, transparent);
+  outline-offset: 0;
+}
+input[type="checkbox"].invalid {
+  outline: 2px solid var(--danger);
+  outline-offset: 2px;
+}
+.form-error {
+  margin: 0 0 10px;
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 14px;
+}
+.form-error:empty {
+  display: none;
+}
+
+/* رابط بشكل زر ثانوي */
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--action);
+  font-weight: 600;
+  text-decoration: none;
+}
+.btn-link:hover {
+  background: var(--surface-alt);
+  border-color: var(--action);
+}
+
 /* شريط التنقل داخل الخدمة */
 .tabs {
   display: flex;
