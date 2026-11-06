@@ -51,8 +51,29 @@
 
       <section id="onboard" class="card hide">
         <h2 data-i="onboard">طلب صلاحية الدخول</h2>
-        <label for="fullname" data-i="fullname">الاسم الكامل للموظف</label>
-        <input id="fullname" maxlength="120" />
+        <p class="page-note" data-i="onboardNote">أكمل بياناتك ليتعرف عليك المدير ويعطيك الصلاحية المناسبة.</p>
+        <div class="grid">
+          <label><span data-i="fullname">الاسم الكامل للموظف</span><input id="fullname" maxlength="120" autocomplete="name" /></label>
+          <label><span data-i="empNo">الرقم الوظيفي</span><input id="empno" maxlength="20" inputmode="numeric" dir="ltr" /></label>
+          <label
+            ><span data-i="job">الوظيفة</span
+            ><select id="job">
+              <option value="">اختر الوظيفة</option>
+              <option value="doctor">طبيب</option>
+              <option value="nurse">تمريض</option>
+              <option value="scheduler">موظف مواعيد</option>
+              <option value="pe_agent">موظف تجربة المريض</option>
+              <option value="supervisor">مشرف</option>
+              <option value="other">أخرى</option>
+            </select></label
+          >
+          <label><span data-i="dept">القسم أو العيادة</span><input id="dept" maxlength="120" /></label>
+          <label
+            ><span data-i="phone">رقم الجوال (اختياري)</span
+            ><input id="phone" maxlength="20" inputmode="tel" dir="ltr" placeholder="05xxxxxxxx"
+          /></label>
+        </div>
+        <p id="joinError" class="form-error" role="alert"></p>
         <button id="join" type="button" data-i="join">إرسال طلب اعتماد</button>
       </section>
 
@@ -218,6 +239,17 @@
             verify: "تحقق",
             onboard: "طلب صلاحية الدخول",
             fullname: "الاسم الكامل للموظف",
+            onboardNote: "أكمل بياناتك ليتعرف عليك المدير ويعطيك الصلاحية المناسبة.",
+            empNo: "الرقم الوظيفي",
+            job: "الوظيفة",
+            dept: "القسم أو العيادة",
+            deptShort: "القسم",
+            phone: "رقم الجوال (اختياري)",
+            phoneShort: "الجوال",
+            chooseJob: "اختر الوظيفة",
+            badEmpNo: "اكتب الرقم الوظيفي (أرقام فقط)",
+            missingReg: "أكمل هذا الحقل: ",
+            badPhone: "رقم الجوال غير صحيح",
             join: "إرسال طلب اعتماد",
             waiting: "الحساب بانتظار موافقة مدير النظام",
             logout: "تسجيل الخروج",
@@ -278,6 +310,17 @@
             verify: "Verify",
             onboard: "Request access",
             fullname: "Employee full name",
+            onboardNote: "Complete your details so the administrator can identify you and grant the right access.",
+            empNo: "Employee number",
+            job: "Job",
+            dept: "Department or clinic",
+            deptShort: "Department",
+            phone: "Mobile number (optional)",
+            phoneShort: "Mobile",
+            chooseJob: "Choose job",
+            badEmpNo: "Enter your employee number (digits only)",
+            missingReg: "Complete this field: ",
+            badPhone: "Mobile number is not valid",
             join: "Submit approval request",
             waiting: "Account awaiting administrator approval",
             logout: "Sign out",
@@ -343,6 +386,14 @@
             },
             member: { pending: "بانتظار الاعتماد", approved: "معتمد", rejected: "مرفوض", suspended: "موقوف" },
             notify: { not_sent: "لم يُرسل", sent: "تم الإرسال", failed: "تعذر الإرسال" },
+            job: {
+              doctor: "طبيب",
+              nurse: "تمريض",
+              scheduler: "موظف مواعيد",
+              pe_agent: "موظف تجربة المريض",
+              supervisor: "مشرف",
+              other: "أخرى",
+            },
             filterAll: { kind: "جميع الطلبات", status: "جميع الحالات" },
           },
           en: {
@@ -359,6 +410,14 @@
             },
             member: { pending: "Awaiting approval", approved: "Approved", rejected: "Rejected", suspended: "Suspended" },
             notify: { not_sent: "Not sent", sent: "Sent", failed: "Failed" },
+            job: {
+              doctor: "Doctor",
+              nurse: "Nursing",
+              scheduler: "Scheduler",
+              pe_agent: "Patient experience agent",
+              supervisor: "Supervisor",
+              other: "Other",
+            },
             filterAll: { kind: "All requests", status: "All statuses" },
           },
         };
@@ -389,6 +448,7 @@
             o.textContent = o.value === "all" ? labels[lang].filterAll.status : L("status", o.value);
           fillClinics();
           fillDoctors();
+          for (const o of $("job").options) o.textContent = o.value ? L("job", o.value) : tr[lang].chooseJob;
         }
         function translate() {
           document.documentElement.lang = lang;
@@ -731,12 +791,47 @@
             if (btn && !btn.classList.contains("hide")) btn.click();
           }
         }
+        $("onboard").addEventListener("input", (e) => {
+          e.target.classList?.remove("invalid");
+          $("joinError").textContent = "";
+        });
+        $("onboard").addEventListener("change", (e) => {
+          e.target.classList?.remove("invalid");
+          $("joinError").textContent = "";
+        });
         $("join").onclick = async () => {
-          const name = $("fullname").value.trim();
-          if (name.length < 2) return msg(tr[lang].fullname);
-          const { error: e } = await api
-            .from("opd_appt_members")
-            .insert({ user_id: user.id, full_name: name, role: "pending", status: "pending" });
+          const name = $("fullname").value.trim(),
+            empNo = $("empno").value.trim(),
+            job = $("job").value,
+            dept = $("dept").value.trim(),
+            phone = $("phone").value.trim();
+          const problem =
+            name.length < 3
+              ? ["fullname", tr[lang].missingReg + tr[lang].fullname]
+              : !/^\d{4,12}$/.test(empNo)
+                ? ["empno", tr[lang].badEmpNo]
+                : !job
+                  ? ["job", tr[lang].missingReg + tr[lang].job]
+                  : dept.length < 2
+                    ? ["dept", tr[lang].missingReg + tr[lang].dept]
+                    : phone && !/^\+?\d{9,15}$/.test(phone)
+                      ? ["phone", tr[lang].badPhone]
+                      : null;
+          if (problem) {
+            $("joinError").textContent = problem[1];
+            $(problem[0]).classList.add("invalid");
+            return $(problem[0]).focus();
+          }
+          const { error: e } = await api.from("opd_appt_members").insert({
+            user_id: user.id,
+            full_name: name,
+            employee_no: empNo,
+            job_title: job,
+            department: dept,
+            phone: phone || null,
+            role: "pending",
+            status: "pending",
+          });
           if (e) return error(e);
           await load();
         };
@@ -967,7 +1062,7 @@
         };
 
         async function staff() {
-          const { data, error: e } = await api.rpc("opd_appt_members_for_admin");
+          const { data, error: e } = await api.rpc("opd_appt_members_for_admin_v2");
           if (e) return error(e);
           const root = $("staffList");
           root.replaceChildren();
@@ -979,7 +1074,18 @@
               el("strong", m.full_name),
               badge(L("member", m.status), m.status === "approved" ? "" : m.status === "pending" ? "draft" : "danger"),
             );
-            box.append(head, el("small", m.user_id, "rec-id"));
+            box.append(
+              head,
+              meta(
+                [
+                  [tr[lang].empNo, m.employee_no],
+                  [tr[lang].job, m.job_title ? L("job", m.job_title) : ""],
+                  [tr[lang].deptShort, m.department],
+                  [tr[lang].phoneShort, m.phone],
+                ].filter(([, v]) => v),
+              ),
+              el("small", m.user_id, "rec-id"),
+            );
             const grid = el("div", undefined, "grid");
             const roleLabel = el("label", tr[lang].role),
               statusLabel = el("label", tr[lang].status);
@@ -988,6 +1094,8 @@
             for (const value of ["pending", "doctor", "nurse", "scheduler", "supervisor", "admin"])
               role.add(new Option(L("role", value), value));
             role.value = m.role;
+            /* اقتراح الدور حسب الوظيفة المسجلة للحساب الجديد */
+            if (m.role === "pending" && ["doctor", "nurse", "scheduler", "supervisor"].includes(m.job_title)) role.value = m.job_title;
             for (const value of ["pending", "approved", "rejected", "suspended"]) status.add(new Option(L("member", value), value));
             status.value = m.status;
             roleLabel.append(role);
