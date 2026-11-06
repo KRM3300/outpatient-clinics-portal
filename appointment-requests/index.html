@@ -1,3 +1,830 @@
-<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>طلبات المواعيد | نسخة تجريبية</title><style>:root{font-family:system-ui,Tahoma;color:#eaf5fb;background:#071725}*{box-sizing:border-box}body{margin:0;background:linear-gradient(130deg,#071725,#12374b);min-height:100vh}main{max-width:880px;margin:auto;padding:24px 15px}h1{margin-bottom:6px}p,small{color:#b8d1df}nav{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0}button{cursor:pointer;border:0;border-radius:10px;padding:12px 17px;font:inherit;background:#087da6;color:white}button.secondary{background:#21465c}button:disabled{opacity:.45;cursor:not-allowed}.panel{background:#102b40;border:1px solid #2c5a70;border-radius:18px;padding:20px;margin:14px 0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}label{display:block;font-size:14px;color:#d3e7f1}input,select{width:100%;margin-top:7px;padding:12px;border:1px solid #457084;border-radius:9px;background:#0b2132;color:white;font:inherit}input:focus,select:focus{outline:2px solid #42b8db}.wide{grid-column:1/-1}.hidden{display:none}.notice{padding:13px;border-radius:10px;background:#224758;color:#fff;line-height:1.9}.warn{background:#5b4524}.success{background:#14574d}table{width:100%;border-collapse:collapse}td,th{padding:10px;border-bottom:1px solid #34566b;text-align:right}a{color:#a5e7fa}@media(max-width:600px){.grid{grid-template-columns:1fr}.panel{padding:14px}table{font-size:12px}}</style><main><header><small>مستشفى الرس العام | Outpatient Clinics</small><h1 id="heading">طلبات مواعيد العيادات</h1><p id="subtitle">نسخة تجريبية ببيانات وهمية فقط — لا تحجز مواعيد حقيقية ولا ترسل رسائل.</p><button class="secondary" id="lang">English</button> <a href="../">العودة للتطبيق</a></header><nav><button id="emergency">موعد إضافي للطوارئ</button><button id="followup" class="secondary">موعد متابعة</button><a href="./queue.html">قائمة الطلبات الموحدة</a><button id="queue" class="secondary" style="display:none">قائمة الطلبات التجريبية</button></nav><section class="panel" id="formPanel"><h2 id="formTitle">طلب موعد إضافي للطوارئ</h2><div class="notice warn" id="warning">تجربة فقط: استخدم أسماء وأرقامًا وهمية. لا تدخل أي بيانات مريض حقيقية.</div><form id="form"><div class="grid"><label data-t="identifier">رقم الملف أو الهوية<input name="identifier" required maxlength="30" autocomplete="off"></label><label data-t="patient">اسم المراجع<input name="patient" required maxlength="120" autocomplete="off"></label><label data-t="clinic">اسم العيادة<select name="clinic" id="clinicSelect" required></select></label><label data-t="doctor">اسم الطبيب<select name="doctor" id="doctorSelect" required></select></label><label data-t="date">تاريخ العيادة<input name="date" type="date" required></label><label data-t="period">الفترة<select name="period" id="period"><option value="morning">صباحية — 10:30</option><option value="noon">ظهرية — 14:30</option><option value="evening">مسائية — 18:30</option></select></label><div class="wide"><button type="submit" id="submit">رفع الطلب التجريبي</button></div></div></form></section><section class="panel hidden" id="result" aria-live="polite"></section><section class="panel hidden" id="listPanel"><h2 id="listTitle">طلبات تجريبية</h2><div id="list"></div></section><p><small id="disclaimer">الأطباء والفترات هنا غير مرتبطة بجدول العيادات الفعلي. يلزم ربط مصدر الجدول وتفعيل Supabase والموافقة الأمنية قبل الاستخدام الحقيقي.</small></p></main><script>
-(()=>{'use strict';const $=id=>document.getElementById(id),key='opd_demo_appointments_v1';let lang='ar',type='emergency',view='form';const T={ar:{heading:'طلبات مواعيد العيادات',subtitle:'نسخة تجريبية ببيانات وهمية فقط — لا تحجز مواعيد حقيقية ولا ترسل رسائل.',emergency:'موعد إضافي للطوارئ',followup:'موعد متابعة',queue:'قائمة الطلبات التجريبية',formTitleE:'طلب موعد إضافي للطوارئ',formTitleF:'طلب حجز موعد متابعة',identifier:'رقم الملف أو الهوية',patient:'اسم المراجع',clinic:'اسم العيادة',doctor:'اسم الطبيب',date:'تاريخ العيادة',period:'الفترة',submit:'رفع الطلب التجريبي',warning:'تجربة فقط: استخدم أسماء وأرقامًا وهمية. لا تدخل أي بيانات مريض حقيقية.',disclaimer:'الأطباء والفترات هنا غير مرتبطة بجدول العيادات الفعلي. يلزم ربط مصدر الجدول وتفعيل Supabase والموافقة الأمنية قبل الاستخدام الحقيقي.',listTitle:'طلبات تجريبية',done:'تم إنشاء الطلب التجريبي فقط — لم يُحجز موعد ولم تُرسل رسالة.',pending:'بانتظار تنفيذ الحجز',patientNote:'سيصلك إشعار بتفاصيل الموعد بعد تأكيد الحجز. لا يلزم مراجعة الاستقبال لغرض الحجز.',emergencyNote:'يرجى إبلاغ المراجع باليوم والتاريخ ووقت الحضور، مع التأكيد أن المراجعة بنظام الانتظار، والأولوية لأصحاب المواعيد المسبقة. هذا طلب تجريبي غير مؤكد.',empty:'لا توجد طلبات تجريبية.',delete:'مسح الطلبات التجريبية',time:'الوقت المقترح',periodLabel:'الفترة'},en:{heading:'Clinic appointment requests',subtitle:'Demo with fictitious data only — no real booking or messages.',emergency:'Emergency extra appointment',followup:'Follow-up appointment',queue:'Demo requests',formTitleE:'Emergency extra appointment request',formTitleF:'Follow-up appointment request',identifier:'File number or national ID',patient:'Patient name',clinic:'Clinic name',doctor:'Doctor name',date:'Clinic date',period:'Session',submit:'Submit demo request',warning:'Demo only: use fictitious names and numbers. Do not enter real patient data.',disclaimer:'Doctors and sessions are not connected to the live clinic schedule. Schedule integration, Supabase, and security approval are required for production.',listTitle:'Demo requests',done:'Demo request created only — no appointment booked and no message sent.',pending:'Awaiting booking',patientNote:'You will receive appointment details after booking confirmation. No need to visit reception for booking.',emergencyNote:'Inform the patient of the day, date and arrival time. Patients with booked appointments have priority; this is a waiting visit, not a confirmed booking.',empty:'No demo requests.',delete:'Clear demo requests',time:'Proposed time',periodLabel:'Session'}};const times={morning:'10:30',noon:'14:30',evening:'18:30'};const safe=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));function records(){try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}}function save(x){localStorage.setItem(key,JSON.stringify(x))}function refresh(){const t=T[lang];document.documentElement.lang=lang;document.documentElement.dir=lang==='ar'?'rtl':'ltr';$('lang').textContent=lang==='ar'?'English':'العربية';for(const id of ['heading','subtitle','emergency','followup','queue','warning','disclaimer','listTitle','submit'])$(id).textContent=t[id];document.querySelectorAll('[data-t]').forEach(el=>{el.firstChild.textContent=t[el.dataset.t]});$('formTitle').textContent=type==='emergency'?t.formTitleE:t.formTitleF;for(const id of ['emergency','followup','queue'])$(id).className=(id===view?'':'secondary');$('formPanel').classList.toggle('hidden',view==='queue');$('listPanel').classList.toggle('hidden',view!=='queue');if(view==='queue')renderList()}function renderList(){const t=T[lang],arr=records();$('list').innerHTML=arr.length?arr.map(r=>'<div class="notice" style="margin:8px 0"><strong>'+safe(r.type==='emergency'?t.emergency:t.followup)+'</strong> · '+safe(r.id)+'<p>'+safe(r.patient)+' · '+safe(r.clinic)+' · '+safe(r.doctor)+' · '+safe(r.date)+' · '+safe(r.period==='morning'?'10:30':r.period==='noon'?'14:30':'18:30')+'</p><small>'+t.pending+'</small></div>').join(''):'<p>'+t.empty+'</p>';$('list').insertAdjacentHTML('beforeend','<button class="secondary" id="clear">'+t.delete+'</button>');$('clear').onclick=()=>{if(confirm(lang==='ar'?'مسح البيانات التجريبية؟':'Clear demo data?')){localStorage.removeItem(key);renderList()}}}function setView(v){if(v!=='queue')type=v;view=v;$('result').classList.add('hidden');refresh()}$('emergency').onclick=()=>setView('emergency');$('followup').onclick=()=>setView('followup');$('queue').onclick=()=>setView('queue');$('lang').onclick=()=>{lang=lang==='ar'?'en':'ar';refresh()};$('form').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target),r={id:'DEMO-'+Date.now().toString(36).toUpperCase(),type,identifier:String(f.get('identifier')).trim(),patient:String(f.get('patient')).trim(),clinic:String(f.get('clinic')).trim(),doctor:String(f.get('doctor')).trim(),date:String(f.get('date')),period:String(f.get('period'))};if(Object.values(r).some(x=>!x))return;const arr=records();arr.unshift(r);save(arr.slice(0,100));const t=T[lang];$('result').classList.remove('hidden');$('result').innerHTML='<div class="notice success"><strong>'+t.done+'</strong></div><p><strong>'+safe(r.id)+'</strong></p><p>'+t.patient+': '+safe(r.patient)+'</p><p>'+t.clinic+': '+safe(r.clinic)+'</p><p>'+t.doctor+': '+safe(r.doctor)+'</p><p>'+t.date+': '+safe(r.date)+'</p><p>'+(type==='emergency'?t.time:t.periodLabel)+': '+safe(type==='emergency'?times[r.period]:r.period)+'</p><div class="notice">'+t.pending+'<p>'+(type==='emergency'?t.emergencyNote:t.patientNote)+'</p></div>';e.target.reset();$('result').scrollIntoView({behavior:'smooth',block:'start'})};const clinicDoctors={"Anesthesia":["Dr. BAHAA MOHAMMED"],"Chest":["Dr. Abeer","Dr. Ramadan Rajab","Dr. ASAD JAVAID","Dr. Ramadan Shawqi"],"Infectious disease":["Dr. Ahlam"],"Hematology":["Dr. Fatima Hassn"],"Pediatric":["Dr. Eman Abdulkarim","Dr. Sami ullah","Dr. Esam","Dr. Nihal","DR. Fatima Mohammed","Dr. Jamal"],"Dev. & Beh. Disorder":["Dr. Jamal"],"Newborn":["Dr. MAHMOUD"],"Physical Medicine & Rehabilitation":["Dr. Abeer"],"Neurosurgery":["Dr. Faizab","Dr. Asef"],"Psychiatric":[],"Gastroenterology":["Dr. Fekri","Dr. Yahya","Dr. Hamady","Dr. Majeda","Dr. Amro","Dr. Osama"],"OB/Gyn":["Dr. MAHMOUD","Dr. Amro","Dr. Basila","Dr. Saif","Dr. Fatima Kaneez","Dr. Saadia","Dr. Moji"],"Medical":["Dr. Noor","Dr. Ahmad Kamal","Dr. Othman","Dr. Taqwa","Dr. QURRAT ALAIN"],"Cardiology":["Dr. Abdulhamid","Dr. SHIMAA","Dr. Mostafa Ibrahim","Dr. Ayman","Dr. Shoja","Dr. Mohmed Moqbl","Dr. Sulaiman"],"Minor Surgery":["Dr. AHMAD ISSA"],"Pediatric Surgery":["Dr. Fayaz","Dr. Mohammed Sharif","Dr. Mohammad Fawzy","Dr. Nassem"],"Surgery":["Dr. Bassam","Dr. Yousef","Dr. Ataallah","Dr. YAZID","Dr. Mohammed Ali","Dr. Tanzeel","Dr. A.Sattar","Dr. Abdulhakim"],"Urology":["Dr. Ayman","Dr. Ashraf","Dr. Abdullah","Dr. Ramadan Rajab","Dr. Reyadh","Dr. KHAWAR ALI","Dr. KAMRAN"],"Orthopedic 1":["Dr. KAMRAN","Dr. Nedal","Dr. Waqas"],"Orthopedic 2":["Dr. Razvi","Dr. Oun","Dr. Alaa","Dr. Hamado","Dr. KAMRAN","Dr. Thamer","Dr. Waqas"],"ECG":[],"ABR":[],"Tympanometry":[],"Audiology":[],"ENT":["Dr. Hamada","DR. Mohammed Noor","Dr. Amjad","Dr. MOHAMMAD QAMAR","Dr. Loay","Dr. Hassan"],"Quality of work life":[],"Psychotherapy":[],"Phototherapy":[],"Dermatology":["DR. Fatima Mohammed","Dr. Naji","Dr. Mohammed","Dr. Rasha","DR. HASAN","Dr. Nayrah"],"Nephrology":["Dr. GHADA","Dr. Mostafa","Dr. Amal","Dr. Mohammed"],"Neurology":["Dr. Dina"],"Rheumatology":["Dr. Abdullah","Dr. Hisham","Dr. Omar","Dr. Eman Rashed"],"Plastic Surgery":["Dr. Sadaka","Dr. Talha"],"Technical Supervisor":[],"Operations Coordination":[],"OPD Director":[],"Nursing Supervisor":[],"Optometry 1":[],"Optometry 2":[],"Optometry 3":[],"Ophthalmology 1":["Dr. Thiqah","Dr. Amjad","Dr. Hajar","Dr. Abdullah","Dr. Moath"],"Ophthalmology 2":["Dr. Moath","Dr. Abdullah","Dr. Hajar","Dr. Rayan","Dr. Amjad","Dr. Thiqah"],"Ophthalmology 3":["Dr. Hajar","Dr. Moath","Dr. Amjad","Dr. ABDULLAHI IDRIS"],"Ophthalmology (Laser)":[]};const clinicSelect=$('clinicSelect'),doctorSelect=$('doctorSelect');function options(select,items,label){select.replaceChildren(new Option(label,''));items.forEach(v=>select.add(new Option(v,v)))}options(clinicSelect,Object.keys(clinicDoctors),lang==='ar'?'اختر العيادة':'Choose clinic');function fillDoctors(){options(doctorSelect,clinicDoctors[clinicSelect.value]||[],lang==='ar'?'اختر الطبيب':'Choose doctor')}clinicSelect.addEventListener('change',fillDoctors);fillDoctors();const service=new URLSearchParams(location.search).get('service');if(service==='followup'||service==='emergency'){type=service;view=service;document.getElementById(service==='followup'?'emergency':'followup').hidden=true}refresh()})();
-</script></html>
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#0f3a57" />
+    <title>طلبات المواعيد | العيادات الخارجية</title>
+    <link rel="icon" href="../assets/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/portal.css?v=3" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <img class="site-logo" src="../assets/logo.webp" width="220" height="144" alt="شعار مستشفى الرس العام" />
+        <div class="site-titles">
+          <span class="crumb" data-i="crumb">تطبيق العيادات الخارجية</span>
+          <h1 data-i="title">إدارة طلبات المواعيد</h1>
+          <p data-i="subtitle">بيئة اختبار مقيّدة: يمنع إدخال بيانات مرضى حقيقية قبل الموافقة المؤسسية.</p>
+        </div>
+        <div class="site-actions">
+          <button id="lang" class="alt lang-btn" type="button">English</button>
+          <a class="back" href="../"
+            ><svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" /></svg
+            ><span data-i="back">العودة للتطبيق</span></a
+          >
+        </div>
+      </div>
+    </header>
+
+    <main class="page wrap">
+      <div id="alert" class="card note" role="status" aria-live="polite" data-i="warning">
+        لا توجد قناة رسائل أو ربط مع نظام المواعيد الفعلي. الطلب ليس حجزًا مؤكدًا.
+      </div>
+
+      <section id="login" class="card">
+        <h2 data-i="login">دخول الموظف</h2>
+        <label for="email" data-i="email">البريد الإلكتروني</label>
+        <input id="email" type="email" autocomplete="email" placeholder="name@example.com" dir="ltr" />
+        <button id="send" type="button" data-i="send">إرسال رمز الدخول</button>
+        <div id="verifyBox" class="hide">
+          <label for="code" data-i="code" style="margin-top: 16px">رمز التحقق</label>
+          <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" dir="ltr" />
+          <button id="verify" type="button" data-i="verify">تحقق</button>
+        </div>
+      </section>
+
+      <section id="onboard" class="card hide">
+        <h2 data-i="onboard">طلب صلاحية الدخول</h2>
+        <label for="fullname" data-i="fullname">الاسم الكامل للموظف</label>
+        <input id="fullname" maxlength="120" />
+        <button id="join" type="button" data-i="join">إرسال طلب اعتماد</button>
+      </section>
+
+      <section id="waiting" class="card hide">
+        <h2 data-i="waiting">الحساب بانتظار موافقة مدير النظام</h2>
+        <p id="waitDetail"></p>
+        <button id="logout1" class="alt" type="button" data-i="logout">تسجيل الخروج</button>
+      </section>
+
+      <section id="app" class="hide">
+        <div class="card">
+          <div class="toolbar">
+            <strong id="identity"></strong>
+            <button id="logout2" class="alt" type="button" data-i="logout">تسجيل الخروج</button>
+          </div>
+          <nav class="tabs">
+            <button id="newE" type="button" data-i="emergency">موعد إضافي للطوارئ</button>
+            <button id="newF" type="button" data-i="followup">موعد متابعة</button>
+            <button id="showQueue" class="alt" type="button" data-i="requests">الطلبات</button>
+            <button id="showStats" class="alt" type="button" data-i="stats">إحصائيات الطوارئ</button>
+            <button id="showAdmin" class="alt hide" type="button" data-i="staff">اعتماد الموظفين</button>
+          </nav>
+        </div>
+
+        <section id="entry" class="card hide">
+          <h2 id="entryTitle"></h2>
+          <form id="requestForm">
+            <div class="grid">
+              <label><span data-i="identifier">رقم الملف أو الهوية</span><input name="patient_identifier" maxlength="30" required /></label>
+              <label><span data-i="patient">اسم المراجع</span><input name="patient_name" maxlength="120" required minlength="2" /></label>
+              <label
+                ><span data-i="clinic">العيادة</span
+                ><select name="clinic_name" id="clinicSelect" required>
+                  <option value="">اختر العيادة</option>
+                </select></label
+              >
+              <label
+                ><span data-i="doctor">الطبيب</span
+                ><select name="doctor_name" id="doctorSelect" required>
+                  <option value="">اختر الطبيب</option>
+                </select></label
+              >
+              <label><span data-i="date">تاريخ العيادة</span><input name="clinic_date" type="date" required /></label>
+              <label
+                ><span data-i="period">الفترة</span
+                ><select name="period" id="periodSelect">
+                  <option value="morning">صباحية</option>
+                  <option value="noon">ظهرية</option>
+                  <option value="evening">مسائية</option>
+                </select></label
+              >
+            </div>
+            <div id="emergencyFields">
+              <div id="arrivalPreview" class="note ok" role="status" aria-live="polite"></div>
+              <div class="grid">
+                <label><span data-i="referring">اسم طبيب الطوارئ المحوِّل</span><input name="referring_doctor" maxlength="120" /></label>
+                <label><span data-i="specialty">التخصص المطلوب</span><input name="referring_specialty" maxlength="100" /></label>
+              </div>
+              <label style="font-weight: 400; margin-bottom: 16px"
+                ><input type="checkbox" id="ack" required /><span data-i="ack"
+                  >سأبلغ المراجع باليوم والتاريخ ووقت الحضور، وأن المراجعة بنظام الانتظار والأولوية لأصحاب المواعيد المسبقة.</span
+                ></label
+              >
+            </div>
+            <button type="submit" data-i="submit">رفع الطلب</button>
+          </form>
+        </section>
+
+        <section id="queue" class="card hide">
+          <h2 data-i="requests">الطلبات</h2>
+          <div class="filters">
+            <label
+              ><span data-i="kindFilter">تصفية حسب الخدمة</span
+              ><select id="kindFilter">
+                <option value="all">جميع الطلبات</option>
+                <option value="emergency">الطوارئ</option>
+                <option value="followup">المتابعة</option>
+              </select></label
+            >
+            <label
+              ><span data-i="statusFilter">تصفية حسب الحالة</span
+              ><select id="statusFilter">
+                <option value="all">جميع الحالات</option>
+                <option value="pending">بانتظار الحجز</option>
+                <option value="processing">قيد المعالجة</option>
+                <option value="booked">تم الحجز</option>
+                <option value="unable">تعذر الحجز</option>
+              </select></label
+            >
+            <button id="refresh" class="alt" type="button" data-i="refresh">تحديث</button>
+          </div>
+          <div id="requestList"></div>
+        </section>
+
+        <section id="statsPanel" class="card hide">
+          <h2 data-i="stats">إحصائيات الطوارئ</h2>
+          <div class="filters">
+            <label><span data-i="from">من تاريخ</span><input type="date" id="statsFrom" /></label>
+            <label><span data-i="to">إلى تاريخ</span><input type="date" id="statsTo" /></label>
+            <button id="runStats" class="alt" type="button" data-i="refresh">تحديث</button>
+          </div>
+          <div id="statsResult"></div>
+        </section>
+
+        <section id="admin" class="card hide">
+          <div class="toolbar">
+            <h2 data-i="staff" style="margin: 0">اعتماد الموظفين</h2>
+            <button id="refreshStaff" class="alt" type="button" data-i="refresh">تحديث</button>
+          </div>
+          <div id="staffList"></div>
+        </section>
+      </section>
+
+      <p class="page-note" data-i="footer">مرحلة اختبار: لا تُستخدم بيانات مرضى حقيقية.</p>
+    </main>
+
+    <footer class="site-footer">
+      <span class="credit" data-i="credit">إعداد مدير العيادات الخارجية: خالد رميح الرميح</span
+      ><span data-i="siteFooter">مستشفى الرس العام — تطبيق العيادات الخارجية</span><br />Integrated Leadership Operating System – ILOS
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+    <script>
+      (() => {
+        "use strict";
+        const $ = (x) => document.getElementById(x),
+          api = window.supabase.createClient("https://omugonzzrulsdpnycact.supabase.co", "sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs");
+        let lang = "ar",
+          user = null,
+          member = null,
+          kind = "emergency",
+          serviceOpened = false;
+
+        const tr = {
+          ar: {
+            crumb: "تطبيق العيادات الخارجية",
+            title: "إدارة طلبات المواعيد",
+            subtitle: "بيئة اختبار مقيّدة: يمنع إدخال بيانات مرضى حقيقية قبل الموافقة المؤسسية.",
+            warning: "لا توجد قناة رسائل أو ربط مع نظام المواعيد الفعلي. الطلب ليس حجزًا مؤكدًا.",
+            back: "العودة للتطبيق",
+            login: "دخول الموظف",
+            email: "البريد الإلكتروني",
+            send: "إرسال رمز الدخول",
+            code: "رمز التحقق",
+            verify: "تحقق",
+            onboard: "طلب صلاحية الدخول",
+            fullname: "الاسم الكامل للموظف",
+            join: "إرسال طلب اعتماد",
+            waiting: "الحساب بانتظار موافقة مدير النظام",
+            logout: "تسجيل الخروج",
+            emergency: "موعد إضافي للطوارئ",
+            followup: "موعد متابعة",
+            requests: "الطلبات",
+            staff: "اعتماد الموظفين",
+            stats: "إحصائيات الطوارئ",
+            from: "من تاريخ",
+            to: "إلى تاريخ",
+            referring: "اسم طبيب الطوارئ المحوِّل",
+            specialty: "التخصص المطلوب",
+            ack: "سأبلغ المراجع باليوم والتاريخ ووقت الحضور، وأن المراجعة بنظام الانتظار والأولوية لأصحاب المواعيد المسبقة.",
+            identifier: "رقم الملف أو الهوية",
+            patient: "اسم المراجع",
+            clinic: "العيادة",
+            doctor: "الطبيب",
+            date: "تاريخ العيادة",
+            period: "الفترة",
+            arrival: "وقت الحضور",
+            submit: "رفع الطلب",
+            refresh: "تحديث",
+            kindFilter: "تصفية حسب الخدمة",
+            statusFilter: "تصفية حسب الحالة",
+            footer: "مرحلة اختبار: لا تُستخدم بيانات مرضى حقيقية.",
+            siteFooter: "مستشفى الرس العام — تطبيق العيادات الخارجية",
+            credit: "إعداد مدير العيادات الخارجية: خالد رميح الرميح",
+            sent: "تم إرسال رمز التحقق إلى بريدك الإلكتروني.",
+            created: "تم رفع الطلب. الحجز لم يؤكد بعد.",
+            failed: "تعذر إكمال العملية",
+            empty: "لا توجد طلبات",
+            booking: "مرجع الحجز",
+            saved: "تم تحديث الحالة",
+            noStaff: "لا يوجد موظفون",
+            status: "الحالة",
+            role: "الدور",
+            apply: "حفظ",
+            confirm: "تأكيد الحجز",
+            processing: "قيد المعالجة",
+            unable: "تعذر الحجز",
+            notification: "إشعار المريض",
+            total: "إجمالي طلبات الطوارئ",
+            chooseClinic: "اختر العيادة",
+            chooseDoctor: "اختر الطبيب",
+          },
+          en: {
+            crumb: "Outpatient Clinics Portal",
+            title: "Clinic appointment requests",
+            subtitle: "Restricted testing: no real patient information before institutional approval.",
+            warning: "No SMS or hospital scheduling integration. Requests are not confirmed bookings.",
+            back: "Back to portal",
+            login: "Employee sign in",
+            email: "Email",
+            send: "Send login code",
+            code: "Verification code",
+            verify: "Verify",
+            onboard: "Request access",
+            fullname: "Employee full name",
+            join: "Submit approval request",
+            waiting: "Account awaiting administrator approval",
+            logout: "Sign out",
+            emergency: "Emergency extra appointment",
+            followup: "Follow-up appointment",
+            requests: "Requests",
+            staff: "Staff approvals",
+            stats: "Emergency statistics",
+            from: "From date",
+            to: "To date",
+            referring: "Referring emergency doctor",
+            specialty: "Requested specialty",
+            ack: "I will inform the patient of the day, date and arrival time, and that visits are on a waiting basis with priority for patients with booked appointments.",
+            identifier: "File number or ID",
+            patient: "Patient name",
+            clinic: "Clinic",
+            doctor: "Doctor",
+            date: "Clinic date",
+            period: "Session",
+            arrival: "Arrival",
+            submit: "Submit request",
+            refresh: "Refresh",
+            kindFilter: "Filter by service",
+            statusFilter: "Filter by status",
+            footer: "Testing phase: do not use real patient data.",
+            siteFooter: "Al Rass General Hospital — Outpatient Clinics Portal",
+            credit: "Prepared by the Outpatient Clinics Director: Khalid Rumayh Alrumayh",
+            sent: "A verification code was sent to your email.",
+            created: "Request submitted. Booking is not yet confirmed.",
+            failed: "Operation failed",
+            empty: "No requests",
+            booking: "Booking reference",
+            saved: "Status updated",
+            noStaff: "No employees",
+            status: "Status",
+            role: "Role",
+            apply: "Save",
+            confirm: "Confirm booking",
+            processing: "Processing",
+            unable: "Unable to book",
+            notification: "Patient notification",
+            total: "Total emergency requests",
+            chooseClinic: "Choose clinic",
+            chooseDoctor: "Choose doctor",
+          },
+        };
+
+        /* أسماء القيم المخزنة في قاعدة البيانات كما تظهر للمستخدم (العرض فقط، القيم نفسها لا تتغير) */
+        const labels = {
+          ar: {
+            kind: { emergency: "طوارئ", followup: "متابعة" },
+            status: { pending: "بانتظار الحجز", processing: "قيد المعالجة", booked: "تم الحجز", unable: "تعذر الحجز" },
+            period: { morning: "صباحية", noon: "ظهرية", evening: "مسائية" },
+            role: {
+              pending: "بانتظار التحديد",
+              doctor: "طبيب",
+              nurse: "تمريض",
+              scheduler: "موظف مواعيد",
+              supervisor: "مشرف",
+              admin: "مدير النظام",
+            },
+            member: { pending: "بانتظار الاعتماد", approved: "معتمد", rejected: "مرفوض", suspended: "موقوف" },
+            notify: { not_sent: "لم يُرسل", sent: "تم الإرسال", failed: "تعذر الإرسال" },
+            filterAll: { kind: "جميع الطلبات", status: "جميع الحالات" },
+          },
+          en: {
+            kind: { emergency: "Emergency", followup: "Follow-up" },
+            status: { pending: "Pending", processing: "Processing", booked: "Booked", unable: "Unable" },
+            period: { morning: "Morning", noon: "Midday", evening: "Evening" },
+            role: {
+              pending: "Not assigned",
+              doctor: "Doctor",
+              nurse: "Nursing",
+              scheduler: "Scheduler",
+              supervisor: "Supervisor",
+              admin: "Administrator",
+            },
+            member: { pending: "Awaiting approval", approved: "Approved", rejected: "Rejected", suspended: "Suspended" },
+            notify: { not_sent: "Not sent", sent: "Sent", failed: "Failed" },
+            filterAll: { kind: "All requests", status: "All statuses" },
+          },
+        };
+        const L = (group, value) => (labels[lang][group] && labels[lang][group][value]) || value || "—";
+        const statusTone = { booked: "", unable: "danger", processing: "wait", pending: "draft" };
+
+        function msg(s, ok = false) {
+          $("alert").textContent = s;
+          $("alert").className = "card note" + (ok ? " ok" : "");
+        }
+        function show(id) {
+          for (const x of ["login", "onboard", "waiting", "app"]) $(x).classList.toggle("hide", x !== id);
+        }
+        function panel(id) {
+          for (const x of ["entry", "queue", "admin", "statsPanel"]) $(x).classList.toggle("hide", x !== id);
+          const current = {
+            entry: kind === "emergency" ? "newE" : "newF",
+            queue: "showQueue",
+            admin: "showAdmin",
+            statsPanel: "showStats",
+          }[id];
+          for (const b of ["newE", "newF", "showQueue", "showStats", "showAdmin"]) $(b).toggleAttribute("aria-current", b === current);
+        }
+        function translateOptions() {
+          for (const o of $("periodSelect").options) o.textContent = L("period", o.value);
+          for (const o of $("kindFilter").options) o.textContent = o.value === "all" ? labels[lang].filterAll.kind : L("kind", o.value);
+          for (const o of $("statusFilter").options)
+            o.textContent = o.value === "all" ? labels[lang].filterAll.status : L("status", o.value);
+          if ($("clinicSelect").options[0]) $("clinicSelect").options[0].textContent = tr[lang].chooseClinic;
+          if ($("doctorSelect").options[0]) $("doctorSelect").options[0].textContent = tr[lang].chooseDoctor;
+        }
+        function translate() {
+          document.documentElement.lang = lang;
+          document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+          document.title = lang === "ar" ? "طلبات المواعيد | العيادات الخارجية" : "Appointment requests | Outpatient Clinics";
+          document.querySelectorAll("[data-i]").forEach((el) => {
+            el.textContent = tr[lang][el.dataset.i] || "";
+          });
+          $("lang").textContent = lang === "ar" ? "English" : "العربية";
+          $("entryTitle").textContent = tr[lang][kind];
+          translateOptions();
+          if (member) setIdentity();
+        }
+        function error(e) {
+          msg((e && e.message) || tr[lang].failed);
+        }
+
+        const clinicDoctors = {
+          Anesthesia: ["Dr. BAHAA MOHAMMED"],
+          Chest: ["Dr. Abeer", "Dr. Ramadan Rajab", "Dr. ASAD JAVAID", "Dr. Ramadan Shawqi"],
+          "Infectious disease": ["Dr. Ahlam"],
+          Hematology: ["Dr. Fatima Hassn"],
+          Pediatric: ["Dr. Eman Abdulkarim", "Dr. Sami ullah", "Dr. Esam", "Dr. Nihal", "DR. Fatima Mohammed", "Dr. Jamal"],
+          "Dev. & Beh. Disorder": ["Dr. Jamal"],
+          Newborn: ["Dr. MAHMOUD"],
+          "Physical Medicine & Rehabilitation": ["Dr. Abeer"],
+          Neurosurgery: ["Dr. Faizab", "Dr. Asef"],
+          Psychiatric: [],
+          Gastroenterology: ["Dr. Fekri", "Dr. Yahya", "Dr. Hamady", "Dr. Majeda", "Dr. Amro", "Dr. Osama"],
+          "OB/Gyn": ["Dr. MAHMOUD", "Dr. Amro", "Dr. Basila", "Dr. Saif", "Dr. Fatima Kaneez", "Dr. Saadia", "Dr. Moji"],
+          Medical: ["Dr. Noor", "Dr. Ahmad Kamal", "Dr. Othman", "Dr. Taqwa", "Dr. QURRAT ALAIN"],
+          Cardiology: ["Dr. Abdulhamid", "Dr. SHIMAA", "Dr. Mostafa Ibrahim", "Dr. Ayman", "Dr. Shoja", "Dr. Mohmed Moqbl", "Dr. Sulaiman"],
+          "Minor Surgery": ["Dr. AHMAD ISSA"],
+          "Pediatric Surgery": ["Dr. Fayaz", "Dr. Mohammed Sharif", "Dr. Mohammad Fawzy", "Dr. Nassem"],
+          Surgery: [
+            "Dr. Bassam",
+            "Dr. Yousef",
+            "Dr. Ataallah",
+            "Dr. YAZID",
+            "Dr. Mohammed Ali",
+            "Dr. Tanzeel",
+            "Dr. A.Sattar",
+            "Dr. Abdulhakim",
+          ],
+          Urology: ["Dr. Ayman", "Dr. Ashraf", "Dr. Abdullah", "Dr. Ramadan Rajab", "Dr. Reyadh", "Dr. KHAWAR ALI", "Dr. KAMRAN"],
+          "Orthopedic 1": ["Dr. KAMRAN", "Dr. Nedal", "Dr. Waqas"],
+          "Orthopedic 2": ["Dr. Razvi", "Dr. Oun", "Dr. Alaa", "Dr. Hamado", "Dr. KAMRAN", "Dr. Thamer", "Dr. Waqas"],
+          ECG: [],
+          ABR: [],
+          Tympanometry: [],
+          Audiology: [],
+          ENT: ["Dr. Hamada", "DR. Mohammed Noor", "Dr. Amjad", "Dr. MOHAMMAD QAMAR", "Dr. Loay", "Dr. Hassan"],
+          "Quality of work life": [],
+          Psychotherapy: [],
+          Phototherapy: [],
+          Dermatology: ["DR. Fatima Mohammed", "Dr. Naji", "Dr. Mohammed", "Dr. Rasha", "DR. HASAN", "Dr. Nayrah"],
+          Nephrology: ["Dr. GHADA", "Dr. Mostafa", "Dr. Amal", "Dr. Mohammed"],
+          Neurology: ["Dr. Dina"],
+          Rheumatology: ["Dr. Abdullah", "Dr. Hisham", "Dr. Omar", "Dr. Eman Rashed"],
+          "Plastic Surgery": ["Dr. Sadaka", "Dr. Talha"],
+          "Technical Supervisor": [],
+          "Operations Coordination": [],
+          "OPD Director": [],
+          "Nursing Supervisor": [],
+          "Optometry 1": [],
+          "Optometry 2": [],
+          "Optometry 3": [],
+          "Ophthalmology 1": ["Dr. Thiqah", "Dr. Amjad", "Dr. Hajar", "Dr. Abdullah", "Dr. Moath"],
+          "Ophthalmology 2": ["Dr. Moath", "Dr. Abdullah", "Dr. Hajar", "Dr. Rayan", "Dr. Amjad", "Dr. Thiqah"],
+          "Ophthalmology 3": ["Dr. Hajar", "Dr. Moath", "Dr. Amjad", "Dr. ABDULLAHI IDRIS"],
+          "Ophthalmology (Laser)": [],
+        };
+        const clinicSelect = $("clinicSelect"),
+          doctorSelect = $("doctorSelect");
+        function fillSelect(select, values, placeholder) {
+          select.replaceChildren(new Option(placeholder, ""));
+          values.forEach((v) => select.add(new Option(v, v)));
+        }
+        fillSelect(clinicSelect, Object.keys(clinicDoctors), tr[lang].chooseClinic);
+        function fillDoctors() {
+          fillSelect(doctorSelect, clinicDoctors[clinicSelect.value] || [], tr[lang].chooseDoctor);
+        }
+        clinicSelect.onchange = fillDoctors;
+        fillDoctors();
+
+        const arrival = { morning: "10:30", noon: "14:30", evening: "18:30" };
+        function arrivalText() {
+          const f = $("requestForm"),
+            date = f.elements.clinic_date.value,
+            period = f.elements.period.value,
+            clock = arrival[period],
+            d = date ? new Date(date + "T12:00:00") : null,
+            day =
+              d && !Number.isNaN(d.getTime())
+                ? new Intl.DateTimeFormat(lang === "ar" ? "ar-SA-u-ca-gregory" : "en-GB", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  }).format(d)
+                : "—";
+          $("arrivalPreview").textContent =
+            lang === "ar"
+              ? "وقت الحضور المقترح: " + day + "، الساعة " + clock + " (بنظام الانتظار؛ الأولوية لأصحاب المواعيد)"
+              : "Proposed arrival: " + day + ", " + clock + " (waiting basis; booked patients have priority)";
+        }
+        $("requestForm").elements.clinic_date.addEventListener("change", arrivalText);
+        $("requestForm").elements.period.addEventListener("change", arrivalText);
+        $("lang").onclick = () => {
+          lang = lang === "ar" ? "en" : "ar";
+          translate();
+          arrivalText();
+          if (!$("queue").classList.contains("hide")) requests();
+          if (!$("admin").classList.contains("hide")) staff();
+          if (!$("statsPanel").classList.contains("hide")) stats();
+        };
+
+        $("send").onclick = async () => {
+          const email = $("email").value.trim();
+          if (!email) return;
+          const { error: e } = await api.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+          if (e) return error(e);
+          $("verifyBox").classList.remove("hide");
+          $("code").focus();
+          msg(tr[lang].sent, true);
+        };
+        $("verify").onclick = async () => {
+          const { error: e } = await api.auth.verifyOtp({ email: $("email").value.trim(), token: $("code").value.trim(), type: "email" });
+          if (e) return error(e);
+          await load();
+        };
+
+        function setIdentity() {
+          $("identity").textContent = member.full_name + " (" + L("role", member.role) + ")";
+        }
+
+        async function load() {
+          const {
+            data: { user: u },
+          } = await api.auth.getUser();
+          user = u;
+          if (!u) {
+            show("login");
+            return;
+          }
+          const { data: m, error: e } = await api.from("opd_appt_members").select("*").eq("user_id", u.id).maybeSingle();
+          if (e) return error(e);
+          member = m;
+          if (!m) {
+            show("onboard");
+            return;
+          }
+          if (m.status !== "approved") {
+            show("waiting");
+            $("waitDetail").textContent = m.full_name + "، " + L("member", m.status);
+            return;
+          }
+          show("app");
+          setIdentity();
+          $("showAdmin").classList.toggle("hide", m.role !== "admin");
+          $("newE").classList.toggle("hide", !["doctor", "nurse", "admin"].includes(m.role));
+          $("newF").classList.toggle("hide", !["doctor", "nurse", "admin"].includes(m.role));
+          $("showStats").classList.toggle("hide", !["scheduler", "supervisor", "admin"].includes(m.role));
+          panel("queue");
+          await requests();
+          /* فتح نموذج الخدمة مباشرة عند القدوم من بطاقة الخدمة في الصفحة الرئيسية */
+          if (!serviceOpened) {
+            serviceOpened = true;
+            const svc = new URLSearchParams(location.search).get("service");
+            const btn = svc === "emergency" ? $("newE") : svc === "followup" ? $("newF") : null;
+            if (btn && !btn.classList.contains("hide")) btn.click();
+          }
+        }
+        $("join").onclick = async () => {
+          const name = $("fullname").value.trim();
+          if (name.length < 2) return msg(tr[lang].fullname);
+          const { error: e } = await api
+            .from("opd_appt_members")
+            .insert({ user_id: user.id, full_name: name, role: "pending", status: "pending" });
+          if (e) return error(e);
+          await load();
+        };
+        async function logout() {
+          await api.auth.signOut();
+          member = null;
+          user = null;
+          show("login");
+        }
+        for (const id of ["logout1", "logout2"]) $(id).onclick = logout;
+        for (const [id, k] of [
+          ["newE", "emergency"],
+          ["newF", "followup"],
+        ])
+          $(id).onclick = () => {
+            kind = k;
+            translate();
+            arrivalText();
+            $("emergencyFields").classList.toggle("hide", k !== "emergency");
+            $("ack").required = k === "emergency";
+            panel("entry");
+          };
+
+        $("requestForm").onsubmit = async (e) => {
+          e.preventDefault();
+          const f = new FormData(e.target),
+            data = Object.fromEntries(f.entries());
+          data.kind = kind;
+          data.requested_by = user.id;
+          const localToday = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Riyadh",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          }).format(new Date());
+          if (data.clinic_date < localToday) return msg(lang === "ar" ? "لا يمكن اختيار تاريخ سابق" : "Past dates are not allowed");
+          if (kind === "emergency") {
+            if (!data.referring_doctor.trim() || !data.referring_specialty.trim() || !$("ack").checked)
+              return msg(lang === "ar" ? "أكمل بيانات الطبيب المحوّل وأكد تنبيه المراجع" : "Complete referring doctor and patient notice");
+            data.doctor_acknowledged_at = new Date().toISOString();
+          } else {
+            delete data.referring_doctor;
+            delete data.referring_specialty;
+          }
+          data.patient_name = data.patient_name.trim();
+          data.patient_identifier = data.patient_identifier.trim();
+          if (!data.patient_name || !data.patient_identifier) return;
+          const { error: e2 } = await api.from("opd_appt_requests").insert(data);
+          if (e2) return error(e2);
+          e.target.reset();
+          fillDoctors();
+          arrivalText();
+          msg(
+            kind === "emergency"
+              ? lang === "ar"
+                ? "تنبيه لطبيب الطوارئ: يرجى إبلاغ المراجع باليوم والتاريخ ووقت الحضور، مع التأكيد أن المراجعة بنظام الانتظار، والأولوية لأصحاب المواعيد المسبقة."
+                : "Emergency doctor alert: Inform the patient of the day, date and arrival time. Visits are on a waiting basis, with priority for patients with booked appointments."
+              : tr[lang].created,
+            true,
+          );
+          panel("queue");
+          await requests();
+        };
+
+        function el(tag, content, cls) {
+          const x = document.createElement(tag);
+          if (content !== undefined) x.textContent = content;
+          if (cls) x.className = cls;
+          return x;
+        }
+        function badge(text, tone) {
+          return el("span", text, "badge" + (tone ? " " + tone : ""));
+        }
+        function meta(pairs) {
+          const p = el("p", undefined, "rec-meta");
+          for (const [k, v] of pairs) {
+            const s = el("span", k + ": ");
+            s.append(el("b", v || "—"));
+            p.append(s);
+          }
+          return p;
+        }
+
+        async function requests() {
+          const { data, error: e } = await api
+            .from("opd_appt_requests")
+            .select(
+              "id,kind,patient_name,patient_identifier,clinic_name,doctor_name,clinic_date,period,status,booking_reference,notification_status,notification_note,created_at",
+            )
+            .order("created_at", { ascending: false })
+            .limit(100);
+          if (e) return error(e);
+          const root = $("requestList");
+          root.replaceChildren();
+          const rows = data.filter(
+            (r) =>
+              ($("kindFilter").value === "all" || r.kind === $("kindFilter").value) &&
+              ($("statusFilter").value === "all" || r.status === $("statusFilter").value),
+          );
+          if (!rows.length) root.append(el("p", tr[lang].empty, "page-note"));
+          for (const r of rows) {
+            const box = el("div", undefined, "line");
+            const head = el("div", undefined, "rec-head");
+            head.append(el("strong", r.patient_name), badge(L("kind", r.kind), "wait"), badge(L("status", r.status), statusTone[r.status]));
+            box.append(
+              head,
+              meta([
+                [tr[lang].clinic, r.clinic_name],
+                [tr[lang].doctor, r.doctor_name],
+                [tr[lang].date, r.clinic_date],
+                r.kind === "emergency"
+                  ? [tr[lang].arrival, arrival[r.period] || L("period", r.period)]
+                  : [tr[lang].period, L("period", r.period)],
+              ]),
+            );
+            if (r.booking_reference) box.append(meta([[tr[lang].booking, r.booking_reference]]));
+            if (r.status === "booked")
+              box.append(
+                meta([
+                  [
+                    tr[lang].notification,
+                    L("notify", r.notification_status || "not_sent") + (r.notification_note ? "، " + r.notification_note : ""),
+                  ],
+                ]),
+              );
+            box.append(el("small", r.id, "rec-id"));
+            if (["scheduler", "supervisor", "admin"].includes(member.role) && ["pending", "processing"].includes(r.status)) {
+              const input = el("input");
+              input.placeholder = tr[lang].booking;
+              box.append(input);
+              for (const [st, label] of [
+                ["processing", tr[lang].processing],
+                ["booked", tr[lang].confirm],
+                ["unable", tr[lang].unable],
+              ]) {
+                const b = el("button", label);
+                b.type = "button";
+                b.className = st === "booked" ? "" : "alt";
+                b.onclick = async () => {
+                  if (st === "booked" && !input.value.trim()) return msg(tr[lang].booking);
+                  const { error: e3 } = await api.rpc("opd_appt_set_status", {
+                    p_id: r.id,
+                    p_status: st,
+                    p_booking_reference: st === "booked" ? input.value.trim() : null,
+                  });
+                  if (e3) return error(e3);
+                  msg(tr[lang].saved, true);
+                  await requests();
+                };
+                box.append(b);
+              }
+            }
+            if (r.status === "booked" && ["scheduler", "supervisor", "admin"].includes(member.role)) {
+              const note = el("input");
+              note.placeholder =
+                lang === "ar"
+                  ? "مرجع أو دليل الإشعار من نظام المستشفى (لا تدخل بيانات المريض)"
+                  : "Hospital notification evidence/reference (no patient data)";
+              box.append(note);
+              for (const [st, label] of [
+                ["sent", lang === "ar" ? "تم التحقق من إرسال الرسالة" : "Message verified sent"],
+                ["failed", lang === "ar" ? "تعذر إرسال الرسالة" : "Message failed"],
+              ]) {
+                const b = el("button", label);
+                b.type = "button";
+                b.className = "alt";
+                b.onclick = async () => {
+                  if (!note.value.trim()) return msg(lang === "ar" ? "أدخل دليل الإشعار أو ملاحظة موثقة" : "Enter notification evidence");
+                  const { error: e5 } = await api.rpc("opd_appt_record_notification", {
+                    p_id: r.id,
+                    p_status: st,
+                    p_note: note.value.trim(),
+                  });
+                  if (e5) return error(e5);
+                  msg(tr[lang].saved, true);
+                  await requests();
+                };
+                box.append(b);
+              }
+            }
+            root.append(box);
+          }
+        }
+        $("refresh").onclick = requests;
+        $("kindFilter").onchange = requests;
+        $("statusFilter").onchange = requests;
+        $("showQueue").onclick = () => {
+          panel("queue");
+          requests();
+        };
+
+        async function staff() {
+          const { data, error: e } = await api.rpc("opd_appt_members_for_admin");
+          if (e) return error(e);
+          const root = $("staffList");
+          root.replaceChildren();
+          if (!data.length) root.append(el("p", tr[lang].noStaff, "page-note"));
+          for (const m of data) {
+            const box = el("div", undefined, "line");
+            const head = el("div", undefined, "rec-head");
+            head.append(
+              el("strong", m.full_name),
+              badge(L("member", m.status), m.status === "approved" ? "" : m.status === "pending" ? "draft" : "danger"),
+            );
+            box.append(head, el("small", m.user_id, "rec-id"));
+            const grid = el("div", undefined, "grid");
+            const roleLabel = el("label", tr[lang].role),
+              statusLabel = el("label", tr[lang].status);
+            const role = el("select"),
+              status = el("select");
+            for (const value of ["pending", "doctor", "nurse", "scheduler", "supervisor", "admin"])
+              role.add(new Option(L("role", value), value));
+            role.value = m.role;
+            for (const value of ["pending", "approved", "rejected", "suspended"]) status.add(new Option(L("member", value), value));
+            status.value = m.status;
+            roleLabel.append(role);
+            statusLabel.append(status);
+            grid.append(roleLabel, statusLabel);
+            const b = el("button", tr[lang].apply);
+            b.type = "button";
+            b.onclick = async () => {
+              const { error: e4 } = await api.rpc("opd_appt_manage_member", {
+                p_user: m.user_id,
+                p_role: role.value,
+                p_status: status.value,
+              });
+              if (e4) return error(e4);
+              msg(tr[lang].saved, true);
+              await staff();
+            };
+            box.append(grid, b);
+            root.append(box);
+          }
+        }
+        $("showAdmin").onclick = () => {
+          panel("admin");
+          staff();
+        };
+        $("refreshStaff").onclick = staff;
+
+        const today = new Date().toISOString().slice(0, 10);
+        $("statsTo").value = today;
+        $("statsFrom").value = today.slice(0, 8) + "01";
+        $("showStats").onclick = () => {
+          panel("statsPanel");
+          stats();
+        };
+        $("runStats").onclick = stats;
+        async function stats() {
+          const { data, error: e } = await api.rpc("opd_appt_emergency_stats", { p_from: $("statsFrom").value, p_to: $("statsTo").value });
+          if (e) return error(e);
+          const root = $("statsResult");
+          root.replaceChildren();
+          root.append(el("h3", tr[lang].total + ": " + data.reduce((n, r) => n + Number(r.total), 0)));
+          for (const r of data) {
+            const box = el("div", undefined, "line");
+            const head = el("div", undefined, "rec-head");
+            head.append(el("strong", r.specialty), badge(L("status", r.status), statusTone[r.status]), badge(String(r.total), "wait"));
+            box.append(
+              head,
+              meta([
+                [tr[lang].date, r.request_day],
+                [tr[lang].referring, r.referring_doctor],
+                [tr[lang].doctor, r.receiving_doctor],
+              ]),
+            );
+            root.append(box);
+          }
+          if (!data.length) root.append(el("p", tr[lang].empty, "page-note"));
+        }
+
+        translate();
+        load();
+        api.auth.onAuthStateChange((_event, session) => {
+          if (!session) {
+            show("login");
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

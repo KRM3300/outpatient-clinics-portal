@@ -1,38 +1,419 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>إدارة تجربة المريض | نسخة تجريبية</title><style>
-:root{font-family:system-ui,Tahoma,sans-serif;color:#203444;background:#f2f6f9}*{box-sizing:border-box}body{margin:0}header{background:linear-gradient(135deg,#12344a,#22617b);color:white;padding:26px 16px}header .inner,main{max-width:1120px;margin:auto}h1{margin:0 0 8px;font-size:26px}header p{margin:0;opacity:.9}.pill{display:inline-block;background:#f4e9bb;color:#634a09;padding:5px 10px;border-radius:20px;font-size:12px;margin-top:12px}main{padding:18px 14px 70px}.tabs{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px}.tabs button,.btn{background:white;border:1px solid #cbdce5;border-radius:11px;padding:11px 14px;font:inherit;cursor:pointer;color:#17455c}.tabs button.active,.btn.primary{background:#123e57;color:white}.panel,.stat{background:white;border:1px solid #dce7eb;border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 2px 9px #25455b08}.stats,.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.stat b{font-size:27px;display:block;margin-top:6px;color:#174f6c}.muted{color:#637b88;font-size:13px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:12px}input,select,textarea{font:inherit;padding:10px;border:1px solid #c9d9e1;border-radius:10px;background:white;max-width:100%;width:100%}textarea{min-height:80px}label{font-size:13px;font-weight:600;display:block;margin:10px 0 5px}.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px 14px}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:670px}td,th{padding:12px 10px;text-align:right;border-bottom:1px solid #e6edf0;font-size:13px}th{background:#f4f8fa}.tag{background:#eaf2f6;color:#17455c;padding:5px 8px;border-radius:8px;white-space:nowrap}.tag.closed{background:#e5f5eb;color:#16683e}.tag.escalated{background:#fff0e6;color:#a44b0c}.tag.open{background:#fff8d9;color:#7a5b00}.actions{display:flex;gap:5px;flex-wrap:wrap}.actions button{border:1px solid #c9d9e1;border-radius:8px;background:white;padding:6px 9px;cursor:pointer}.hide{display:none!important}.empty{padding:30px;text-align:center;color:#748895}.note{border-right:4px solid #d3a64c;background:#fff9e9;padding:12px;border-radius:8px;font-size:13px;line-height:1.8}.danger{color:#a92d2d}footer{max-width:1120px;margin:auto;padding:20px;color:#70828d;font-size:12px}canvas{max-width:100%}@media(max-width:600px){h1{font-size:21px}.panel{padding:12px}.tabs button{flex:1}}
-</style><style id="ilos-unified-theme">
-:root{color-scheme:dark!important;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif!important;color:#e7f4fc!important;background:#071725!important}
-body{color:#e7f4fc!important;background:radial-gradient(ellipse at 90% 0%,#103e5a 0%,#071725 43%,#06121f 100%) fixed!important}
-header{background:linear-gradient(135deg,#071522,#10374f 65%,#092134)!important;border-bottom:1px solid #1d536c!important}
-header h1,header p{color:#f4fbff!important}
-main{max-width:1120px!important}
-.panel,.stat{background:#102b40!important;border:1px solid #24526b!important;box-shadow:0 7px 22px #0002!important;color:#e7f4fc!important}
-.panel h2,.panel h3,.stat b{color:#f4fbff!important}
-.muted{color:#b6cddd!important}
-.tabs button,.btn{background:#173e56!important;border:1px solid #30617b!important;color:#e8f8ff!important}
-.tabs button.active,.btn.primary{background:#087f91!important;border-color:#29a1b2!important;color:#fff!important}
-input,select,textarea{background:#0b2234!important;color:#fff!important;border:1px solid #527589!important}
-input::placeholder,textarea::placeholder{color:#a5bfd0!important}
-table,th,td{color:#e7f4fc!important;border-color:#30617b!important}
-th{background:#173e56!important}
-.pill{background:#173e56!important;color:#9de4f5!important}
-a{color:#72d8fa!important}
-@media(max-width:650px){header{padding:22px 16px!important}.panel,.stat{padding:15px!important}.tabs{gap:6px!important}.tabs button{font-size:13px!important;padding:9px 11px!important}}
-</style></head><body><header><div class="inner"><h1>إدارة تجربة المريض</h1><p>Patient Experience Management · بوابة خدمات العيادات الخارجية</p><span class="pill">بيئة تجريبية — بيانات وهمية فقط — بدون تسجيل دخول</span></div></header><main><div class="note">هذه نسخة تشغيلية تجريبية على GitHub Pages. يمكنك إضافة السجلات وتعديلها وحذفها، وتُحفظ في هذا المتصفح فقط (localStorage). لا تُدخل بيانات مرضى حقيقية؛ لا توجد مزامنة بين الأجهزة ولا قاعدة بيانات مركزية بعد.</div><nav class="tabs" id="tabs"></nav><div id="content"></div></main><footer>تجربة مستقلة · لا تغيّر دليل الموظف الذكي الحالي</footer><script>
-const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),today=()=>new Date().toISOString().slice(0,10);
-const sections=[['dashboard','لوحة المؤشرات'],['incidents','البلاغات والشكاوى'],['ncr','عدم المطابقة NCR'],['compliance','عدم الالتزام'],['surveys','رضا المستفيدين'],['users','الموظفون'],['settings','الإعدادات']];
-const seed=()=>({incidents:[{id:1001,date:today(),title:'تأخر تقديم الخدمة',department:'العيادات الخارجية',owner:'موظف تجربة المريض',priority:'مرتفع',status:'open',description:'بلاغ تجريبي عن تأخر موعد',resolution:''},{id:1002,date:today(),title:'استفسار عن موعد متابعة',department:'مركز السكر',owner:'مشرف المركز',priority:'عادي',status:'in_progress',description:'بلاغ تجريبي عن متابعة موعد',resolution:''},{id:1003,date:today(),title:'ملاحظة على مسار المراجع',department:'مركز العيون',owner:'مشرف المركز',priority:'عادي',status:'closed',description:'ملاحظة تجريبية',resolution:'تمت المعالجة'}],ncr:[{id:2001,date:today(),title:'عدم الالتزام بتوثيق الإجراء',department:'العيادات الخارجية',owner:'مسؤول الجودة',status:'open',description:'حالة افتراضية',resolution:''}],compliance:[{id:3001,date:today(),title:'تأخر بدء العيادة',department:'العيادات الخارجية',owner:'المشرف الفني',status:'in_progress',description:'تقرير افتراضي',resolution:''}],surveys:[{id:4001,date:today(),title:'رضا المراجعين - شهر تجريبي',department:'العيادات الخارجية',score:88,description:'نتيجة وهمية للتجربة'}],users:[{id:5001,name:'مدير تجربة المريض',department:'العيادات الخارجية',role:'مدير'},{id:5002,name:'مشرف مركز السكر',department:'مركز السكر',role:'مشرف'},{id:5003,name:'موظف استقبال تجريبي',department:'العيادات الخارجية',role:'موظف'}],settings:{departments:['العيادات الخارجية','مركز السكر','مركز العيون','مركز الأسنان','العيادات التخصصية'],roles:['مدير','مشرف','موظف'],categories:['انتظار','مواعيد','سلوك وتعامل','إجراءات','أخرى']}});
-let db;try{db=JSON.parse(localStorage.getItem('opd_px_demo_v1'))||seed()}catch(e){db=seed()}let tab='dashboard',editing=null,filter='',query='';
-function save(){localStorage.setItem('opd_px_demo_v1',JSON.stringify(db))}
-function status(s){return ({open:'مفتوح',in_progress:'قيد المعالجة',closed:'مغلق',escalated:'مصعّد',transferred:'محول'})[s]||s}
-function opts(arr,selected){return arr.map(x=>'<option value="'+esc(x)+'" '+(x===selected?'selected':'')+'>'+esc(x)+'</option>').join('')}
-function render(){ $('#tabs').innerHTML=sections.map(([k,v])=>'<button class="'+(tab===k?'active':'')+'" data-tab="'+k+'">'+v+'</button>').join('');document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;editing=null;filter='';query='';render()});if(tab==='dashboard')dashboard();else if(tab==='settings')settings();else if(tab==='users')users();else records(tab)}
-function dashboard(){const all=db.incidents,open=all.filter(x=>x.status!=='closed'),closed=all.filter(x=>x.status==='closed'),escs=all.filter(x=>x.status==='escalated');$('#content').innerHTML='<div class="stats">'+[['إجمالي البلاغات',all.length],['البلاغات المفتوحة',open.length],['البلاغات المغلقة',closed.length],['البلاغات المصعّدة',escs.length],['نسبة الإغلاق',all.length?Math.round(closed.length/all.length*100)+'%':'0%'],['عدم المطابقة',db.ncr.length],['عدم الالتزام',db.compliance.length],['استطلاعات الرضا',db.surveys.length]].map(([a,b])=>'<div class="stat">'+a+'<b>'+b+'</b></div>').join('')+'</div><div class="cols"><section class="panel"><h3>البلاغات حسب الحالة</h3>'+['open','in_progress','escalated','transferred','closed'].map(s=>'<p>'+status(s)+' <b>'+all.filter(x=>x.status===s).length+'</b></p>').join('')+'</section><section class="panel"><h3>البلاغات حسب القسم</h3>'+db.settings.departments.map(d=>'<p>'+esc(d)+' <b>'+all.filter(x=>x.department===d).length+'</b></p>').join('')+'</section></div><div class="panel"><h3>أحدث البلاغات</h3>'+all.slice(-5).reverse().map(x=>'<p><b>#'+x.id+'</b> '+esc(x.title)+' · '+status(x.status)+'</p>').join('')+'</div>'}
-const conf={incidents:['بلاغ','البلاغات والشكاوى'],ncr:['حالة عدم مطابقة','عدم المطابقة NCR'],compliance:['تقرير عدم التزام','تقارير عدم الالتزام'],surveys:['نتيجة رضا','رضا المستفيدين']};
-function records(k){let [sing,title]=conf[k],a=db[k],list=a.filter(x=>(!filter||x.status===filter)&&(!query||JSON.stringify(x).toLowerCase().includes(query.toLowerCase())));$('#content').innerHTML='<section class="panel"><div class="toolbar"><h2>'+title+'</h2><button class="btn primary" id="add">+ إضافة '+sing+'</button></div><div class="toolbar"><input id="search" style="max-width:330px" placeholder="بحث في السجلات" value="'+esc(query)+'">'+(k==='surveys'?'':'<select id="filter" style="max-width:200px"><option value="">كل الحالات</option>'+opts(['open','in_progress','escalated','transferred','closed'],filter).replace(/>open</g,'>مفتوح<').replace(/>in_progress</g,'>قيد المعالجة<').replace(/>escalated</g,'>مصعّد<').replace(/>transferred</g,'>محول<').replace(/>closed</g,'>مغلق<')+'</select>')+'</div><div class="tablewrap"><table><thead><tr><th>الرقم</th><th>التاريخ</th><th>العنوان</th><th>القسم</th><th>'+(k==='surveys'?'النتيجة':'الحالة')+'</th><th>إجراءات</th></tr></thead><tbody>'+list.map(x=>'<tr><td>#'+x.id+'</td><td>'+esc(x.date)+'</td><td>'+esc(x.title)+'</td><td>'+esc(x.department)+'</td><td>'+(k==='surveys'?esc(x.score)+'%':'<span class="tag '+esc(x.status)+'">'+status(x.status)+'</span>')+'</td><td><div class="actions"><button data-edit="'+x.id+'">تعديل</button>'+(k==='surveys'?'':'<button data-next="'+x.id+'">تغيير الحالة</button>')+'<button class="danger" data-del="'+x.id+'">حذف</button></div></td></tr>').join('')+'</tbody></table></div>'+(list.length?'':'<p class="empty">لا توجد نتائج</p>')+'</section><div id="editor"></div>';$('#add').onclick=()=>form(k);$('#search').oninput=e=>{query=e.target.value;records(k)};if($('#filter'))$('#filter').onchange=e=>{filter=e.target.value;records(k)};document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>form(k,Number(b.dataset.edit)));document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{if(confirm('حذف السجل التجريبي؟')){db[k]=db[k].filter(x=>x.id!==Number(b.dataset.del));save();records(k)}});document.querySelectorAll('[data-next]').forEach(b=>b.onclick=()=>{let x=a.find(x=>x.id===Number(b.dataset.next));let n=prompt('الحالة الجديدة: open / in_progress / escalated / transferred / closed',x.status);if(n&&['open','in_progress','escalated','transferred','closed'].includes(n)){x.status=n;save();records(k)}})}
-function form(k,id){let x=db[k].find(v=>v.id===id)||{date:today(),status:'open',department:db.settings.departments[0],priority:'عادي',score:90};$('#editor').innerHTML='<section class="panel"><h3>'+(id?'تعديل':'إضافة')+' '+conf[k][0]+'</h3><form id="recordform"><div class="fields"><div><label>العنوان</label><input name="title" required value="'+esc(x.title||'')+'"></div><div><label>التاريخ</label><input type="date" name="date" required value="'+esc(x.date)+'"></div><div><label>القسم</label><select name="department">'+opts(db.settings.departments,x.department)+'</select></div>'+(k==='surveys'?'<div><label>نسبة الرضا %</label><input type="number" min="0" max="100" name="score" value="'+esc(x.score)+'"></div>':'<div><label>الحالة</label><select name="status">'+opts(['open','in_progress','escalated','transferred','closed'],x.status)+'</select></div><div><label>المسؤول</label><input name="owner" value="'+esc(x.owner||'')+'"></div><div><label>الأولوية</label><select name="priority">'+opts(['عادي','مرتفع','عاجل'],x.priority)+'</select></div>')+'</div><label>الوصف / الملاحظات</label><textarea name="description">'+esc(x.description||'')+'</textarea>'+(k==='surveys'?'':'<label>الإجراء / الحل / السبب الجذري</label><textarea name="resolution">'+esc(x.resolution||'')+'</textarea>')+'<p><button class="btn primary" type="submit">حفظ</button> <button class="btn" type="button" id="cancel">إلغاء</button></p></form></section>';$('#cancel').onclick=()=>$('#editor').innerHTML='';$('#recordform').onsubmit=e=>{e.preventDefault();let o=Object.fromEntries(new FormData(e.target).entries());if(k==='surveys')o.score=Number(o.score);if(id)Object.assign(db[k].find(v=>v.id===id),o);else db[k].push({id:Date.now(),...o});save();records(k)};$('#editor').scrollIntoView({behavior:'smooth'})}
-function users(){let a=db.users;$('#content').innerHTML='<section class="panel"><div class="toolbar"><h2>الموظفون والأدوار التجريبية</h2><button class="btn primary" id="adduser">+ موظف</button></div><div class="tablewrap"><table><thead><tr><th>الاسم</th><th>القسم</th><th>الدور</th><th>إجراءات</th></tr></thead><tbody>'+a.map(x=>'<tr><td>'+esc(x.name)+'</td><td>'+esc(x.department)+'</td><td>'+esc(x.role)+'</td><td><button class="btn" data-uedit="'+x.id+'">تعديل</button> <button class="btn" data-udel="'+x.id+'">حذف</button></td></tr>').join('')+'</tbody></table></div><p class="muted">الأدوار هنا للتجربة فقط، ولا تفرض صلاحيات دخول بعد.</p></section><div id="editor"></div>';$('#adduser').onclick=()=>userForm();document.querySelectorAll('[data-uedit]').forEach(b=>b.onclick=()=>userForm(Number(b.dataset.uedit)));document.querySelectorAll('[data-udel]').forEach(b=>b.onclick=()=>{if(confirm('حذف الموظف التجريبي؟')){db.users=a.filter(x=>x.id!==Number(b.dataset.udel));save();users()}})}
-function userForm(id){let x=db.users.find(x=>x.id===id)||{};$('#editor').innerHTML='<section class="panel"><h3>بيانات الموظف</h3><form id="uf"><label>الاسم</label><input required name="name" value="'+esc(x.name||'')+'"><label>القسم</label><select name="department">'+opts(db.settings.departments,x.department)+'</select><label>الدور</label><select name="role">'+opts(db.settings.roles,x.role)+'</select><p><button class="btn primary">حفظ</button></p></form></section>';$('#uf').onsubmit=e=>{e.preventDefault();let o=Object.fromEntries(new FormData(e.target));if(id)Object.assign(db.users.find(x=>x.id===id),o);else db.users.push({id:Date.now(),...o});save();users()}}
-function settings(){$('#content').innerHTML='<section class="panel"><h2>إعدادات البيئة التجريبية</h2><p>تعديل الأقسام والأدوار وأنواع البلاغات (سطر لكل قيمة)</p><form id="sf">'+[['departments','الأقسام'],['roles','الأدوار'],['categories','تصنيفات البلاغات']].map(([k,v])=>'<label>'+v+'</label><textarea name="'+k+'">'+esc(db.settings[k].join('\n'))+'</textarea>').join('')+'<p><button class="btn primary">حفظ الإعدادات</button></p></form><hr><h3>البيانات التجريبية</h3><button class="btn" id="export">تصدير JSON</button> <button class="btn" id="import">استيراد JSON</button> <input class="hide" type="file" id="importfile" accept=".json,application/json"> <button class="btn danger" id="reset">إعادة ضبط بيانات التجربة</button></section>';$('#sf').onsubmit=e=>{e.preventDefault();let fd=new FormData(e.target);for(let k of ['departments','roles','categories'])db.settings[k]=String(fd.get(k)).split('\n').map(x=>x.trim()).filter(Boolean);save();alert('تم الحفظ');settings()};$('#reset').onclick=()=>{if(confirm('سيتم حذف التغييرات التجريبية في هذا المتصفح فقط. متابعة؟')){db=seed();save();render()}};$('#export').onclick=()=>{let b=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='patient-experience-demo.json';a.click();URL.revokeObjectURL(u)};$('#import').onclick=()=>$('#importfile').click();$('#importfile').onchange=async e=>{try{let v=JSON.parse(await e.target.files[0].text());if(!v.incidents||!v.settings)throw Error();db=v;save();render()}catch{alert('ملف JSON غير صالح')}}}
-render();
-</script></body></html>
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#0f3a57" />
+    <title>إدارة تجربة المريض | العيادات الخارجية</title>
+    <link rel="icon" href="../assets/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/portal.css?v=3" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <img class="site-logo" src="../assets/logo.webp" width="220" height="144" alt="شعار مستشفى الرس العام" />
+        <div class="site-titles">
+          <span class="crumb" data-ar="تطبيق العيادات الخارجية" data-en="Outpatient Clinics Portal">تطبيق العيادات الخارجية</span>
+          <h1 id="title">إدارة تجربة المريض</h1>
+          <p id="subtitle">البلاغات والشكاوى والمتابعة، بحساب موحد مع طلبات المواعيد</p>
+        </div>
+        <div class="site-actions">
+          <button id="lang" class="alt lang-btn" type="button">English</button>
+          <a class="back" href="../"
+            ><svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" /></svg
+            ><span data-ar="العودة للتطبيق" data-en="Back to portal">العودة للتطبيق</span></a
+          >
+        </div>
+      </div>
+    </header>
+
+    <main class="page wrap">
+      <p class="note" id="warning">
+        نسخة اختبار: يمنع إدخال بيانات المرضى الحقيقية قبل موافقة الجهة المختصة. لا تتصل هذه الصفحة بأنظمة المستشفى أو الإشعارات.
+      </p>
+      <div id="message" class="status-msg" role="status" aria-live="polite"></div>
+
+      <section id="login" class="card">
+        <h2 data-ar="تسجيل الدخول" data-en="Sign in">تسجيل الدخول</h2>
+        <label for="email" data-ar="البريد الإلكتروني" data-en="Email address">البريد الإلكتروني</label>
+        <input id="email" type="email" autocomplete="email" placeholder="name@example.com" dir="ltr" />
+        <button id="send" type="button" data-ar="إرسال رمز الدخول" data-en="Send login code">إرسال رمز الدخول</button>
+        <div id="verifyBox" class="hidden">
+          <label for="code" data-ar="رمز التحقق" data-en="Verification code" style="margin-top: 16px">رمز التحقق</label>
+          <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" dir="ltr" />
+          <button id="verify" type="button" data-ar="تحقق" data-en="Verify">تحقق</button>
+        </div>
+      </section>
+
+      <section id="pending" class="card hidden">
+        <h2 data-ar="بانتظار اعتماد الصلاحية" data-en="Awaiting access approval">بانتظار اعتماد الصلاحية</h2>
+        <p id="pendingText"></p>
+        <button id="refresh" type="button" data-ar="تحديث الحالة" data-en="Refresh access">تحديث الحالة</button>
+      </section>
+
+      <section id="app" class="hidden">
+        <div class="card">
+          <div class="toolbar">
+            <strong id="identity"></strong>
+            <div>
+              <button id="reload" class="alt" type="button" data-ar="تحديث السجلات" data-en="Refresh records">تحديث السجلات</button>
+              <button id="logout" class="alt" type="button" data-ar="تسجيل الخروج" data-en="Sign out">تسجيل الخروج</button>
+            </div>
+          </div>
+        </div>
+
+        <section id="create" class="card hidden">
+          <h2 data-ar="إضافة بلاغ أو شكوى" data-en="Create case">إضافة بلاغ أو شكوى</h2>
+          <form id="caseForm">
+            <div class="grid">
+              <div>
+                <label for="f-type" data-ar="نوع السجل" data-en="Case type">نوع السجل</label>
+                <select name="case_type" id="f-type">
+                  <option value="complaint">شكوى</option>
+                  <option value="incident">بلاغ</option>
+                  <option value="suggestion">اقتراح</option>
+                  <option value="noncompliance">عدم التزام</option>
+                </select>
+              </div>
+              <div>
+                <label for="f-dept" data-ar="القسم" data-en="Department">القسم</label>
+                <input name="department" id="f-dept" required maxlength="120" />
+              </div>
+              <div>
+                <label for="f-title" data-ar="العنوان" data-en="Title">العنوان</label>
+                <input name="title" id="f-title" required minlength="3" maxlength="180" />
+              </div>
+              <div>
+                <label for="f-priority" data-ar="الأولوية" data-en="Priority">الأولوية</label>
+                <select name="priority" id="f-priority">
+                  <option value="normal">عادي</option>
+                  <option value="high">مرتفع</option>
+                  <option value="urgent">عاجل</option>
+                </select>
+              </div>
+            </div>
+            <label for="f-desc" data-ar="الوصف" data-en="Description">الوصف</label>
+            <textarea name="description" id="f-desc"></textarea>
+            <button type="submit" data-ar="حفظ البلاغ" data-en="Save case">حفظ البلاغ</button>
+          </form>
+        </section>
+
+        <section class="card">
+          <h2 data-ar="سجل البلاغات والشكاوى" data-en="Cases and complaints">سجل البلاغات والشكاوى</h2>
+          <div id="list"></div>
+        </section>
+
+        <section id="admin" class="card hidden">
+          <h2 data-ar="منح صلاحيات تجربة المريض" data-en="Grant patient experience access">منح صلاحيات تجربة المريض</h2>
+          <p
+            class="page-note"
+            data-ar="الأسهل: امنح الصلاحية من لوحة مدير النظام في الصفحة الرئيسية. أو أدخل معرف المستخدم هنا بعد اعتماد حسابه."
+            data-en="Easiest: grant access from the administrator panel on the main portal. Or enter the user ID here after their account is approved."
+          >
+            الأسهل: امنح الصلاحية من لوحة مدير النظام في الصفحة الرئيسية. أو أدخل معرف المستخدم هنا بعد اعتماد حسابه.
+          </p>
+          <form id="grantForm">
+            <div class="grid">
+              <div>
+                <label for="g-user" data-ar="معرف المستخدم" data-en="User ID">معرف المستخدم</label>
+                <input name="user_id" id="g-user" required dir="ltr" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+              </div>
+              <div>
+                <label for="g-role" data-ar="الدور" data-en="Role">الدور</label>
+                <select name="role" id="g-role">
+                  <option value="agent">موظف تجربة المريض</option>
+                  <option value="department">القسم المسؤول</option>
+                  <option value="supervisor">مشرف</option>
+                  <option value="admin">مدير تجربة المريض</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" data-ar="منح الصلاحية" data-en="Grant access">منح الصلاحية</button>
+          </form>
+          <div id="grants"></div>
+        </section>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span
+        class="credit"
+        data-ar="إعداد مدير العيادات الخارجية: خالد رميح الرميح"
+        data-en="Prepared by the Outpatient Clinics Director: Khalid Rumayh Alrumayh"
+        >إعداد مدير العيادات الخارجية: خالد رميح الرميح</span
+      >
+      <span data-ar="مستشفى الرس العام — تطبيق العيادات الخارجية" data-en="Al Rass General Hospital — Outpatient Clinics Portal"
+        >مستشفى الرس العام — تطبيق العيادات الخارجية</span
+      ><br />Integrated Leadership Operating System – ILOS
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+    <script>
+      (() => {
+        const $ = (id) => document.getElementById(id),
+          api = supabase.createClient("https://omugonzzrulsdpnycact.supabase.co", "sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs");
+        let user = null,
+          access = null,
+          isAdmin = false,
+          lang = "ar";
+        const msg = (t) => ($("message").textContent = t);
+        const hide = (id, v) => $(id).classList.toggle("hidden", !v);
+        const err = (e) => msg(e?.message || String(e));
+
+        /* أسماء القيم المخزنة كما تظهر للمستخدم (العرض فقط) */
+        const labels = {
+          ar: {
+            case_type: { complaint: "شكوى", incident: "بلاغ", suggestion: "اقتراح", noncompliance: "عدم التزام" },
+            status: { open: "مفتوح", in_progress: "قيد المعالجة", escalated: "مصعّد", transferred: "محوّل", closed: "مغلق" },
+            priority: { normal: "عادي", high: "مرتفع", urgent: "عاجل" },
+            role: {
+              agent: "موظف تجربة المريض",
+              department: "القسم المسؤول",
+              supervisor: "مشرف",
+              admin: "مدير تجربة المريض",
+              sysadmin: "مدير النظام",
+            },
+            dept: "القسم",
+            prio: "الأولوية",
+            date: "التاريخ",
+            active: "مفعّل",
+            suspended: "معلّق",
+          },
+          en: {
+            case_type: { complaint: "Complaint", incident: "Incident", suggestion: "Suggestion", noncompliance: "Noncompliance" },
+            status: { open: "Open", in_progress: "In progress", escalated: "Escalated", transferred: "Transferred", closed: "Closed" },
+            priority: { normal: "Normal", high: "High", urgent: "Urgent" },
+            role: {
+              agent: "Patient experience agent",
+              department: "Responsible department",
+              supervisor: "Supervisor",
+              admin: "Patient experience admin",
+              sysadmin: "System administrator",
+            },
+            dept: "Department",
+            prio: "Priority",
+            date: "Date",
+            active: "Active",
+            suspended: "Suspended",
+          },
+        };
+        const L = (group, value) => (labels[lang][group] && labels[lang][group][value]) || value || "—";
+        const statusTone = { open: "draft", in_progress: "wait", escalated: "danger", transferred: "wait", closed: "" };
+        const priorityTone = { normal: "wait", high: "draft", urgent: "danger" };
+
+        function translate() {
+          document.documentElement.lang = lang;
+          document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+          document.title = lang === "ar" ? "إدارة تجربة المريض | العيادات الخارجية" : "Patient Experience | Outpatient Clinics";
+          document.querySelectorAll("[data-ar]").forEach((e) => (e.textContent = e.dataset[lang]));
+          $("lang").textContent = lang === "ar" ? "English" : "العربية";
+          $("title").textContent = lang === "ar" ? "إدارة تجربة المريض" : "Patient Experience Management";
+          $("subtitle").textContent =
+            lang === "ar"
+              ? "البلاغات والشكاوى والمتابعة، بحساب موحد مع طلبات المواعيد"
+              : "Cases, complaints and follow-up, with the same account as appointment requests";
+          $("warning").textContent =
+            lang === "ar"
+              ? "نسخة اختبار: يمنع إدخال بيانات المرضى الحقيقية قبل موافقة الجهة المختصة. لا تتصل هذه الصفحة بأنظمة المستشفى أو الإشعارات."
+              : "Test only: do not enter real patient information before institutional approval. No live hospital system or messaging integration.";
+          for (const o of $("f-type").options) o.textContent = L("case_type", o.value);
+          for (const o of $("f-priority").options) o.textContent = L("priority", o.value);
+          for (const o of $("g-role").options) o.textContent = L("role", o.value);
+          if (user && !$("app").classList.contains("hidden")) setIdentity();
+        }
+        $("lang").onclick = () => {
+          lang = lang === "ar" ? "en" : "ar";
+          translate();
+          if (!$("app").classList.contains("hidden")) {
+            records();
+            if (isAdmin) grants();
+          }
+        };
+
+        /* الدخول برمز التحقق كبقية صفحات التطبيق، والرابط في البريد يعمل أيضًا */
+        $("send").onclick = async () => {
+          const email = $("email").value.trim();
+          if (!email) return;
+          const { error } = await api.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+          if (error) return msg(error.message);
+          $("verifyBox").classList.remove("hidden");
+          $("code").focus();
+          msg(lang === "ar" ? "تم إرسال رمز التحقق إلى بريدك الإلكتروني." : "A verification code was sent to your email.");
+        };
+        $("verify").onclick = async () => {
+          const { error } = await api.auth.verifyOtp({ email: $("email").value.trim(), token: $("code").value.trim(), type: "email" });
+          if (error) return err(error);
+          msg("");
+          await load();
+        };
+
+        function setIdentity() {
+          $("identity").textContent = user.email + " (" + (isAdmin ? L("role", "sysadmin") : L("role", access)) + ")";
+        }
+
+        async function load() {
+          const {
+            data: { user: u },
+          } = await api.auth.getUser();
+          user = u;
+          hide("login", !u);
+          hide("pending", false);
+          hide("app", false);
+          if (!u) return;
+          const [member, grant] = await Promise.all([
+            api.from("opd_appt_members").select("role,status").eq("user_id", u.id).maybeSingle(),
+            api.from("opd_pe_access").select("role,active").eq("user_id", u.id).maybeSingle(),
+          ]);
+          if (member.error || grant.error) return err(member.error || grant.error);
+          isAdmin = member.data?.status === "approved" && member.data?.role === "admin";
+          access = grant.data?.active ? grant.data.role : null;
+          const allowed = isAdmin || (member.data?.status === "approved" && !!access);
+          if (!allowed) {
+            hide("pending", true);
+            $("pendingText").textContent =
+              lang === "ar"
+                ? "الحساب يحتاج اعتماد المدير في المواعيد ثم منح صلاحية تجربة المريض."
+                : "Your account needs appointment administration approval and a patient experience role.";
+            return;
+          }
+          hide("app", true);
+          setIdentity();
+          hide("create", isAdmin || ["agent", "supervisor", "admin"].includes(access));
+          hide("admin", isAdmin);
+          await records();
+          if (isAdmin) await grants();
+        }
+        $("refresh").onclick = load;
+        $("reload").onclick = records;
+        $("logout").onclick = async () => {
+          await api.auth.signOut();
+          await load();
+        };
+        $("caseForm").onsubmit = async (e) => {
+          e.preventDefault();
+          const data = Object.fromEntries(new FormData(e.target));
+          data.created_by = user.id;
+          const { error } = await api.from("opd_pe_cases").insert(data);
+          if (error) return err(error);
+          e.target.reset();
+          msg(lang === "ar" ? "تم حفظ السجل التجريبي" : "Test case saved");
+          await records();
+        };
+        function node(t, v, cls) {
+          let e = document.createElement(t);
+          if (v !== undefined) e.textContent = v;
+          if (cls) e.className = cls;
+          return e;
+        }
+        function badge(text, tone) {
+          return node("span", text, "badge" + (tone ? " " + tone : ""));
+        }
+        async function records() {
+          const { data, error } = await api
+            .from("opd_pe_cases")
+            .select("id,case_type,title,description,department,priority,status,resolution,created_at")
+            .order("created_at", { ascending: false })
+            .limit(100);
+          if (error) return err(error);
+          $("list").replaceChildren();
+          if (!data?.length) $("list").append(node("p", lang === "ar" ? "لا توجد سجلات" : "No records", "page-note"));
+          for (const c of data || []) {
+            const box = node("div", undefined, "item");
+            const head = node("div", undefined, "rec-head");
+            head.append(
+              node("strong", c.title),
+              badge(L("case_type", c.case_type), "wait"),
+              badge(L("status", c.status), statusTone[c.status]),
+            );
+            const meta = node("p", undefined, "rec-meta");
+            for (const [k, v] of [
+              [labels[lang].dept, c.department],
+              [labels[lang].prio, L("priority", c.priority)],
+              [
+                labels[lang].date,
+                new Date(c.created_at).toLocaleString(lang === "ar" ? "ar-SA-u-ca-gregory" : "en-GB", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }),
+              ],
+            ]) {
+              const s = node("span", k + ": ");
+              s.append(node("b", v || "—"));
+              meta.append(s);
+            }
+            box.append(head, meta);
+            if (c.description) box.append(node("p", c.description));
+            if (isAdmin || ["department", "supervisor", "admin"].includes(access)) {
+              const status = node("select");
+              for (const v of ["open", "in_progress", "escalated", "transferred", "closed"]) status.add(new Option(L("status", v), v));
+              status.value = c.status;
+              const resolution = node("textarea");
+              resolution.placeholder = lang === "ar" ? "الإجراء المتخذ / سبب الإغلاق" : "Action taken / closure reason";
+              resolution.value = c.resolution || "";
+              const b = node("button", lang === "ar" ? "حفظ المعالجة" : "Save update");
+              b.type = "button";
+              b.onclick = async () => {
+                if (status.value === "closed" && !resolution.value.trim())
+                  return msg(lang === "ar" ? "يجب توثيق سبب الإغلاق" : "Closure reason required");
+                const { error } = await api
+                  .from("opd_pe_cases")
+                  .update({ status: status.value, resolution: resolution.value, updated_at: new Date().toISOString() })
+                  .eq("id", c.id);
+                if (error) return err(error);
+                msg(lang === "ar" ? "تم تحديث الحالة" : "Status updated");
+                await records();
+              };
+              box.append(status, resolution, b);
+            }
+            $("list").append(box);
+          }
+        }
+        $("grantForm").onsubmit = async (e) => {
+          e.preventDefault();
+          const data = Object.fromEntries(new FormData(e.target));
+          const { error } = await api.from("opd_pe_access").upsert({ user_id: data.user_id, role: data.role, active: true });
+          if (error) return err(error);
+          msg(lang === "ar" ? "تم منح الصلاحية" : "Access granted");
+          await grants();
+        };
+        async function grants() {
+          const { data, error } = await api
+            .from("opd_pe_access")
+            .select("user_id,role,active,granted_at")
+            .order("granted_at", { ascending: false });
+          if (error) return err(error);
+          $("grants").replaceChildren();
+          for (const g of data || []) {
+            const line = node("div", undefined, "item");
+            const head = node("div", undefined, "rec-head");
+            head.append(
+              node("strong", L("role", g.role)),
+              badge(g.active ? labels[lang].active : labels[lang].suspended, g.active ? "" : "wait"),
+            );
+            line.append(head, node("small", g.user_id, "rec-id"));
+            const b = node("button", g.active ? (lang === "ar" ? "تعليق" : "Suspend") : lang === "ar" ? "تفعيل" : "Activate");
+            b.type = "button";
+            b.className = "alt";
+            b.onclick = async () => {
+              const { error } = await api.from("opd_pe_access").update({ active: !g.active }).eq("user_id", g.user_id);
+              if (error) return err(error);
+              await grants();
+            };
+            line.append(b);
+            $("grants").append(line);
+          }
+        }
+        translate();
+        load();
+        api.auth.onAuthStateChange((event) => {
+          if (event === "SIGNED_IN" || event === "SIGNED_OUT") setTimeout(load, 0);
+        });
+      })();
+    </script>
+  </body>
+</html>
