@@ -491,7 +491,7 @@
         $("send").onclick = async () => {
           const email = $("email").value.trim();
           if (!email) return;
-          const { error: e } = await api.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+          const { error: e } = await api.auth.signInWithOtp({ email, options: { shouldCreateUser: true, emailRedirectTo: location.origin + location.pathname } });
           if (e) return error(e);
           $("verifyBox").classList.remove("hide");
           $("code").focus();
