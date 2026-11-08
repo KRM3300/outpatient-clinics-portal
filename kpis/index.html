@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#0f3a57" />
+    <title>الأداء والمؤشرات | العيادات الخارجية</title>
+    <link rel="icon" href="../assets/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/portal.css?v=4" />
+    <style>
+      .latest { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+      .kpi-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+      .kpi-card h3 { margin: 0; font-size: 15px; }
+      .kpi-card .per { color: var(--ink-soft); font-size: 13px; }
+      .kpi-card dl { margin: 4px 0 0; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-size: 14px; }
+      .kpi-card dt { color: var(--ink-soft); }
+      .kpi-card dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; text-align: left; }
+      .kpi-card .acts { margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap; padding-top: 8px; }
+      .filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+      .filters > div { min-width: 160px; flex: 1; }
+      .rep { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--line); }
+      .rep:first-child { border-top: 0; }
+      .rep .t { font-weight: 600; }
+      .rep .m { color: var(--ink-soft); font-size: 13px; }
+      .rep .b { display: flex; gap: 8px; }
+      .rep button, .kpi-card button { padding: 6px 12px; font-size: 14px; }
+      .empty { color: var(--ink-soft); }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <img class="site-logo" src="../assets/logo.webp" width="220" height="144" alt="شعار مستشفى الرس العام" />
+        <div class="site-titles">
+          <span class="crumb">تطبيق العيادات الخارجية</span>
+          <h1>الأداء والمؤشرات</h1>
+          <p>أرشيف تقارير ومؤشرات العيادات الخارجية — للمعتمدين فقط</p>
+        </div>
+        <div class="site-actions">
+          <a class="back" href="../"
+            ><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg
+            ><span>العودة للتطبيق</span></a
+          >
+        </div>
+      </div>
+    </header>
+
+    <main class="page wrap">
+      <div id="message" class="status-msg" role="status" aria-live="polite"></div>
+
+      <section id="login" class="card">
+        <h2>تسجيل الدخول</h2>
+        <label for="email">البريد الإلكتروني</label>
+        <input id="email" type="email" autocomplete="email" placeholder="name@example.com" dir="ltr" />
+        <button id="send" type="button">إرسال رمز الدخول</button>
+        <div id="verifyBox" class="hidden">
+          <label for="code" style="margin-top: 16px">رمز التحقق</label>
+          <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" dir="ltr" />
+          <button id="verify" type="button">تحقق</button>
+        </div>
+      </section>
+
+      <section id="pending" class="card hidden">
+        <h2>بانتظار اعتماد الصلاحية</h2>
+        <p>حسابك مسجّل، لكن مشاهدة المؤشرات تحتاج اعتماد مدير العيادات الخارجية.</p>
+        <button id="refresh" type="button">تحديث الحالة</button>
+      </section>
+
+      <section id="app" class="hidden">
+        <div class="card">
+          <div class="toolbar">
+            <strong id="identity"></strong>
+            <div>
+              <button id="reload" class="alt" type="button">تحديث</button>
+              <button id="logout" class="alt" type="button">تسجيل الخروج</button>
+            </div>
+          </div>
+        </div>
+
+        <section class="card">
+          <h2>آخر المؤشرات</h2>
+          <div id="latest" class="latest"></div>
+        </section>
+
+        <section class="card">
+          <h2>أرشيف التقارير</h2>
+          <div class="filters">
+            <div>
+              <label for="f-type">نوع التقرير</label>
+              <select id="f-type"></select>
+            </div>
+            <div>
+              <label for="f-from">من تاريخ</label>
+              <input id="f-from" type="date" dir="ltr" />
+            </div>
+            <div>
+              <label for="f-to">إلى تاريخ</label>
+              <input id="f-to" type="date" dir="ltr" />
+            </div>
+          </div>
+          <div id="list" style="margin-top: 12px"></div>
+        </section>
+
+        <section id="upload" class="card hidden">
+          <h2>رفع تقرير</h2>
+          <form id="upForm">
+            <div class="grid">
+              <div>
+                <label for="u-type">نوع التقرير</label>
+                <select id="u-type" name="report_type" required></select>
+              </div>
+              <div>
+                <label for="u-title">العنوان</label>
+                <input id="u-title" name="title" required minlength="3" maxlength="200" />
+              </div>
+              <div>
+                <label for="u-from">من تاريخ</label>
+                <input id="u-from" name="period_from" type="date" required dir="ltr" />
+              </div>
+              <div>
+                <label for="u-to">إلى تاريخ</label>
+                <input id="u-to" name="period_to" type="date" required dir="ltr" />
+              </div>
+            </div>
+            <label for="u-summary">أهم الأرقام (سطر لكل مؤشر بصيغة: المؤشر: القيمة)</label>
+            <textarea id="u-summary" name="summary" rows="5" placeholder="الواردة: 120&#10;الصادرة: 14&#10;مؤشر التجمع: 11.7%"></textarea>
+            <label for="u-file">ملف التقرير (PDF)</label>
+            <input id="u-file" name="file" type="file" accept="application/pdf" required />
+            <button id="u-submit" type="submit">رفع وحفظ</button>
+          </form>
+        </section>
+
+        <section id="admin" class="card hidden">
+          <h2>صلاحيات المشاهدة</h2>
+          <p class="page-note">اطلب من الشخص يسجّل دخول هنا مرة وحدة، ثم أضف بريده.</p>
+          <form id="grantForm" class="filters">
+            <div>
+              <label for="g-email">البريد الإلكتروني</label>
+              <input id="g-email" type="email" required dir="ltr" />
+            </div>
+            <div style="flex: 0">
+              <button type="submit">منح الصلاحية</button>
+            </div>
+          </form>
+          <div id="grants" style="margin-top: 12px"></div>
+        </section>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p class="site-line">مستشفى الرس العام — تطبيق العيادات الخارجية<br />Integrated Leadership Operating System – ILOS</p>
+      <div class="credit" dir="ltr">
+        <span>Prepared by</span>
+        <strong>Khalid Rumayh Alrumayh</strong>
+        <span>Information Systems Specialist</span>
+      </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+    <script>
+      (() => {
+        const $ = (id) => document.getElementById(id);
+        const api = supabase.createClient("https://omugonzzrulsdpnycact.supabase.co", "sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs");
+        const BUCKET = "opd-kpi-reports";
+        const TYPES = {
+          referrals_daily: "تقرير الإحالات اليومي",
+          reverse_daily: "الإحالة العكسية — يومي",
+          reverse_weekly: "الإحالة العكسية — أسبوعي",
+          adaa_weekly: "مؤشرات العيادات الخارجية (أداء)",
+          no_show: "عدم الحضور",
+          other: "أخرى",
+        };
+        let user = null, isAdmin = false, rows = [];
+
+        const msg = (t) => ($("message").textContent = t || "");
+        const err = (e) => msg(e?.message || String(e));
+        const hide = (id, show) => $(id).classList.toggle("hidden", !show);
+        const node = (t, text, cls) => {
+          const e = document.createElement(t);
+          if (text !== undefined) e.textContent = text;
+          if (cls) e.className = cls;
+          return e;
+        };
+        const fmt = (d) => (d ? d.split("-").reverse().join("/") : "");
+        const period = (r) => (r.period_from === r.period_to ? fmt(r.period_to) : fmt(r.period_from) + " – " + fmt(r.period_to));
+
+        $("f-type").add(new Option("كل التقارير", ""));
+        for (const [k, v] of Object.entries(TYPES)) {
+          $("f-type").add(new Option(v, k));
+          $("u-type").add(new Option(v, k));
+        }
+
+        /* الدخول برمز التحقق مثل بقية صفحات التطبيق */
+        $("send").onclick = async () => {
+          const email = $("email").value.trim();
+          if (!email) return;
+          const { error } = await api.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+          if (error) return err(error);
+          hide("verifyBox", true);
+          $("code").focus();
+          msg("تم إرسال رمز التحقق إلى بريدك الإلكتروني.");
+        };
+        $("verify").onclick = async () => {
+          const { error } = await api.auth.verifyOtp({ email: $("email").value.trim(), token: $("code").value.trim(), type: "email" });
+          if (error) return err(error);
+          msg("");
+          await load();
+        };
+
+        async function load() {
+          const { data: { user: u } } = await api.auth.getUser();
+          user = u;
+          hide("login", !u);
+          hide("pending", false);
+          hide("app", false);
+          if (!u) return;
+          const [adm, view] = await Promise.all([api.rpc("opd_kpi_is_admin"), api.rpc("opd_kpi_can_view")]);
+          if (adm.error || view.error) return err(adm.error || view.error);
+          isAdmin = !!adm.data;
+          if (!view.data) return hide("pending", true);
+          hide("app", true);
+          $("identity").textContent = u.email + (isAdmin ? " (مدير المنصة)" : "");
+          hide("upload", isAdmin);
+          hide("admin", isAdmin);
+          await reports();
+          if (isAdmin) await grants();
+        }
+
+        async function reports() {
+          const { data, error } = await api
+            .from("opd_kpi_reports")
+            .select("id,report_type,title,period_from,period_to,summary,file_path,created_at")
+            .order("period_to", { ascending: false })
+            .order("created_at", { ascending: false })
+            .limit(500);
+          if (error) return err(error);
+          rows = data || [];
+          renderLatest();
+          renderList();
+        }
+
+        async function openFile(r, download) {
+          const name = r.title.replace(/[\\/:*?"<>|]/g, "-") + ".pdf";
+          const { data, error } = await api.storage.from(BUCKET).createSignedUrl(r.file_path, 300, download ? { download: name } : undefined);
+          if (error) return err(error);
+          window.open(data.signedUrl, "_blank", "noopener");
+        }
+
+        function buttons(r) {
+          const box = node("div", undefined, "b");
+          const o = node("button", "فتح");
+          o.type = "button";
+          o.onclick = () => openFile(r, false);
+          const d = node("button", "تنزيل", "alt");
+          d.type = "button";
+          d.onclick = () => openFile(r, true);
+          box.append(o, d);
+          if (isAdmin) {
+            const x = node("button", "حذف", "alt");
+            x.type = "button";
+            x.onclick = async () => {
+              if (!confirm("حذف «" + r.title + "» نهائياً؟")) return;
+              const s = await api.storage.from(BUCKET).remove([r.file_path]);
+              if (s.error) return err(s.error);
+              const { error } = await api.from("opd_kpi_reports").delete().eq("id", r.id);
+              if (error) return err(error);
+              msg("تم الحذف");
+              await reports();
+            };
+            box.append(x);
+          }
+          return box;
+        }
+
+        function renderLatest() {
+          const box = $("latest");
+          box.replaceChildren();
+          const seen = new Set();
+          for (const r of rows) {
+            if (seen.has(r.report_type)) continue;
+            seen.add(r.report_type);
+            const c = node("article", undefined, "kpi-card");
+            c.append(node("h3", TYPES[r.report_type] || r.report_type), node("div", period(r), "per"));
+            const items = Array.isArray(r.summary?.items) ? r.summary.items : [];
+            if (items.length) {
+              const dl = node("dl");
+              for (const [k, v] of items.slice(0, 8)) dl.append(node("dt", k), node("dd", v));
+              c.append(dl);
+            }
+            const a = node("div", undefined, "acts");
+            a.append(...buttons(r).children);
+            c.append(a);
+            box.append(c);
+          }
+          if (!seen.size) box.append(node("p", "لا توجد تقارير بعد.", "empty"));
+        }
+
+        function renderList() {
+          const t = $("f-type").value, f = $("f-from").value, to = $("f-to").value;
+          const list = $("list");
+          list.replaceChildren();
+          const shown = rows.filter((r) => (!t || r.report_type === t) && (!f || r.period_to >= f) && (!to || r.period_from <= to));
+          for (const r of shown) {
+            const line = node("div", undefined, "rep");
+            const info = node("div");
+            info.append(node("div", r.title, "t"), node("div", (TYPES[r.report_type] || "") + " · " + period(r), "m"));
+            line.append(info, buttons(r));
+            list.append(line);
+          }
+          if (!shown.length) list.append(node("p", "لا توجد تقارير مطابقة.", "empty"));
+        }
+        for (const id of ["f-type", "f-from", "f-to"]) $(id).onchange = renderList;
+
+        /* اقتراح العنوان من النوع والفترة */
+        const suggest = () => {
+          if ($("u-title").dataset.touched) return;
+          const r = { period_from: $("u-from").value, period_to: $("u-to").value || $("u-from").value };
+          if (r.period_from) $("u-title").value = TYPES[$("u-type").value] + " " + period(r);
+        };
+        $("u-title").oninput = () => ($("u-title").dataset.touched = "1");
+        for (const id of ["u-type", "u-from", "u-to"]) $(id).addEventListener("change", suggest);
+
+        $("upForm").onsubmit = async (e) => {
+          e.preventDefault();
+          const file = $("u-file").files[0];
+          if (!file || file.type !== "application/pdf") return msg("اختر ملف PDF");
+          const type = $("u-type").value, from = $("u-from").value, to = $("u-to").value;
+          if (to < from) return msg("تاريخ النهاية قبل البداية");
+          const items = $("u-summary").value
+            .split("\n")
+            .map((l) => l.trim())
+            .filter(Boolean)
+            .map((l) => {
+              const i = l.indexOf(":");
+              return i > 0 ? [l.slice(0, i).trim(), l.slice(i + 1).trim()] : [l, ""];
+            });
+          $("u-submit").disabled = true;
+          msg("جاري الرفع…");
+          const path = type + "/" + to + "_" + Date.now() + ".pdf";
+          const up = await api.storage.from(BUCKET).upload(path, file, { contentType: "application/pdf", upsert: false });
+          if (up.error) {
+            $("u-submit").disabled = false;
+            return err(up.error);
+          }
+          const { error } = await api.from("opd_kpi_reports").insert({
+            report_type: type,
+            title: $("u-title").value.trim(),
+            period_from: from,
+            period_to: to,
+            summary: { items },
+            file_path: path,
+            uploaded_by: user.id,
+          });
+          $("u-submit").disabled = false;
+          if (error) {
+            await api.storage.from(BUCKET).remove([path]);
+            return err(error);
+          }
+          e.target.reset();
+          delete $("u-title").dataset.touched;
+          document.body.dataset.lastUpload = path;
+          msg("تم رفع التقرير وحفظه");
+          await reports();
+        };
+
+        $("grantForm").onsubmit = async (e) => {
+          e.preventDefault();
+          const { data, error } = await api.rpc("opd_kpi_grant", { p_email: $("g-email").value, p_active: true });
+          if (error) return err(error);
+          if (data === "not_found") return msg("هذا البريد ما سجّل دخول بعد. اطلب منه يدخل الصفحة مرة وحدة ثم أعد المحاولة.");
+          e.target.reset();
+          msg("تم منح الصلاحية");
+          await grants();
+        };
+
+        async function grants() {
+          const { data, error } = await api.from("opd_kpi_access").select("user_id,email,active,granted_at").order("granted_at", { ascending: false });
+          if (error) return err(error);
+          const box = $("grants");
+          box.replaceChildren();
+          for (const g of data || []) {
+            const line = node("div", undefined, "rep");
+            const info = node("div");
+            info.append(node("div", g.email || g.user_id, "t"), node("div", g.active ? "مفعّل" : "موقوف", "m"));
+            const b = node("button", g.active ? "إيقاف" : "تفعيل", "alt");
+            b.type = "button";
+            b.onclick = async () => {
+              const { error } = await api.rpc("opd_kpi_grant", { p_email: g.email, p_active: !g.active });
+              if (error) return err(error);
+              await grants();
+            };
+            line.append(info, b);
+            box.append(line);
+          }
+          if (!data?.length) box.append(node("p", "لا يوجد أحد غيرك حالياً.", "empty"));
+        }
+
+        $("refresh").onclick = load;
+        $("reload").onclick = reports;
+        $("logout").onclick = async () => {
+          await api.auth.signOut();
+          await load();
+        };
+        load();
+        api.auth.onAuthStateChange((ev) => {
+          if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") setTimeout(load, 0);
+        });
+      })();
+    </script>
+  </body>
+</html>
