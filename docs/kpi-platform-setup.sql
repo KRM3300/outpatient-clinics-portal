@@ -85,3 +85,9 @@ create policy kpi_files_write on storage.objects for insert to authenticated
 drop policy if exists kpi_files_delete on storage.objects;
 create policy kpi_files_delete on storage.objects for delete to authenticated
   using (bucket_id = 'opd-kpi-reports' and public.opd_kpi_is_admin());
+
+-- 5) صلاحيات الجداول والدوال (المشروع لا يمنحها تلقائياً)
+grant select, insert, delete on public.opd_kpi_reports to authenticated;
+grant select, insert, update, delete on public.opd_kpi_access to authenticated;
+grant execute on function public.opd_kpi_is_admin() to authenticated;
+grant execute on function public.opd_kpi_can_view() to authenticated;
