@@ -28,6 +28,48 @@
       .rep .b { display: flex; gap: 8px; }
       .rep button, .kpi-card button { padding: 6px 12px; font-size: 14px; }
       .empty { color: var(--ink-soft); }
+      .dash-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+      .dash-bar > div { flex: 1 1 170px; }
+      .presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 2px; }
+      .presets button { padding: 5px 12px; font-size: 13.5px; background: var(--surface); color: var(--action); border: 1px solid var(--line-strong); }
+      .presets button[aria-pressed="true"] { background: var(--action); color: #fff; border-color: var(--action); }
+      .d-period { color: var(--ink-soft); font-size: 13px; margin: 6px 0 12px; }
+      .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+      .tile-k { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 12px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; }
+      .tile-k.sel { border-color: var(--action); box-shadow: inset 0 3px 0 var(--action); }
+      .tile-k .tl { color: var(--ink-soft); font-size: 13px; }
+      .tile-k .tv { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+      .tile-k .tm { color: var(--ink-soft); font-size: 12px; }
+      .tile-k .tc { font-size: 12.5px; color: var(--ink-soft); }
+      .pill { align-self: flex-start; font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 99px; }
+      .pill.ok { background: var(--ok-bg); color: var(--ok-ink); }
+      .pill.warn { background: var(--warn-bg); color: var(--warn-ink); }
+      .pill.bad { background: #fdecea; color: var(--danger); }
+      .dl { font-weight: 600; }
+      .dl.up { color: var(--ok-ink); } .dl.down { color: var(--danger); } .dl.flat { color: var(--ink-soft); }
+      .chart-wrap { position: relative; margin-top: 14px; }
+      .chart-svg { width: 100%; height: auto; display: block; direction: ltr; }
+      .chart-svg .grid { stroke: var(--line); stroke-width: 1; }
+      .chart-svg .ax { fill: var(--ink-soft); font-size: 11px; font-family: var(--font); }
+      .chart-svg .tgt { fill: var(--ink); font-weight: 600; }
+      .chart-svg .target { stroke: var(--ink-soft); stroke-width: 1.5; stroke-dasharray: 5 4; }
+      .chart-svg .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+      .chart-svg .cur { stroke: var(--action); }
+      .chart-svg .prev { stroke: #9aaab7; stroke-dasharray: 2 0; }
+      .chart-svg .dot { fill: var(--action); stroke: var(--surface); stroke-width: 2; }
+      .chart-svg .val { fill: var(--ink); font-size: 12px; font-weight: 700; font-family: var(--font); }
+      .chart-svg .cross { stroke: var(--line-strong); stroke-width: 1; }
+      .tip { position: absolute; top: 4px; width: 180px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 6px 10px; font-size: 12.5px; box-shadow: 0 4px 14px rgba(18, 50, 74, .12); pointer-events: none; }
+      .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-soft); margin-top: 6px; }
+      .lk { display: inline-flex; align-items: center; gap: 6px; }
+      .lk i { display: inline-block; width: 18px; height: 0; border-top: 2px solid; }
+      .k-cur { border-color: var(--action) !important; } .k-prev { border-color: #9aaab7 !important; } .k-tgt { border-color: var(--ink-soft) !important; border-top-style: dashed !important; }
+      .ranks { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+      .rank h3 { margin: 0 0 6px; font-size: 15px; }
+      .rank table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+      .rank th { text-align: right; color: var(--ink-soft); font-weight: 500; border-bottom: 1px solid var(--line-strong); padding: 4px 6px; }
+      .rank td { padding: 5px 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+      .rank .rv { font-weight: 700; } .rank .rs.ok { color: var(--ok-ink); } .rank .rs.warn { color: var(--warn-ink); } .rank .rs.bad { color: var(--danger); }
     </style>
   </head>
   <body>
@@ -80,6 +122,53 @@
           </div>
         </div>
 
+        <section class="card" id="dash">
+          <h2>لوحة المؤشرات</h2>
+          <div class="dash-bar">
+            <div>
+              <label for="d-ind">المؤشر</label>
+              <select id="d-ind"></select>
+            </div>
+            <div>
+              <label for="d-from">من تاريخ</label>
+              <input id="d-from" type="date" dir="ltr" />
+            </div>
+            <div>
+              <label for="d-to">إلى تاريخ</label>
+              <input id="d-to" type="date" dir="ltr" />
+            </div>
+            <div>
+              <label for="d-cmp">المقارنة مع</label>
+              <select id="d-cmp">
+                <option value="prev">الفترة السابقة (بنفس الطول)</option>
+                <option value="year">نفس الفترة من السنة الماضية</option>
+                <option value="none">بدون مقارنة</option>
+              </select>
+            </div>
+          </div>
+          <div class="presets" id="d-presets">
+            <button type="button" data-p="7">آخر 7 أيام</button>
+            <button type="button" data-p="30">آخر 30 يوماً</button>
+            <button type="button" data-p="month">هذا الشهر</button>
+            <button type="button" data-p="quarter">هذا الربع</button>
+            <button type="button" data-p="year">هذه السنة</button>
+          </div>
+          <p class="d-period" id="d-period"></p>
+          <div class="tiles" id="d-tiles"></div>
+          <div class="toolbar" style="margin-top: 16px">
+            <strong id="d-chart-title"></strong>
+            <div style="min-width: 220px">
+              <select id="d-metric" aria-label="مقياس الرسم"></select>
+            </div>
+          </div>
+          <div class="chart-wrap" id="d-chart"></div>
+          <div class="legend" id="d-legend"></div>
+          <div id="d-rank-sec" hidden>
+            <h2 style="margin-top: 20px">ترتيب الأقسام — مؤشر الإحالة العكسية</h2>
+            <div class="ranks" id="d-rank"></div>
+          </div>
+        </section>
+
         <section class="card">
           <h2>آخر المؤشرات</h2>
           <div id="latest" class="latest"></div>
@@ -127,6 +216,10 @@
             </div>
             <label for="u-summary">أهم الأرقام (سطر لكل مؤشر بصيغة: المؤشر: القيمة)</label>
             <textarea id="u-summary" name="summary" rows="5" placeholder="الواردة: 120&#10;الصادرة: 14&#10;مؤشر التجمع: 11.7%"></textarea>
+            <details>
+              <summary>بيانات تفصيلية (تعبّئها المهام تلقائياً)</summary>
+              <textarea id="u-data" name="data" rows="3" dir="ltr" placeholder='{"metrics":{...},"days":[...],"deptDays":[...]}'></textarea>
+            </details>
             <label for="u-file">ملف التقرير (PDF)</label>
             <input id="u-file" name="file" type="file" accept="application/pdf" required />
             <button id="u-submit" type="submit">رفع وحفظ</button>
@@ -160,6 +253,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+    <script src="./dash.js?v=1"></script>
     <script>
       (() => {
         const $ = (id) => document.getElementById(id);
@@ -240,6 +334,7 @@
           rows = data || [];
           renderLatest();
           renderList();
+          window.dispatchEvent(new CustomEvent("kpi:data", { detail: rows }));
         }
 
         async function openFile(r, download) {
@@ -337,6 +432,10 @@
               const i = l.indexOf(":");
               return i > 0 ? [l.slice(0, i).trim(), l.slice(i + 1).trim()] : [l, ""];
             });
+          let extra = {};
+          if ($("u-data").value.trim()) {
+            try { extra = JSON.parse($("u-data").value); } catch { return msg("البيانات التفصيلية ليست JSON صحيح"); }
+          }
           $("u-submit").disabled = true;
           msg("جاري الرفع…");
           const path = type + "/" + to + "_" + Date.now() + ".pdf";
@@ -350,7 +449,7 @@
             title: $("u-title").value.trim(),
             period_from: from,
             period_to: to,
-            summary: { items },
+            summary: { ...extra, items },
             file_path: path,
             uploaded_by: user.id,
           });
