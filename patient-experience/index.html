@@ -74,6 +74,7 @@
               <div>
                 <label for="f-type" data-ar="نوع السجل" data-en="Case type">نوع السجل</label>
                 <select name="case_type" id="f-type">
+                  <option value="appointment">طلب موعد</option>
                   <option value="complaint">شكوى</option>
                   <option value="incident">بلاغ</option>
                   <option value="suggestion">اقتراح</option>
@@ -96,6 +97,19 @@
                   <option value="urgent">عاجل</option>
                 </select>
               </div>
+            </div>
+            <div class="grid" id="apptFields">
+              <div><label for="f-pname">اسم المراجع</label><input name="patient_name" id="f-pname" maxlength="150" /></div>
+              <div><label for="f-pfile">رقم الملف</label><input name="patient_file" id="f-pfile" maxlength="30" dir="ltr" inputmode="numeric" /></div>
+              <div>
+                <label for="f-rtype">نوع الطلب</label>
+                <select name="request_type" id="f-rtype">
+                  <option>حجز موعد</option><option>تأجيل موعد</option><option>تجديد موعد</option><option>تقديم موعد</option><option>أخرى</option>
+                </select>
+              </div>
+              <div><label for="f-doc">اسم الطبيب أو الممارس</label><input name="doctor_name" id="f-doc" maxlength="150" /></div>
+              <div><label for="f-reason">السبب</label><input name="reason" id="f-reason" maxlength="500" /></div>
+              <div><label for="f-sol">الحل المطلوب</label><input name="solution" id="f-sol" maxlength="500" /></div>
             </div>
             <label for="f-desc" data-ar="الوصف" data-en="Description">الوصف</label>
             <textarea name="description" id="f-desc"></textarea>
@@ -170,7 +184,7 @@
         /* أسماء القيم المخزنة كما تظهر للمستخدم (العرض فقط) */
         const labels = {
           ar: {
-            case_type: { complaint: "شكوى", incident: "بلاغ", suggestion: "اقتراح", noncompliance: "عدم التزام" },
+            case_type: { appointment: "طلب موعد", complaint: "شكوى", incident: "بلاغ", suggestion: "اقتراح", noncompliance: "عدم التزام" },
             status: { open: "مفتوح", in_progress: "قيد المعالجة", escalated: "مصعّد", transferred: "محوّل", closed: "مغلق" },
             priority: { normal: "عادي", high: "مرتفع", urgent: "عاجل" },
             role: {
@@ -187,7 +201,7 @@
             suspended: "معلّق",
           },
           en: {
-            case_type: { complaint: "Complaint", incident: "Incident", suggestion: "Suggestion", noncompliance: "Noncompliance" },
+            case_type: { appointment: "Appointment request", complaint: "Complaint", incident: "Incident", suggestion: "Suggestion", noncompliance: "Noncompliance" },
             status: { open: "Open", in_progress: "In progress", escalated: "Escalated", transferred: "Transferred", closed: "Closed" },
             priority: { normal: "Normal", high: "High", urgent: "Urgent" },
             role: {
@@ -206,6 +220,21 @@
         };
         const L = (group, value) => (labels[lang][group] && labels[lang][group][value]) || value || "—";
         const statusTone = { open: "draft", in_progress: "wait", escalated: "danger", transferred: "wait", closed: "" };
+        /* SLA: يوم عمل — أخضر أقل من 8 ساعات، برتقالي حتى 24، أحمر أكثر من 24 */
+        function slaBadge(created, closed, unknown) {
+          if (unknown) return null;
+          const h = ((closed ? new Date(closed) : new Date()) - new Date(created)) / 36e5;
+          const txt = (closed ? "المدة: " : "مفتوح منذ: ") + (h < 48 ? Math.max(0, Math.round(h)) + " ساعة" : Math.round(h / 24) + " يوم");
+          return badge(txt, h < 8 ? "" : h <= 24 ? "warn" : "danger");
+        }
+        const syncAppt = () => {
+          const on = $("f-type").value === "appointment";
+          $("apptFields").classList.toggle("hidden", !on);
+          $("f-pname").required = on;
+          $("f-pfile").required = on;
+        };
+        $("f-type").addEventListener("change", syncAppt);
+        syncAppt();
         const priorityTone = { normal: "wait", high: "draft", urgent: "danger" };
 
         function translate() {
@@ -302,10 +331,13 @@
           e.preventDefault();
           const data = Object.fromEntries(new FormData(e.target));
           data.created_by = user.id;
+          if (data.case_type !== "appointment")
+            for (const k of ["patient_name", "patient_file", "request_type", "doctor_name", "reason", "solution"]) delete data[k];
           const { error } = await api.from("opd_pe_cases").insert(data);
           if (error) return err(error);
           e.target.reset();
-          msg(lang === "ar" ? "تم حفظ السجل التجريبي" : "Test case saved");
+          syncAppt();
+          msg(lang === "ar" ? "تم حفظ السجل" : "Case saved");
           await records();
         };
         function node(t, v, cls) {
@@ -320,9 +352,9 @@
         async function records() {
           const { data, error } = await api
             .from("opd_pe_cases")
-            .select("id,case_type,title,description,department,priority,status,resolution,created_at,created_by_name")
+            .select("id,case_type,title,description,department,priority,status,resolution,created_at,created_by_name,patient_name,patient_file,request_type,reason,solution,doctor_name,pe_staff_name,opd_staff_name,closed_at,source")
             .order("created_at", { ascending: false })
-            .limit(100);
+            .limit(300);
           if (error) return err(error);
           $("list").replaceChildren();
           if (!data?.length) $("list").append(node("p", lang === "ar" ? "لا توجد سجلات" : "No records", "page-note"));
@@ -334,10 +366,23 @@
               badge(L("case_type", c.case_type), "wait"),
               badge(L("status", c.status), statusTone[c.status]),
             );
+            const sb = slaBadge(c.created_at, c.closed_at, c.source === "sheet" && !c.closed_at);
+            if (sb) head.append(sb);
             const meta = node("p", undefined, "rec-meta");
             for (const [k, v] of [
               [labels[lang].dept, c.department],
-              [lang === "ar" ? "رفعه" : "Submitted by", c.created_by_name],
+              [lang === "ar" ? "رفعه" : "Submitted by", c.pe_staff_name || c.created_by_name],
+              ...(c.case_type === "appointment"
+                ? [
+                    ["المراجع", c.patient_name],
+                    ["رقم الملف", c.patient_file],
+                    ["نوع الطلب", c.request_type],
+                    ["الطبيب", c.doctor_name],
+                    ["السبب", c.reason],
+                    ["الحل المطلوب", c.solution],
+                  ]
+                : []),
+              ...(c.status === "closed" ? [["أقفله", c.opd_staff_name], ["الإجراء", c.resolution]] : []),
               [labels[lang].prio, L("priority", c.priority)],
               [
                 labels[lang].date,

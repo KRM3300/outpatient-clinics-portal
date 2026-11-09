@@ -966,7 +966,7 @@
           const { data, error: e } = await api
             .from("opd_appt_requests")
             .select(
-              "id,kind,patient_name,patient_identifier,clinic_name,doctor_name,clinic_date,period,status,booking_reference,notification_status,notification_note,created_at,requester_name",
+              "id,kind,patient_name,patient_identifier,clinic_name,doctor_name,clinic_date,period,status,booking_reference,notification_status,notification_note,created_at,updated_at,requester_name",
             )
             .order("created_at", { ascending: false })
             .limit(100);
@@ -983,6 +983,14 @@
             const box = el("div", undefined, "line");
             const head = el("div", undefined, "rec-head");
             head.append(el("strong", r.patient_name), badge(L("kind", r.kind), "wait"), badge(L("status", r.status), statusTone[r.status]));
+            {
+              /* SLA: يوم عمل — أخضر أقل من 8 ساعات، برتقالي حتى 24، أحمر أكثر من 24 */
+              const done = ["booked", "unable", "cancelled"].includes(r.status);
+              const h = ((done ? new Date(r.updated_at) : new Date()) - new Date(r.created_at)) / 36e5;
+              const txt = (done ? (lang === "ar" ? "المدة: " : "Took: ") : lang === "ar" ? "مفتوح منذ: " : "Open for: ") +
+                (h < 48 ? Math.max(0, Math.round(h)) + (lang === "ar" ? " ساعة" : " h") : Math.round(h / 24) + (lang === "ar" ? " يوم" : " d"));
+              head.append(badge(txt, h < 8 ? "" : h <= 24 ? "warn" : "danger"));
+            }
             box.append(
               head,
               meta([
