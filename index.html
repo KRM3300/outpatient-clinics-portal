@@ -94,10 +94,13 @@
       .authpanel .msg:empty {
         display: none;
       }
-      .perm-grid { display: grid; gap: 6px; flex-basis: 100%; margin: 6px 0; }
+      .perm-grid { display: grid; gap: 8px 16px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); flex-basis: 100%; margin: 6px 0; }
+      .perm-svc { grid-column: 1 / -1; }
       .perm-svc { font-weight: 600; font-size: 14px; margin-top: 6px; color: var(--ink); }
       .perm-opt { display: flex; gap: 8px; align-items: flex-start; font-weight: 500; cursor: pointer; }
-      .perm-opt input { width: auto; margin: 4px 0 0; flex: none; }
+      .authpanel .perm-opt input,
+      .perm-opt input { width: 18px; height: 18px; margin: 3px 0 0; flex: none; }
+      .perm-opt span { flex: 1; }
       .perm-opt small { display: block; color: #5b6b7a; font-weight: 400; font-size: 13px; }
       .perm-req { flex-basis: 100%; margin: 4px 0; padding: 8px 10px; border-radius: 8px; background: #fff7e6; color: #5a3b00; font-size: 14px; }
       .perm-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
