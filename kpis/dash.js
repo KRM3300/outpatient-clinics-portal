@@ -544,6 +544,13 @@
     };
     $("d-from").onchange = custom;
     $("d-to").onchange = custom;
+    const q = new URLSearchParams(location.search).get("ind");
+    if (q && IND[q]) {
+      st.ind = q;
+      st.metric = IND[q].metrics[0].k;
+      $("d-ind").value = q;
+      if (IND[q].monthly) { setPreset("year"); return; }
+    }
     setPreset("30");
   }
   init();
