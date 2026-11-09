@@ -46,11 +46,27 @@
       if (v >= 4) t[a + "_top"] = (t[a + "_top"] || 0) + 1;
     });
   }
+  // إشغال غرف العيادات: من الجدول الأسبوعي (OPD Schedule → Weekly OPD Schedule)
+  const w = await grid("1htAUP32cClYWToDntdR1Pcdi_U7y0Bdy_Kz3r-wgt1Y", "0");
+  const row = (re) => w.find((r) => re.test(r[0] || ""));
+  const n = (x) => +String(x || "").replace(/٫/g, ".").replace(/[^\d.]/g, "") || 0;
+  const used = row(/^Number of weekly clinics/i), avail = row(/^Number of available clinics/i), perSes = row(/^Total clinics during the sess/i);
+  const wk = (w[1] || []).find((x) => /^\d{4}\/\d{2}\/\d{2}$/.test(x));
+  if (!used || !avail || !wk) throw new Error("أعمدة الجدول الأسبوعي تغيّرت");
+  const roomIds = new Set(w.filter((r) => /^\d{1,2}$/.test(r[0])).map((r) => r[0]));
+  const nums = used.slice(1).filter((x) => x !== "").map(n);
+  const sch = {
+    week: wk.replace(/\//g, "-"),
+    used: n(used[1]), avail: n(avail[1]), rooms: roomIds.size,
+    slots: nums[1] || 0, slots_new: nums[2] || 0, slots_fu: nums[3] || 0,
+    sessions: perSes ? perSes.slice(2, 17).map(n) : [],
+  };
   const out = {
+    sch,
     RS,
     req: Object.values(req).map((M) => ({ mo: M.mo, days: Object.values(M.days).sort((a, b) => a[0] - b[0]), r: RS.map((k) => M.r[k] || 0) })),
     sat: Object.values(sat),
   };
   window.name = "KPIDATA:" + JSON.stringify(out);
-  return "ok: requests " + out.req.length + " months, satisfaction " + out.sat.length + " months";
+  return "ok: requests " + out.req.length + " months, satisfaction " + out.sat.length + " months, schedule week " + sch.week + " used " + sch.used + "/" + (sch.used + sch.avail);
 })();

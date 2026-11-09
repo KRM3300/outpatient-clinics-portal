@@ -253,7 +253,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
-    <script src="./dash.js?v=2"></script>
+    <script src="./dash.js?v=3"></script>
     <script>
       (() => {
         const $ = (id) => document.getElementById(id);
@@ -517,10 +517,15 @@
             const { mo, ...metrics } = m;
             recs.push({ kind: "satisfaction", mo, title: "رضا المرضى — " + mo, summary: { kind: "satisfaction", metrics } });
           }
+          if (D.sch && D.sch.week) {
+            const add = (iso, k) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + k); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
+            const { week, ...metrics } = D.sch;
+            recs.push({ kind: "schedule", mo: null, from: week, to: add(week, 4), title: "إشغال غرف العيادات — أسبوع " + week, summary: { kind: "schedule", metrics } });
+          }
           const old = window.__allRows.filter((r) => (r.summary || {}).kind);
           let n = 0;
           for (const x of recs) {
-            const from = x.mo + "-01", to = end(x.mo);
+            const from = x.from || x.mo + "-01", to = x.to || end(x.mo);
             const prev = old.filter((r) => r.summary.kind === x.kind && r.period_from === from);
             const canon = (v) => (Array.isArray(v) ? "[" + v.map(canon).join(",") + "]" : v && typeof v === "object" ? "{" + Object.keys(v).sort().map((k) => JSON.stringify(k) + ":" + canon(v[k])).join(",") + "}" : JSON.stringify(v));
             if (prev.length === 1 && canon(prev[0].summary) === canon({ ...x.summary, items: [] })) continue;

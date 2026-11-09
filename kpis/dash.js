@@ -90,6 +90,24 @@
         { k: "appointments", l: "إجمالي المواعيد", good: 0 },
       ],
     },
+    rooms: {
+      label: "إشغال غرف العيادات (الجدول الأسبوعي)",
+      kind: "schedule",
+      weekly: true,
+      metrics: [
+        { k: "occupancy", l: "نسبة إشغال الفترات (المستخدمة ÷ المتاحة)", pct: true, good: 1 },
+        { k: "used", l: "الفترات المستخدمة أسبوعياً", good: 1, avg: true },
+        { k: "avail", l: "الفترات الشاغرة أسبوعياً", good: -1, avg: true },
+        { k: "rooms", l: "عدد غرف العيادات", good: 0, avg: true },
+        { k: "slots", l: "إجمالي السلوتات أسبوعياً", good: 1, avg: true },
+        { k: "newShare", l: "نسبة سلوتات الزيارة الجديدة", pct: true, good: 0 },
+      ],
+    },
+    nextAvail: {
+      label: "أقرب موعد متاح (جاري العمل عليه)",
+      soon: true,
+      metrics: [{ k: "x", l: "أقرب موعد زيارة جديدة / متابعة لكل تخصص" }],
+    },
     requests: {
       label: "طلبات تجديد وتعديل المواعيد",
       kind: "requests",
@@ -152,6 +170,12 @@
       for (const r of kindRows("requests")) for (const x of r.summary.days || []) if (x.d >= a && x.d <= b) pts.push({ d: x.d, m: { renew: x.renew, modify: x.modify, cancel: x.cancel, total: x.renew + x.modify + x.cancel }, rep: r });
       return pts.sort((x, y) => (x.d < y.d ? -1 : 1));
     }
+    if (ind === "rooms") {
+      return kindRows("schedule").filter((r) => r.period_from <= b && r.period_to >= a)
+        .sort((x, y) => (x.period_from < y.period_from ? -1 : 1))
+        .map((r) => ({ d: r.period_from, m: r.summary.metrics || {}, rep: r }));
+    }
+    if (ind === "nextAvail") return [];
     if (ind === "satisfaction") {
       return kindRows("satisfaction").filter((r) => r.period_from <= b && r.period_to >= a)
         .sort((x, y) => (x.period_from < y.period_from ? -1 : 1))
@@ -182,6 +206,11 @@
       const pc = (x, y) => (y ? Math.round((x / y) * 1000) / 10 : null);
       return { booked, overdue, warn14: sum("warn14"), compliance, waiting: lastWait ? lastWait.m.waiting : null, urgent5: pc(uo, ut), routine28: pc(ro, rt), urgent_total: ut };
     }
+    if (ind === "rooms") {
+      const u = sum("used"), v = sum("avail"), sl = sum("slots"), sn = sum("slots_new"), k = pts.length;
+      const avg = (x) => (x == null ? null : Math.round(x / k));
+      return { occupancy: u + v ? Math.round((u / (u + v)) * 1000) / 10 : null, used: avg(u), avail: avg(v), rooms: avg(sum("rooms")), slots: avg(sl), newShare: sl ? Math.round((sn / sl) * 1000) / 10 : null };
+    }
     if (ind === "requests") return { total: sum("total"), renew: sum("renew"), modify: sum("modify"), cancel: sum("cancel") };
     if (ind === "satisfaction") {
       const o = { n: sum("n") };
@@ -209,7 +238,7 @@
     }
     return out;
   }
-  const unit = (a, b) => { if (IND[st.ind].monthly) return "شهر"; const n = span(a, b); return n <= 31 ? "يوم" : n <= 186 ? "أسبوع" : "شهر"; };
+  const unit = (a, b) => { if (IND[st.ind].monthly) return "شهر"; if (IND[st.ind].weekly) return "أسبوع"; const n = span(a, b); return n <= 31 ? "يوم" : n <= 186 ? "أسبوع" : "شهر"; };
 
   /* ---------- الحالة والفروقات ---------- */
   function status(mt, v) {
@@ -260,6 +289,12 @@
     msel.replaceChildren(...ind.metrics.filter((m) => !m.last).map((m) => new Option(m.l, m.k)));
     msel.value = st.metric;
 
+    if (ind.soon) {
+      $("d-period").textContent = "";
+      $("d-tiles").replaceChildren(node("p", "قيد الإعداد: أقرب موعد زيارة جديدة، وأقرب موعد متابعة، والمتوسط لكل تخصص. سيُضاف هنا أول ما يتحدد مصدر البيانات.", "empty"));
+      $("d-chart").replaceChildren(); $("d-legend").replaceChildren(); $("d-chart-title").textContent = ""; $("d-rank-sec").hidden = true;
+      return;
+    }
     const cr = cmpRange();
     const cur = aggregate(st.ind, seriesPoints(st.ind, st.from, st.to));
     const prev = cr ? aggregate(st.ind, seriesPoints(st.ind, cr[0], cr[1])) : null;
@@ -298,6 +333,7 @@
   }
 
   function chartSeries(a, b) {
+    if (IND[st.ind].weekly) return seriesPoints(st.ind, a, b).map((p) => ({ a: p.rep.period_from, b: p.rep.period_to, v: aggregate(st.ind, [p])[st.metric] }));
     return buckets(a, b, IND[st.ind].monthly).map(([x, y]) => {
       const ag = aggregate(st.ind, seriesPoints(st.ind, x, y));
       return { a: x, b: y, v: ag ? ag[st.metric] : null };
