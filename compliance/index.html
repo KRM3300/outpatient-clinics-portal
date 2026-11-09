@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#0f3a57" />
+    <title>تقرير عدم الالتزام | العيادات الخارجية</title>
+    <link rel="icon" href="../assets/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/portal.css?v=4" />
+    <style>
+      .empty { color: var(--ink-soft); }
+      .presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 2px; }
+      .presets button { padding: 5px 12px; font-size: 13.5px; background: var(--surface); color: var(--action); border: 1px solid var(--line-strong); }
+      .presets button[aria-pressed="true"] { background: var(--action); color: #fff; border-color: var(--action); }
+      .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+      .bar > div { flex: 1 1 160px; }
+      .muted { color: var(--ink-soft); font-size: 13px; }
+      .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-top: 12px; }
+      .tile-k { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 12px 14px; }
+      .tile-k .tl { color: var(--ink-soft); font-size: 13px; }
+      .tile-k .tv { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+      .tile-k .tc { font-size: 12.5px; color: var(--ink-soft); }
+      .dl.up { color: var(--danger); font-weight: 600; } .dl.down { color: var(--ok-ink); font-weight: 600; } .dl.flat { color: var(--ink-soft); }
+      .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 16px; }
+      .bars { display: flex; flex-direction: column; gap: 6px; }
+      .brow { display: grid; grid-template-columns: minmax(110px, 40%) 1fr 44px; gap: 8px; align-items: center; font-size: 13.5px; cursor: pointer; }
+      .brow .track { background: var(--line); border-radius: 4px; height: 12px; overflow: hidden; }
+      .brow .fill { background: var(--action); height: 100%; border-radius: 0 4px 4px 0; }
+      .brow .n { font-variant-numeric: tabular-nums; font-weight: 600; text-align: left; }
+      .brow:hover .fill { opacity: 0.8; }
+      table.recs { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+      table.recs th { text-align: right; color: var(--ink-soft); font-weight: 500; border-bottom: 1px solid var(--line-strong); padding: 6px; }
+      table.recs td { padding: 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+      .tw { overflow-x: auto; }
+      .chip { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 99px; background: var(--line); }
+      .filters-note { margin: 8px 0; font-size: 13px; }
+      .filters-note button { padding: 2px 10px; font-size: 12.5px; margin-inline-start: 6px; }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <img class="site-logo" src="../assets/logo.webp" width="220" height="144" alt="شعار مستشفى الرس العام" />
+        <div class="site-titles">
+          <span class="crumb">تطبيق العيادات الخارجية</span>
+          <h1>تقرير عدم الالتزام</h1>
+          <p>حصر المشاكل وعدم اتباع الإجراءات المعتمدة</p>
+        </div>
+        <div class="site-actions">
+          <a class="back" href="../"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg><span>العودة للتطبيق</span></a>
+        </div>
+      </div>
+    </header>
+
+    <main class="page wrap">
+      <div id="message" class="status-msg" role="status" aria-live="polite"></div>
+
+      <section id="login" class="card">
+        <h2>تسجيل الدخول</h2>
+        <label for="email">البريد الإلكتروني</label>
+        <input id="email" type="email" autocomplete="email" dir="ltr" />
+        <button id="send" type="button">إرسال رمز الدخول</button>
+        <div id="verifyBox" class="hidden">
+          <label for="code" style="margin-top: 16px">رمز التحقق</label>
+          <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" dir="ltr" />
+          <button id="verify" type="button">تحقق</button>
+        </div>
+      </section>
+
+      <section id="noaccess" class="card hidden">
+        <h2>لا توجد صلاحية</h2>
+        <p>رفع التقرير متاح للتمريض والاستقبال وكير لينك المعتمدين، ولمن يمنحه مدير العيادات الخارجية.</p>
+      </section>
+
+      <div id="app" class="hidden">
+        <div class="card">
+          <div class="toolbar">
+            <strong id="identity"></strong>
+            <button id="logout" class="alt" type="button">تسجيل الخروج</button>
+          </div>
+        </div>
+
+        <section id="submit" class="card hidden">
+          <h2>رفع ملاحظة جديدة</h2>
+          <form id="ncForm">
+            <div class="grid">
+              <div>
+                <label for="f-emp">اسم الموظف محل الملاحظة *</label>
+                <input id="f-emp" required minlength="2" maxlength="150" />
+              </div>
+              <div>
+                <label for="f-nature">طبيعة عمل الموظف *</label>
+                <select id="f-nature" required></select>
+              </div>
+              <div>
+                <label for="f-spec">التخصص</label>
+                <select id="f-spec"></select>
+              </div>
+              <div>
+                <label for="f-type">نوع الملاحظة *</label>
+                <select id="f-type" required></select>
+              </div>
+              <div id="f-other-box" class="hidden">
+                <label for="f-other">نوع آخر — حدّده *</label>
+                <input id="f-other" maxlength="120" />
+              </div>
+              <div>
+                <label for="f-file">رقم ملف المراجع</label>
+                <input id="f-file" maxlength="30" dir="ltr" inputmode="numeric" />
+              </div>
+              <div>
+                <label for="f-when">وقت الملاحظة</label>
+                <input id="f-when" type="datetime-local" dir="ltr" />
+              </div>
+              <div>
+                <label for="f-rname">اسم مُعدّ التقرير *</label>
+                <input id="f-rname" required minlength="2" maxlength="150" />
+              </div>
+              <div>
+                <label for="f-rno">الرقم الوظيفي لمُعدّ التقرير *</label>
+                <input id="f-rno" required minlength="2" maxlength="20" dir="ltr" inputmode="numeric" />
+              </div>
+            </div>
+            <label for="f-notes">ملاحظات</label>
+            <textarea id="f-notes" rows="3" maxlength="2000"></textarea>
+            <button id="f-submit" type="submit">إرسال الملاحظة</button>
+          </form>
+        </section>
+
+        <section id="view" class="card hidden">
+          <h2>لوحة الملاحظات</h2>
+          <div class="bar">
+            <div><label for="v-from">من تاريخ</label><input id="v-from" type="date" dir="ltr" /></div>
+            <div><label for="v-to">إلى تاريخ</label><input id="v-to" type="date" dir="ltr" /></div>
+            <div>
+              <label for="v-cmp">المقارنة مع</label>
+              <select id="v-cmp">
+                <option value="prev">الفترة السابقة (بنفس الطول)</option>
+                <option value="year">نفس الفترة من السنة الماضية</option>
+                <option value="none">بدون مقارنة</option>
+              </select>
+            </div>
+            <div><label for="v-q">بحث بالاسم أو الملاحظة</label><input id="v-q" type="search" /></div>
+          </div>
+          <div class="presets" id="v-presets">
+            <button type="button" data-p="30">آخر 30 يوماً</button>
+            <button type="button" data-p="month">هذا الشهر</button>
+            <button type="button" data-p="quarter">هذا الربع</button>
+            <button type="button" data-p="year">هذه السنة</button>
+            <button type="button" data-p="all">الكل</button>
+          </div>
+          <p class="muted" id="v-period"></p>
+          <div class="filters-note" id="v-filters"></div>
+          <div class="tiles" id="v-tiles"></div>
+          <div class="cols">
+            <div><h3>حسب نوع الملاحظة</h3><div class="bars" id="v-type"></div></div>
+            <div><h3>حسب طبيعة العمل</h3><div class="bars" id="v-nature"></div></div>
+            <div><h3>حسب التخصص</h3><div class="bars" id="v-spec"></div></div>
+            <div><h3>الأكثر تكراراً (الموظف محل الملاحظة)</h3><div class="bars" id="v-emp"></div></div>
+          </div>
+          <h3 style="margin-top: 18px">السجلات <span class="muted" id="v-count"></span></h3>
+          <div class="tw"><table class="recs" id="v-list"></table></div>
+        </section>
+
+        <section id="admin" class="card hidden">
+          <h2>الصلاحيات</h2>
+          <p class="page-note">اطلب من الشخص يسجّل دخول هنا مرة وحدة، ثم أضف بريده. التمريض والاستقبال وكير لينك المعتمدون في التطبيق يقدرون يرفعون بدون منح.</p>
+          <form id="grantForm" class="bar">
+            <div><label for="g-email">البريد الإلكتروني</label><input id="g-email" type="email" required dir="ltr" /></div>
+            <div style="flex: 0 0 auto"><label><input type="checkbox" id="g-submit" checked /> رفع</label></div>
+            <div style="flex: 0 0 auto"><label><input type="checkbox" id="g-view" /> اطلاع</label></div>
+            <div style="flex: 0 0 auto"><button type="submit">حفظ</button></div>
+          </form>
+          <div id="grants" style="margin-top: 10px"></div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p class="site-line">مستشفى الرس العام — تطبيق العيادات الخارجية<br />Integrated Leadership Operating System – ILOS</p>
+      <div class="credit" dir="ltr"><span>Prepared by</span><strong>Khalid Rumayh Alrumayh</strong><span>Information Systems Specialist</span></div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+    <script>
+      (() => {
+        const $ = (id) => document.getElementById(id);
+        const api = supabase.createClient("https://omugonzzrulsdpnycact.supabase.co", "sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs");
+        const NATURE = ["طبيب", "تمريض", "استقبال", "صيدلي", "مختبر", "أشعة", "أمن صحي", "أمن", "مشرف الصيانة والنظافة", "عامل النظافة", "قسم آخر"];
+        const SPEC = ["الصدرية", "طب المخ والأعصاب العامة", "جراحة المخ والأعصاب", "الروماتزم", "الأخصائي النفسي", "الطب النفسي", "القلب", "الأطفال", "الباطنة", "النساء والولادة", "الكلى", "الجهاز الهضمي", "الجلدية", "التجميل", "الجراحة", "المسالك البولية", "العظام", "الأنف والأذن والحنجرة", "السمعيات", "العيون", "البصريات", "أخرى"];
+        const TYPES = ["تأخير بالحضور", "عدم حجز موعد متابعة", "ورقة من التنويم والطوارئ بدون حجز على النظام", "خروج قبل إنتهاء العمل", "عدم الإلتزام بجدول العيادة", "مشكلة مع مراجع", "مشكلة مع زميل", "تقصير بالعمل", "عدم صرف العلاج مدة الموعد", "عدم تحويل المراجع بالنظام فقط تم كتابته بالنوت", "عدم وجود طلب تحاليل أو أشعة بالنظام"];
+        let user = null, isAdmin = false, canView = false, canSubmit = false, ALL = [];
+
+        const msg = (t) => ($("message").textContent = t || "");
+        const err = (e) => msg(e?.message || String(e));
+        const hide = (id, show) => $(id).classList.toggle("hidden", !show);
+        const node = (t, text, cls) => { const e = document.createElement(t); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; };
+        const fill = (sel, list, first) => { if (first) sel.add(new Option(first, "")); for (const x of list) sel.add(new Option(x, x)); };
+        fill($("f-nature"), NATURE, "اختر");
+        fill($("f-spec"), SPEC, "—");
+        fill($("f-type"), TYPES.concat(["أخرى"]), "اختر");
+        $("f-type").onchange = () => hide("f-other-box", $("f-type").value === "أخرى");
+
+        /* الدخول برمز التحقق */
+        $("send").onclick = async () => {
+          const email = $("email").value.trim();
+          if (!email) return;
+          const { error } = await api.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+          if (error) return err(error);
+          hide("verifyBox", true);
+          msg("تم إرسال رمز التحقق إلى بريدك الإلكتروني.");
+        };
+        $("verify").onclick = async () => {
+          const { error } = await api.auth.verifyOtp({ email: $("email").value.trim(), token: $("code").value.trim(), type: "email" });
+          if (error) return err(error);
+          msg("");
+          await load();
+        };
+        $("logout").onclick = async () => { await api.auth.signOut(); await load(); };
+
+        async function load() {
+          const { data: { user: u } } = await api.auth.getUser();
+          user = u;
+          hide("login", !u); hide("app", false); hide("noaccess", false);
+          if (!u) return;
+          const [a, v, s] = await Promise.all([api.rpc("opd_kpi_is_admin"), api.rpc("opd_nc_can_view"), api.rpc("opd_nc_can_submit")]);
+          if (a.error || v.error || s.error) return err(a.error || v.error || s.error);
+          isAdmin = !!a.data; canView = !!v.data; canSubmit = !!s.data;
+          if (!canView && !canSubmit) return hide("noaccess", true);
+          hide("app", true); hide("submit", canSubmit); hide("view", canView); hide("admin", isAdmin);
+          $("identity").textContent = u.email + (isAdmin ? " (مدير)" : "");
+          const m = await api.from("opd_appt_members").select("full_name,employee_no").eq("user_id", u.id).maybeSingle();
+          if (m.data) { if (!$("f-rname").value) $("f-rname").value = m.data.full_name || ""; if (!$("f-rno").value) $("f-rno").value = m.data.employee_no || ""; }
+          if (canView) await records();
+          if (isAdmin) await grants();
+        }
+
+        /* الرفع */
+        $("ncForm").onsubmit = async (e) => {
+          e.preventDefault();
+          const type = $("f-type").value === "أخرى" ? "أخرى: " + $("f-other").value.trim() : $("f-type").value;
+          if ($("f-type").value === "أخرى" && !$("f-other").value.trim()) return msg("حدّد نوع الملاحظة");
+          $("f-submit").disabled = true;
+          const row = {
+            employee_name: $("f-emp").value.trim(), work_nature: $("f-nature").value, specialty: $("f-spec").value || null,
+            observation_type: type, notes: $("f-notes").value.trim() || null, patient_file: $("f-file").value.trim() || null,
+            reporter_name: $("f-rname").value.trim(), reporter_empno: $("f-rno").value.trim(), created_by: user.id,
+          };
+          if ($("f-when").value) row.occurred_at = new Date($("f-when").value).toISOString();
+          const { error } = await api.from("opd_nc_reports").insert(row);
+          $("f-submit").disabled = false;
+          if (error) return err(error);
+          for (const id of ["f-emp", "f-notes", "f-file", "f-other", "f-when"]) $(id).value = "";
+          for (const id of ["f-nature", "f-spec", "f-type"]) $(id).selectedIndex = 0;
+          hide("f-other-box", false);
+          msg("تم إرسال الملاحظة، شكراً لك");
+          if (canView) await records();
+        };
+
+        /* الاطلاع */
+        const iso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+        const D = (s) => new Date(s + "T12:00:00");
+        const add = (s, n) => { const d = D(s); d.setDate(d.getDate() + n); return iso(d); };
+        const span = (a, b) => Math.round((D(b) - D(a)) / 864e5) + 1;
+        const fmt = (s) => s.slice(8, 10) + "/" + s.slice(5, 7) + "/" + s.slice(0, 4);
+        const local = (ts) => iso(new Date(ts));
+        const st = { from: "", to: "", cmp: "prev", q: "", f: {} };
+        function preset(p) {
+          const t = iso(new Date());
+          if (p === "30") st.from = add(t, -29);
+          else if (p === "month") st.from = t.slice(0, 8) + "01";
+          else if (p === "quarter") st.from = t.slice(0, 5) + String(Math.floor((+t.slice(5, 7) - 1) / 3) * 3 + 1).padStart(2, "0") + "-01";
+          else if (p === "year") st.from = t.slice(0, 4) + "-01-01";
+          else if (p === "all") st.from = ALL.length ? local(ALL[ALL.length - 1].occurred_at) : t;
+          if (p !== "custom") st.to = t;
+          $("v-from").value = st.from; $("v-to").value = st.to;
+          for (const b of document.querySelectorAll("#v-presets button")) b.setAttribute("aria-pressed", b.dataset.p === p ? "true" : "false");
+        }
+        for (const b of document.querySelectorAll("#v-presets button")) b.onclick = () => { preset(b.dataset.p); render(); };
+        const custom = () => { if (!$("v-from").value || !$("v-to").value) return; st.from = $("v-from").value; st.to = $("v-to").value; if (st.to < st.from) [st.from, st.to] = [st.to, st.from]; preset("custom"); render(); };
+        $("v-from").onchange = custom; $("v-to").onchange = custom;
+        $("v-cmp").onchange = () => { st.cmp = $("v-cmp").value; render(); };
+        $("v-q").oninput = () => { st.q = $("v-q").value.trim(); render(); };
+
+        const baseType = (t) => (t || "").replace(/^أخرى:.*/, "أخرى");
+        const match = (r) => (!st.f.type || baseType(r.observation_type) === st.f.type) && (!st.f.nature || r.work_nature === st.f.nature) && (!st.f.spec || (r.specialty || "غير محدد") === st.f.spec) && (!st.f.emp || r.employee_name === st.f.emp) &&
+          (!st.q || (r.employee_name + " " + (r.notes || "") + " " + r.observation_type).includes(st.q));
+        const inRange = (a, b) => ALL.filter((r) => { const d = local(r.occurred_at); return d >= a && d <= b && match(r); });
+
+        async function records() {
+          const { data, error } = await api.from("opd_nc_reports").select("*").order("occurred_at", { ascending: false }).limit(5000);
+          if (error) return err(error);
+          ALL = data || [];
+          if (!st.from) preset("30");
+          render();
+        }
+
+        function counts(list, key) { const m = {}; for (const r of list) { const k = key(r) || "غير محدد"; m[k] = (m[k] || 0) + 1; } return Object.entries(m).sort((a, b) => b[1] - a[1]); }
+        function bars(id, list, prevList, key, fkey) {
+          const box = $(id); box.replaceChildren();
+          const c = counts(list, key).slice(0, 10), max = c.length ? c[0][1] : 1;
+          const pm = Object.fromEntries(prevList ? counts(prevList, key) : []);
+          if (!c.length) return box.append(node("p", "لا يوجد", "empty"));
+          for (const [k, n] of c) {
+            const row = node("div", undefined, "brow");
+            row.title = "تصفية حسب: " + k;
+            row.onclick = () => { st.f[fkey] = st.f[fkey] === k ? null : k; render(); };
+            const tr = node("div", undefined, "track"), f = node("div", undefined, "fill");
+            f.style.width = Math.max(3, (n / max) * 100) + "%";
+            tr.append(f);
+            const lab = node("span", k);
+            if (prevList) { const p = pm[k] || 0; if (p !== n) lab.append(node("span", " (" + (n > p ? "↑" : "↓") + Math.abs(n - p) + ")", "dl " + (n > p ? "up" : "down"))); }
+            row.append(lab, tr, node("span", String(n), "n"));
+            box.append(row);
+          }
+        }
+
+        function render() {
+          let cr = null;
+          if (st.cmp === "prev") { const n = span(st.from, st.to); cr = [add(st.from, -n), add(st.from, -1), "الفترة السابقة"]; }
+          else if (st.cmp === "year") { const y = (s) => String(+s.slice(0, 4) - 1) + s.slice(4); cr = [y(st.from), y(st.to), "نفس الفترة من السنة الماضية"]; }
+          const cur = inRange(st.from, st.to), prev = cr ? inRange(cr[0], cr[1]) : null;
+          $("v-period").textContent = "الفترة: " + fmt(st.from) + " – " + fmt(st.to) + (cr ? " · المقارنة مع " + cr[2] + " (" + fmt(cr[0]) + " – " + fmt(cr[1]) + ")" : "");
+          const fl = $("v-filters"); fl.replaceChildren();
+          const names = { type: "النوع", nature: "طبيعة العمل", spec: "التخصص", emp: "الموظف" };
+          for (const [k, v] of Object.entries(st.f)) if (v) { const b = node("button", names[k] + ": " + v + " ✕", "alt"); b.type = "button"; b.onclick = () => { st.f[k] = null; render(); }; fl.append(b); }
+
+          const tiles = $("v-tiles"); tiles.replaceChildren();
+          const tile = (l, v, p) => { const t = node("div", undefined, "tile-k"); t.append(node("div", l, "tl"), node("div", v.toLocaleString("en-US"), "tv")); if (p != null) { const d = v - p; t.append(node("div", (d > 0 ? "↑ +" : d < 0 ? "↓ " : "→ ") + (p ? Math.round((d / p) * 100) + "%" : d) + " مقابل " + p, "tc dl " + (d > 0 ? "up" : d < 0 ? "down" : "flat"))); } tiles.append(t); };
+          tile("إجمالي الملاحظات", cur.length, prev ? prev.length : null);
+          const late = (l) => l.filter((r) => /تأخير بالحضور/.test(r.observation_type)).length;
+          tile("تأخير بالحضور", late(cur), prev ? late(prev) : null);
+          const fu = (l) => l.filter((r) => /موعد متابعة/.test(r.observation_type)).length;
+          tile("عدم حجز موعد متابعة", fu(cur), prev ? fu(prev) : null);
+          tile("موظفون محل ملاحظة", new Set(cur.map((r) => r.employee_name)).size, prev ? new Set(prev.map((r) => r.employee_name)).size : null);
+
+          bars("v-type", cur, prev, (r) => baseType(r.observation_type), "type");
+          bars("v-nature", cur, prev, (r) => r.work_nature, "nature");
+          bars("v-spec", cur, prev, (r) => r.specialty, "spec");
+          bars("v-emp", cur, null, (r) => r.employee_name, "emp");
+
+          const t = $("v-list"); t.replaceChildren();
+          $("v-count").textContent = "(" + cur.length + ")";
+          const hr = node("tr");
+          for (const h of ["التاريخ", "الموظف", "طبيعة العمل", "التخصص", "نوع الملاحظة", "ملاحظات", "رقم الملف", "المُعدّ"].concat(isAdmin ? [""] : [])) hr.append(node("th", h));
+          t.append(hr);
+          for (const r of cur.slice(0, 300)) {
+            const tr = node("tr");
+            tr.append(node("td", fmt(local(r.occurred_at))), node("td", r.employee_name), node("td", r.work_nature), node("td", r.specialty || "—"), node("td", r.observation_type), node("td", r.notes || ""), node("td", r.patient_file || ""), node("td", r.reporter_name));
+            if (isAdmin) {
+              const td = node("td"), b = node("button", "حذف", "alt"); b.type = "button";
+              b.onclick = async () => { if (!confirm("حذف هذه الملاحظة نهائياً؟")) return; const { error } = await api.from("opd_nc_reports").delete().eq("id", r.id); if (error) return err(error); await records(); };
+              td.append(b); tr.append(td);
+            }
+            t.append(tr);
+          }
+          if (cur.length > 300) $("v-count").textContent += " — يُعرض أحدث 300";
+        }
+
+        /* الصلاحيات */
+        $("grantForm").onsubmit = async (e) => {
+          e.preventDefault();
+          const { data, error } = await api.rpc("opd_nc_grant", { p_email: $("g-email").value, p_submit: $("g-submit").checked, p_view: $("g-view").checked });
+          if (error) return err(error);
+          if (data === "not_found") return msg("هذا البريد ما سجّل دخول بعد.");
+          e.target.reset(); $("g-submit").checked = true;
+          msg("تم حفظ الصلاحية"); await grants();
+        };
+        async function grants() {
+          const { data, error } = await api.from("opd_nc_access").select("*").order("granted_at", { ascending: false });
+          if (error) return err(error);
+          const box = $("grants"); box.replaceChildren();
+          for (const g of data || []) {
+            const line = node("div", undefined, "toolbar");
+            line.append(node("span", g.email + " — " + [g.can_submit ? "رفع" : "", g.can_view ? "اطلاع" : ""].filter(Boolean).join(" + ") || "موقوف"));
+            const b = node("button", "إيقاف", "alt"); b.type = "button";
+            b.onclick = async () => { await api.rpc("opd_nc_grant", { p_email: g.email, p_submit: false, p_view: false }); await grants(); };
+            line.append(b); box.append(line);
+          }
+          if (!data?.length) box.append(node("p", "لا توجد صلاحيات ممنوحة بعد.", "empty"));
+        }
+
+        /* للمدير: استيراد ردود نموذج Google السابقة (تُنقل عبر window.name من تبويب الشيت) */
+        window.ncImport = async () => {
+          if (!isAdmin) return "not admin";
+          if (!window.name.startsWith("NCDATA:")) return "no data";
+          const rows = JSON.parse(window.name.slice(7));
+          window.name = "";
+          const have = new Set(ALL.filter((r) => r.source === "google_form").map((r) => r.occurred_at.slice(0, 19)));
+          const ins = rows.filter((r) => !have.has(new Date(r.occurred_at).toISOString().slice(0, 19))).map((r) => ({ ...r, source: "google_form", created_by: user.id }));
+          for (let i = 0; i < ins.length; i += 100) { const { error } = await api.from("opd_nc_reports").insert(ins.slice(i, i + 100)); if (error) return "ERR " + error.message; }
+          await records();
+          return "imported " + ins.length + " of " + rows.length;
+        };
+
+        load();
+        api.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") setTimeout(load, 0); });
+      })();
+    </script>
+  </body>
+</html>
