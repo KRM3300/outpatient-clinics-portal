@@ -366,7 +366,8 @@
               badge(L("case_type", c.case_type), "wait"),
               badge(L("status", c.status), statusTone[c.status]),
             );
-            const sb = slaBadge(c.created_at, c.closed_at, c.source === "sheet" && !c.closed_at);
+            /* السجلات المنقولة من الشيت بتاريخ بدون ساعة، فما تنقاس مدتها */
+            const sb = slaBadge(c.created_at, c.closed_at, c.source === "sheet");
             if (sb) head.append(sb);
             const meta = node("p", undefined, "rec-meta");
             for (const [k, v] of [
