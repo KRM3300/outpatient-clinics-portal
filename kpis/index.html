@@ -220,8 +220,8 @@
               <summary>بيانات تفصيلية (تعبّئها المهام تلقائياً)</summary>
               <textarea id="u-data" name="data" rows="3" dir="ltr" placeholder='{"metrics":{...},"days":[...],"deptDays":[...]}'></textarea>
             </details>
-            <label for="u-file">ملف التقرير (PDF)</label>
-            <input id="u-file" name="file" type="file" accept="application/pdf" required />
+            <label for="u-file">ملف التقرير (PDF) — اختياري</label>
+            <input id="u-file" name="file" type="file" accept="application/pdf" />
             <button id="u-submit" type="submit">رفع وحفظ</button>
           </form>
         </section>
@@ -347,6 +347,20 @@
 
         function buttons(r) {
           const box = node("div", undefined, "b");
+          if (!r.file_path) {
+            if (isAdmin) {
+              const x = node("button", "حذف", "alt");
+              x.type = "button";
+              x.onclick = async () => {
+                if (!confirm("حذف «" + r.title + "» نهائياً؟")) return;
+                const { error } = await api.from("opd_kpi_reports").delete().eq("id", r.id);
+                if (error) return err(error);
+                await reports();
+              };
+              box.append(x);
+            }
+            return box;
+          }
           const o = node("button", "فتح");
           o.type = "button";
           o.onclick = () => openFile(r, false);
@@ -422,7 +436,7 @@
         $("upForm").onsubmit = async (e) => {
           e.preventDefault();
           const file = $("u-file").files[0];
-          if (!file || file.type !== "application/pdf") return msg("اختر ملف PDF");
+          if (file && file.type !== "application/pdf") return msg("الملف لازم يكون PDF");
           const type = $("u-type").value, from = $("u-from").value, to = $("u-to").value;
           if (to < from) return msg("تاريخ النهاية قبل البداية");
           const items = $("u-summary").value
@@ -439,11 +453,13 @@
           }
           $("u-submit").disabled = true;
           msg("جاري الرفع…");
-          const path = type + "/" + to + "_" + Date.now() + ".pdf";
-          const up = await api.storage.from(BUCKET).upload(path, file, { contentType: "application/pdf", upsert: false });
-          if (up.error) {
-            $("u-submit").disabled = false;
-            return err(up.error);
+          const path = file ? type + "/" + to + "_" + Date.now() + ".pdf" : "";
+          if (file) {
+            const up = await api.storage.from(BUCKET).upload(path, file, { contentType: "application/pdf", upsert: false });
+            if (up.error) {
+              $("u-submit").disabled = false;
+              return err(up.error);
+            }
           }
           const { error } = await api.from("opd_kpi_reports").insert({
             report_type: type,
@@ -456,12 +472,12 @@
           });
           $("u-submit").disabled = false;
           if (error) {
-            await api.storage.from(BUCKET).remove([path]);
+            if (path) await api.storage.from(BUCKET).remove([path]);
             return err(error);
           }
           e.target.reset();
           delete $("u-title").dataset.touched;
-          document.body.dataset.lastUpload = path;
+          document.body.dataset.lastUpload = path || "data:" + Date.now();
           msg("تم رفع التقرير وحفظه");
           await reports();
         };
