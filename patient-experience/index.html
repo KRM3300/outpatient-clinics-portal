@@ -161,6 +161,7 @@
         let user = null,
           access = null,
           isAdmin = false,
+          pePerms = new Set(),
           lang = "ar";
         const msg = (t) => ($("message").textContent = t);
         const hide = (id, v) => $(id).classList.toggle("hidden", !v);
@@ -268,26 +269,28 @@
           if (!u) return;
           const [member, grant] = await Promise.all([
             api.from("opd_appt_members").select("role,status").eq("user_id", u.id).maybeSingle(),
-            api.from("opd_pe_access").select("role,active").eq("user_id", u.id).maybeSingle(),
+            api.from("opd_user_perms").select("perm").eq("user_id", u.id),
           ]);
           if (member.error || grant.error) return err(member.error || grant.error);
           isAdmin = member.data?.status === "approved" && member.data?.role === "admin";
-          access = grant.data?.active ? grant.data.role : null;
+          /* الصلاحيات الموحّدة من بوابة العيادات */
+          pePerms = new Set((grant.data || []).map((x) => x.perm));
+          access = pePerms.has("pe_supervisor") ? "supervisor" : pePerms.has("pe_handle") ? "department" : pePerms.has("pe_submit") ? "agent" : null;
           const allowed = isAdmin || (member.data?.status === "approved" && !!access);
           if (!allowed) {
             hide("pending", true);
             $("pendingText").textContent =
               lang === "ar"
-                ? "الحساب يحتاج اعتماد المدير في المواعيد ثم منح صلاحية تجربة المريض."
+                ? "حسابك يحتاج صلاحية تجربة المريض. اطلبها من الصفحة الرئيسية للبوابة (حساب المستخدم ← طلب صلاحية إضافية)."
                 : "Your account needs appointment administration approval and a patient experience role.";
             return;
           }
           hide("app", true);
           setIdentity();
-          hide("create", isAdmin || ["agent", "supervisor", "admin"].includes(access));
-          hide("admin", isAdmin);
+          hide("create", isAdmin || pePerms.has("pe_submit") || pePerms.has("pe_supervisor"));
+          /* منح الصلاحيات صار من الصفحة الرئيسية للبوابة */
+          hide("admin", false);
           await records();
-          if (isAdmin) await grants();
         }
         $("refresh").onclick = load;
         $("reload").onclick = records;
@@ -317,7 +320,7 @@
         async function records() {
           const { data, error } = await api
             .from("opd_pe_cases")
-            .select("id,case_type,title,description,department,priority,status,resolution,created_at")
+            .select("id,case_type,title,description,department,priority,status,resolution,created_at,created_by_name")
             .order("created_at", { ascending: false })
             .limit(100);
           if (error) return err(error);
@@ -334,6 +337,7 @@
             const meta = node("p", undefined, "rec-meta");
             for (const [k, v] of [
               [labels[lang].dept, c.department],
+              [lang === "ar" ? "رفعه" : "Submitted by", c.created_by_name],
               [labels[lang].prio, L("priority", c.priority)],
               [
                 labels[lang].date,
@@ -349,7 +353,7 @@
             }
             box.append(head, meta);
             if (c.description) box.append(node("p", c.description));
-            if (isAdmin || ["department", "supervisor", "admin"].includes(access)) {
+            if (isAdmin || pePerms.has("pe_handle") || pePerms.has("pe_supervisor")) {
               const status = node("select");
               for (const v of ["open", "in_progress", "escalated", "transferred", "closed"]) status.add(new Option(L("status", v), v));
               status.value = c.status;

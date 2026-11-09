@@ -94,6 +94,15 @@
       .authpanel .msg:empty {
         display: none;
       }
+      .perm-grid { display: grid; gap: 6px; flex-basis: 100%; margin: 6px 0; }
+      .perm-svc { font-weight: 600; font-size: 14px; margin-top: 6px; color: var(--ink); }
+      .perm-opt { display: flex; gap: 8px; align-items: flex-start; font-weight: 500; cursor: pointer; }
+      .perm-opt input { width: auto; margin: 4px 0 0; flex: none; }
+      .perm-opt small { display: block; color: #5b6b7a; font-weight: 400; font-size: 13px; }
+      .perm-req { flex-basis: 100%; margin: 4px 0; padding: 8px 10px; border-radius: 8px; background: #fff7e6; color: #5a3b00; font-size: 14px; }
+      .perm-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+      .perm-tools select, .perm-tools input { width: auto; margin: 0; }
+      #auth-myperms details { margin-top: 8px; }
       #auth-staff .line .rec-meta {
         flex-basis: 100%;
         margin: 0;
@@ -374,8 +383,13 @@
                 <option value="">اختر الوظيفة</option>
                 <option value="doctor">طبيب</option>
                 <option value="nurse">تمريض</option>
-                <option value="reception">استقبال</option>
+                <option value="reception">موظف عيادات (خدمة المراجعين)</option>
                 <option value="carelink">كير لينك</option>
+                <option value="tech_supervisor">مشرف فني</option>
+                <option value="pharmacy">صيدلية</option>
+                <option value="radiology">أشعة</option>
+                <option value="lab">مختبر</option>
+                <option value="physio">علاج طبيعي</option>
                 <option value="scheduler">موظف مواعيد</option>
                 <option value="pe_agent">موظف تجربة المريض</option>
                 <option value="supervisor">مشرف</option>
@@ -387,6 +401,9 @@
               ><span>رقم الجوال (اختياري)</span><input id="auth-phone" maxlength="20" inputmode="tel" dir="ltr" placeholder="05xxxxxxxx"
             /></label>
           </div>
+          <h3 style="margin-top: 16px">الصلاحيات المطلوبة</h3>
+          <p class="page-note">تتعلّم تلقائياً صلاحيات وظيفتك، وتقدر تزيد أو تشيل. المدير يعتمد أو يعدّل.</p>
+          <div id="auth-perms" class="perm-grid"></div>
           <button id="auth-register" type="button">إرسال طلب الاعتماد</button>
         </div>
         <div id="auth-user" class="hidden">
@@ -394,13 +411,23 @@
             <p id="auth-user-status" style="margin: 0"></p>
             <button id="auth-logout" class="alt" type="button">تسجيل الخروج</button>
           </div>
+          <div id="auth-myperms"></div>
           <div id="auth-admin" class="hidden">
             <h3>إدارة الخدمات</h3>
             <p class="page-note">تظهر الخدمة للمستخدمين بعد اعتمادها.</p>
             <div id="auth-services"></div>
             <div class="toolbar" style="margin-top: 20px">
-              <h3 style="margin: 0">اعتماد المستخدمين</h3>
-              <button id="auth-refresh" class="alt" type="button">تحديث الطلبات</button>
+              <h3 style="margin: 0">الصلاحيات والاعتماد</h3>
+              <button id="auth-refresh" class="alt" type="button">تحديث</button>
+            </div>
+            <div class="perm-tools">
+              <select id="staff-filter" aria-label="تصفية الموظفين">
+                <option value="pending">الطلبات الجديدة</option>
+                <option value="approved">المعتمدين</option>
+                <option value="other">المرفوضين والموقوفين</option>
+                <option value="all">الكل</option>
+              </select>
+              <input id="staff-search" type="search" placeholder="بحث بالاسم أو الرقم الوظيفي" aria-label="بحث" />
             </div>
             <div id="auth-staff"></div>
           </div>
@@ -605,8 +632,13 @@
           jobNames = {
             doctor: "طبيب",
             nurse: "تمريض",
-            reception: "استقبال",
+            reception: "موظف عيادات (خدمة المراجعين)",
             carelink: "كير لينك",
+            tech_supervisor: "مشرف فني",
+            pharmacy: "صيدلية",
+            radiology: "أشعة",
+            lab: "مختبر",
+            physio: "علاج طبيعي",
             scheduler: "موظف مواعيد",
             pe_agent: "موظف تجربة المريض",
             supervisor: "مشرف",
@@ -972,6 +1004,10 @@
             role: "pending",
             status: "pending",
           });
+          if (!error) {
+            const r = await api.from("opd_perm_requests").insert({ perms: checkedPerms(byId("auth-perms")) });
+            if (r.error) return (msg.textContent = r.error.message);
+          }
           msg.textContent = error ? error.message : "تم إرسال طلبك للمدير";
           if (!error) await check();
         };
@@ -987,17 +1023,147 @@
           title.textContent = "دخول المستخدمين وإدارة النظام";
           render();
         };
-        async function staff() {
-          const { data, error } = await api.rpc("opd_appt_members_for_admin_v2");
-          const root = byId("auth-staff");
+        /* الصلاحيات الموحّدة: الموظف يطلب، والمدير يعتمد أو يعدّل أو يرفض */
+        const PERMS = [
+          ["طلبات المواعيد", "appt_er_request", "طلب موعد طوارئ", "يرفع طلب موعد إضافي لمريض محوّل من الطوارئ"],
+          ["طلبات المواعيد", "appt_fu_request", "طلب موعد متابعة", "يرفع طلب حجز موعد متابعة لمريض"],
+          ["طلبات المواعيد", "appt_fu_handle", "معالجة طلبات المتابعة", "يطّلع على طلبات المتابعة ويحجزها ويقفلها"],
+          ["طلبات المواعيد", "appt_er_handle", "معالجة طلبات الطوارئ", "يطّلع على طلبات الطوارئ ويحجزها ويقفلها"],
+          ["تجربة المريض", "pe_submit", "رفع بلاغ واطلاع", "يسجّل بلاغات المرضى ويتابع حالتها"],
+          ["تجربة المريض", "pe_handle", "معالجة وإقفال", "يستلم البلاغ ويكتب الإجراء ويقفله بـ«تم»"],
+          ["تجربة المريض", "pe_supervisor", "مشرف", "يتابع كل البلاغات ويعالجها"],
+          ["تقرير عدم الالتزام", "nc_submit", "رفع", "يسجّل ملاحظة عدم التزام على موظف"],
+          ["تقرير عدم الالتزام", "nc_view", "اطلاع", "يشوف كل التقارير وإحصائياتها (فيها أسماء)", true],
+          ["الأداء والمؤشرات", "kpi_view", "اطلاع", "يشوف لوحة المؤشرات والتقارير", true],
+        ];
+        const PERM_NAME = Object.fromEntries(PERMS.map((p) => [p[1], p[0] + ": " + p[2]]));
+        const FRONT = ["appt_fu_request", "appt_fu_handle", "pe_handle", "nc_submit"];
+        const JOB_DEFAULTS = {
+          reception: FRONT,
+          carelink: FRONT,
+          pe_agent: ["pe_submit", "nc_submit"],
+          nurse: ["nc_submit"],
+          tech_supervisor: ["nc_submit"],
+          pharmacy: ["nc_submit"],
+          radiology: ["nc_submit"],
+          lab: ["nc_submit"],
+          physio: ["nc_submit"],
+          supervisor: ["nc_submit"],
+        };
+        /* يرسم قائمة الصلاحيات بعلامات صح. requestable: يخفي صلاحيات الاطلاع اللي يعطيها المدير فقط */
+        function drawPerms(root, checked, opt = {}) {
           root.replaceChildren();
-          const peResult = await api.from("opd_pe_access").select("user_id,role,active");
-          const peByUser = new Map((peResult.data || []).map((x) => [x.user_id, x]));
+          let svc = "";
+          for (const [group, key, label, desc, adminOnly] of PERMS) {
+            if (opt.requestable && adminOnly) continue;
+            if (opt.only && !opt.only.includes(key)) continue;
+            if (group !== svc) {
+              svc = group;
+              const h = document.createElement("div");
+              h.className = "perm-svc";
+              h.textContent = group;
+              root.append(h);
+            }
+            const l = document.createElement("label"),
+              cb = document.createElement("input"),
+              t = document.createElement("span"),
+              d = document.createElement("small");
+            l.className = "perm-opt";
+            cb.type = "checkbox";
+            cb.value = key;
+            cb.checked = checked.includes(key);
+            t.textContent = label;
+            d.textContent = desc;
+            t.append(d);
+            l.append(cb, t);
+            root.append(l);
+          }
+        }
+        const checkedPerms = (root) => [...root.querySelectorAll("input[type=checkbox]:checked")].map((c) => c.value);
+        byId("auth-job").addEventListener("change", (e) =>
+          drawPerms(byId("auth-perms"), JOB_DEFAULTS[e.target.value] || [], { requestable: true }),
+        );
+
+        /* صلاحيات الموظف الحالية + طلب صلاحية إضافية */
+        async function myPerms(status) {
+          const root = byId("auth-myperms");
+          root.replaceChildren();
+          const [p, r] = await Promise.all([
+            api.from("opd_user_perms").select("perm").eq("user_id", currentUser.id),
+            api.from("opd_perm_requests").select("perms,status,created_at").eq("user_id", currentUser.id).order("created_at", { ascending: false }).limit(1),
+          ]);
+          const mine = (p.data || []).map((x) => x.perm);
+          const last = r.data?.[0];
+          const add = (tag, text, cls) => {
+            const e = document.createElement(tag);
+            e.textContent = text;
+            if (cls) e.className = cls;
+            root.append(e);
+            return e;
+          };
+          add("p", "صلاحياتك: " + (mine.length ? mine.map((k) => PERM_NAME[k] || k).join("، ") : "لا توجد بعد"), "page-note");
+          if (last?.status === "pending") {
+            add("p", "طلبك قيد المراجعة: " + (last.perms.map((k) => PERM_NAME[k] || k).join("، ") || "اعتماد الحساب"), "perm-req");
+            return;
+          }
+          if (last?.status === "rejected") add("p", "تم رفض طلبك السابق، وتقدر ترسل طلب جديد.", "perm-req");
+          if (status === "suspended") return;
+          const rest = PERMS.filter((x) => !x[4] && !mine.includes(x[1])).map((x) => x[1]);
+          if (!rest.length) return;
+          const box = document.createElement("details");
+          const sum = document.createElement("summary");
+          sum.textContent = "طلب صلاحية إضافية";
+          const grid = document.createElement("div");
+          grid.className = "perm-grid";
+          drawPerms(grid, [], { requestable: true, only: rest });
+          const send = document.createElement("button");
+          send.type = "button";
+          send.textContent = "إرسال الطلب";
+          send.onclick = async () => {
+            const perms = checkedPerms(grid);
+            if (!perms.length) return (msg.textContent = "اختر صلاحية واحدة على الأقل");
+            const { error } = await api.from("opd_perm_requests").insert({ perms });
+            msg.textContent = error ? error.message : "تم إرسال طلبك للمدير";
+            if (!error) await myPerms(status);
+          };
+          box.append(sum, grid, send);
+          root.append(box);
+        }
+
+        /* لوحة المدير */
+        let staffRows = [];
+        async function staff() {
+          const { data, error } = await api.rpc("opd_perm_admin_list");
           if (error) {
             msg.textContent = error.message;
             return;
           }
-          for (const m of data || []) {
+          staffRows = data || [];
+          const n = staffRows.filter((m) => m.role !== "admin" && (m.req_id || m.status === "pending")).length;
+          byId("staff-filter").options[0].textContent = "الطلبات الجديدة" + (n ? " (" + n + ")" : "");
+          drawStaff();
+        }
+        function drawStaff() {
+          const root = byId("auth-staff");
+          root.replaceChildren();
+          const f = byId("staff-filter").value,
+            q = byId("staff-search").value.trim().toLocaleLowerCase("ar");
+          const rows = staffRows.filter((m) => {
+            const pending = m.role !== "admin" && (m.req_id || m.status === "pending");
+            const ok =
+              f === "all" ||
+              (f === "pending" && pending) ||
+              (f === "approved" && !pending && m.status === "approved") ||
+              (f === "other" && !pending && ["rejected", "suspended"].includes(m.status));
+            return ok && (!q || ((m.full_name || "") + " " + (m.employee_no || "") + " " + (m.email || "")).toLocaleLowerCase("ar").includes(q));
+          });
+          if (!rows.length) {
+            const p = document.createElement("p");
+            p.className = "page-note";
+            p.textContent = f === "pending" ? "لا توجد طلبات جديدة" : "لا يوجد موظفين";
+            root.append(p);
+          }
+          for (const m of rows) {
             const line = document.createElement("div");
             line.className = "line";
             const label = document.createElement("small");
@@ -1005,67 +1171,72 @@
             const info = document.createElement("p");
             info.className = "rec-meta";
             for (const [k, v] of [
-              ["الرقم الوظيفي", m.employee_no],
               ["الوظيفة", jobNames[m.job_title] || m.job_title],
               ["القسم", m.department],
+              ["الرقم الوظيفي", m.employee_no],
               ["الجوال", m.phone],
+              ["البريد", m.email],
             ]) {
               if (!v) continue;
               const span = document.createElement("span"),
-                key = document.createElement("span"),
                 val = document.createElement("b");
-              key.textContent = k;
               val.textContent = v;
               val.dir = "auto";
-              span.append(key, ": ", val);
+              span.append(k + ": ", val);
               info.append(span);
             }
-            const role = document.createElement("select"),
-              status = document.createElement("select");
-            for (const v of ["pending", "doctor", "nurse", "scheduler", "supervisor", "admin"]) role.add(new Option(roleNames[v] || v, v));
-            role.value = m.role;
-            /* اقتراح الدور حسب الوظيفة المسجلة للحساب الجديد */
-            const suggested = m.role === "pending" && ["doctor", "nurse", "scheduler", "supervisor"].includes(m.job_title);
-            if (suggested) role.value = m.job_title;
-            for (const v of ["pending", "approved", "rejected", "suspended"]) status.add(new Option(statusNames[v] || v, v));
-            status.value = m.status;
-            const save = document.createElement("button");
-            save.textContent = "حفظ";
-            save.onclick = async () => {
-              const { error } = await api.rpc("opd_appt_manage_member", { p_user: m.user_id, p_role: role.value, p_status: status.value });
-              msg.textContent = error ? error.message : "تم تحديث المستخدم";
+            line.append(label, info);
+            if (m.role === "admin") {
+              const p = document.createElement("p");
+              p.className = "page-note";
+              p.textContent = "مدير النظام: كل الصلاحيات";
+              line.append(p);
+              root.append(line);
+              continue;
+            }
+            const pending = !!m.req_id || m.status === "pending";
+            if (m.req_id) {
+              const r = document.createElement("p");
+              r.className = "perm-req";
+              r.textContent = "طلب: " + ((m.req_perms || []).map((k) => PERM_NAME[k] || k).join("، ") || "اعتماد الحساب بدون صلاحيات");
+              line.append(r);
+            }
+            const start = [...new Set([...(m.perms || []), ...(m.req_perms || []), ...(!m.req_id && !(m.perms || []).length && m.status === "pending" ? JOB_DEFAULTS[m.job_title] || [] : [])])];
+            const grid = document.createElement("div");
+            grid.className = "perm-grid";
+            drawPerms(grid, start);
+            line.append(grid);
+            const save = async (decision) => {
+              const { error } = await api.rpc("opd_perm_save", { p_user: m.user_id, p_perms: checkedPerms(grid), p_decision: decision });
+              msg.textContent = error ? error.message : decision === "rejected" ? "تم رفض الطلب" : "تم حفظ الصلاحيات";
               if (!error) await staff();
             };
-            const pe = peByUser.get(m.user_id),
-              peRole = document.createElement("select");
-            for (const [v, name] of [
-              ["none", "بدون صلاحية تجربة المريض"],
-              ["agent", "موظف تجربة المريض"],
-              ["department", "ممثل القسم"],
-              ["supervisor", "مشرف تجربة المريض"],
-              ["admin", "مدير تجربة المريض"],
-            ])
-              peRole.add(new Option(name, v));
-            peRole.value = pe?.active ? pe.role : m.status === "pending" && m.job_title === "pe_agent" ? "agent" : "none";
-            const peSave = document.createElement("button");
-            peSave.textContent = "حفظ صلاحية تجربة المريض";
-            peSave.onclick = async () => {
-              let error;
-              if (peRole.value === "none") {
-                ({ error } = await api.from("opd_pe_access").delete().eq("user_id", m.user_id));
-              } else {
-                ({ error } = await api
-                  .from("opd_pe_access")
-                  .upsert({ user_id: m.user_id, role: peRole.value, active: true }, { onConflict: "user_id" }));
-              }
-              msg.textContent = error ? error.message : "تم حفظ صلاحية تجربة المريض";
-              if (!error) await staff();
+            const btn = (text, fn, alt) => {
+              const b = document.createElement("button");
+              b.type = "button";
+              b.textContent = text;
+              if (alt) b.className = "alt";
+              b.onclick = fn;
+              line.append(b);
             };
-            line.append(label, info, role, status, save, peRole, peSave);
+            if (pending) {
+              btn("اعتماد", () => save("approved"));
+              btn("رفض", () => save("rejected"), true);
+            } else {
+              btn("حفظ التعديل", () => save("approved"));
+              const next = m.status === "approved" ? "suspended" : "approved";
+              btn(next === "suspended" ? "إيقاف الحساب" : "تفعيل الحساب", async () => {
+                const { error } = await api.rpc("opd_appt_manage_member", { p_user: m.user_id, p_role: m.role, p_status: next });
+                msg.textContent = error ? error.message : "تم تحديث المستخدم";
+                if (!error) await staff();
+              }, true);
+            }
             root.append(line);
           }
         }
         byId("auth-refresh").onclick = staff;
+        byId("staff-filter").onchange = drawStaff;
+        byId("staff-search").oninput = drawStaff;
         async function services() {
           const { data, error } = await api.from("opd_portal_services").select("service_key,status");
           if (error) return;
@@ -1132,6 +1303,8 @@
             }
             byId("auth-login").classList.add("hidden");
             byId("auth-onboard").classList.toggle("hidden", !!data);
+            byId("auth-myperms").replaceChildren();
+            if (!data) drawPerms(byId("auth-perms"), JOB_DEFAULTS[byId("auth-job").value] || [], { requestable: true });
             byId("auth-user").classList.toggle("hidden", !data);
             if (!data) {
               title.textContent = "استكمال التسجيل";
@@ -1153,6 +1326,7 @@
             } else {
               title.textContent = "حساب المستخدم";
               info.textContent = data.status === "approved" ? "تم تسجيل الدخول" : "حسابك بانتظار الاعتماد";
+              await myPerms(data.status);
             }
             if (!isAdmin) await services();
             renderPreview();

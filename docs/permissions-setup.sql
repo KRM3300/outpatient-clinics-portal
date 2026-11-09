@@ -83,7 +83,7 @@ begin
     insert into public.opd_user_perms (user_id, perm, granted_by)
       select p_user, x, auth.uid() from unnest(coalesce(p_perms, '{}')) x
       on conflict (user_id, perm) do nothing;
-    update public.opd_appt_members set status = 'approved' where user_id = p_user and status = 'pending';
+    update public.opd_appt_members set status = 'approved' where user_id = p_user and status in ('pending', 'rejected');
   else
     update public.opd_appt_members set status = 'rejected' where user_id = p_user and status = 'pending';
   end if;

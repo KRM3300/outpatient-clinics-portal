@@ -750,9 +750,12 @@
         };
 
         function setIdentity() {
-          $("identity").textContent = member.full_name + " (" + L("role", member.role) + ")";
+          $("identity").textContent = member.full_name;
         }
 
+        let perms = new Set();
+        const can = (k) => member?.role === "admin" || perms.has(k);
+        const canHandle = (r) => can(r.kind === "emergency" ? "appt_er_handle" : "appt_fu_handle");
         async function load() {
           const {
             data: { user: u },
@@ -765,6 +768,9 @@
           const { data: m, error: e } = await api.from("opd_appt_members").select("*").eq("user_id", u.id).maybeSingle();
           if (e) return error(e);
           member = m;
+          /* الصلاحيات الموحّدة من بوابة العيادات */
+          const pr = await api.from("opd_user_perms").select("perm").eq("user_id", u.id);
+          perms = new Set((pr.data || []).map((x) => x.perm));
           if (!m) {
             show("onboard");
             return;
@@ -776,11 +782,12 @@
           }
           show("app");
           setIdentity();
-          $("showAdmin").classList.toggle("hide", m.role !== "admin");
-          $("newE").classList.toggle("hide", !["doctor", "nurse", "admin"].includes(m.role));
-          $("newF").classList.toggle("hide", !["doctor", "nurse", "admin"].includes(m.role));
-          $("showStats").classList.toggle("hide", !["scheduler", "supervisor", "admin"].includes(m.role));
-          $("showSchedule").classList.toggle("hide", !["doctor", "nurse", "scheduler", "supervisor", "admin"].includes(m.role));
+          /* اعتماد الموظفين وصلاحياتهم صار من الصفحة الرئيسية للبوابة */
+          $("showAdmin").classList.add("hide");
+          $("newE").classList.toggle("hide", !can("appt_er_request"));
+          $("newF").classList.toggle("hide", !can("appt_fu_request"));
+          $("showStats").classList.toggle("hide", !can("appt_er_handle"));
+          $("showSchedule").classList.toggle("hide", ![...perms].some((k) => k.startsWith("appt_")) && m.role !== "admin");
           panel("queue");
           await requests();
           /* فتح نموذج الخدمة مباشرة عند القدوم من بطاقة الخدمة في الصفحة الرئيسية */
@@ -959,7 +966,7 @@
           const { data, error: e } = await api
             .from("opd_appt_requests")
             .select(
-              "id,kind,patient_name,patient_identifier,clinic_name,doctor_name,clinic_date,period,status,booking_reference,notification_status,notification_note,created_at",
+              "id,kind,patient_name,patient_identifier,clinic_name,doctor_name,clinic_date,period,status,booking_reference,notification_status,notification_note,created_at,requester_name",
             )
             .order("created_at", { ascending: false })
             .limit(100);
@@ -982,6 +989,7 @@
                 [tr[lang].clinic, lang === "ar" ? clinicAr[r.clinic_name] || r.clinic_name : r.clinic_name],
                 [tr[lang].doctor, doctorLabel(r.doctor_name)],
                 [tr[lang].date, r.clinic_date],
+                [lang === "ar" ? "مقدّم الطلب" : "Requested by", r.requester_name || "—"],
                 [tr[lang].period, L("period", r.period)],
               ]),
             );
@@ -996,7 +1004,7 @@
                 ]),
               );
             box.append(el("small", r.id, "rec-id"));
-            if (["scheduler", "supervisor", "admin"].includes(member.role) && ["pending", "processing"].includes(r.status)) {
+            if (canHandle(r) && ["pending", "processing"].includes(r.status)) {
               const input = el("input");
               input.placeholder = tr[lang].booking;
               box.append(input);
@@ -1022,7 +1030,7 @@
                 box.append(b);
               }
             }
-            if (r.status === "booked" && ["scheduler", "supervisor", "admin"].includes(member.role)) {
+            if (r.status === "booked" && canHandle(r)) {
               const note = el("input");
               note.placeholder =
                 lang === "ar"
