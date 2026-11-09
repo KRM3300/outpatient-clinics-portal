@@ -33,9 +33,6 @@
     </header>
 
     <main class="page wrap">
-      <p class="note" id="warning">
-        نسخة اختبار: يمنع إدخال بيانات المرضى الحقيقية قبل موافقة الجهة المختصة. لا تتصل هذه الصفحة بأنظمة المستشفى أو الإشعارات.
-      </p>
       <div id="message" class="status-msg" role="status" aria-live="polite"></div>
 
       <section id="login" class="card">
@@ -248,10 +245,6 @@
             lang === "ar"
               ? "البلاغات والشكاوى والمتابعة، بحساب موحد مع طلبات المواعيد"
               : "Cases, complaints and follow-up, with the same account as appointment requests";
-          $("warning").textContent =
-            lang === "ar"
-              ? "نسخة اختبار: يمنع إدخال بيانات المرضى الحقيقية قبل موافقة الجهة المختصة. لا تتصل هذه الصفحة بأنظمة المستشفى أو الإشعارات."
-              : "Test only: do not enter real patient information before institutional approval. No live hospital system or messaging integration.";
           for (const o of $("f-type").options) o.textContent = L("case_type", o.value);
           for (const o of $("f-priority").options) o.textContent = L("priority", o.value);
           for (const o of $("g-role").options) o.textContent = L("role", o.value);
