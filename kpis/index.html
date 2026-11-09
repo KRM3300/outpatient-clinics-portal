@@ -164,7 +164,7 @@
           <div class="chart-wrap" id="d-chart"></div>
           <div class="legend" id="d-legend"></div>
           <div id="d-rank-sec" hidden>
-            <h2 style="margin-top: 20px">ترتيب الأقسام — مؤشر الإحالة العكسية</h2>
+            <h2 style="margin-top: 20px" id="d-rank-title">ترتيب الأقسام — مؤشر الإحالة العكسية</h2>
             <div class="ranks" id="d-rank"></div>
           </div>
         </section>
@@ -253,7 +253,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
-    <script src="./dash.js?v=1"></script>
+    <script src="./dash.js?v=2"></script>
     <script>
       (() => {
         const $ = (id) => document.getElementById(id);
@@ -331,10 +331,11 @@
             .order("created_at", { ascending: false })
             .limit(500);
           if (error) return err(error);
-          rows = data || [];
+          window.__allRows = data || [];
+          rows = (data || []).filter((r) => !(r.summary || {}).kind);
           renderLatest();
           renderList();
-          window.dispatchEvent(new CustomEvent("kpi:data", { detail: rows }));
+          window.dispatchEvent(new CustomEvent("kpi:data", { detail: window.__allRows }));
         }
 
         async function openFile(r, download) {
@@ -496,6 +497,41 @@
           }
           if (!data?.length) box.append(node("p", "لا يوجد أحد غيرك حالياً.", "empty"));
         }
+
+        /* مزامنة مؤشرات Google Drive (طلبات المواعيد ورضا المرضى) — أرقام مجمّعة فقط.
+           تُنقل من تبويب Google Sheets عبر window.name بعد تشغيل kpis/sheets-agg.js هناك. */
+        window.kpiSync = async () => {
+          if (!isAdmin) return "not admin";
+          if (!window.name.startsWith("KPIDATA:")) return "no data";
+          const D = JSON.parse(window.name.slice(8));
+          window.name = "";
+          const pad = (n) => String(n).padStart(2, "0");
+          const end = (mo) => { const [y, m] = mo.split("-").map(Number); return mo + "-" + pad(new Date(y, m, 0).getDate()); };
+          const recs = [];
+          for (const m of D.req || []) {
+            const reasons = {};
+            D.RS.forEach((k, i) => { if (m.r[i]) reasons[k] = m.r[i]; });
+            recs.push({ kind: "requests", mo: m.mo, title: "طلبات المواعيد — " + m.mo, summary: { kind: "requests", days: m.days.map(([d, a, b, c]) => ({ d: m.mo + "-" + pad(d), renew: a, modify: b, cancel: c })), reasons } });
+          }
+          for (const m of D.sat || []) {
+            const { mo, ...metrics } = m;
+            recs.push({ kind: "satisfaction", mo, title: "رضا المرضى — " + mo, summary: { kind: "satisfaction", metrics } });
+          }
+          const old = window.__allRows.filter((r) => (r.summary || {}).kind);
+          let n = 0;
+          for (const x of recs) {
+            const from = x.mo + "-01", to = end(x.mo);
+            const prev = old.filter((r) => r.summary.kind === x.kind && r.period_from === from);
+            const canon = (v) => (Array.isArray(v) ? "[" + v.map(canon).join(",") + "]" : v && typeof v === "object" ? "{" + Object.keys(v).sort().map((k) => JSON.stringify(k) + ":" + canon(v[k])).join(",") + "}" : JSON.stringify(v));
+            if (prev.length === 1 && canon(prev[0].summary) === canon({ ...x.summary, items: [] })) continue;
+            const { error } = await api.from("opd_kpi_reports").insert({ report_type: "other", title: x.title, period_from: from, period_to: to, summary: { ...x.summary, items: [] }, file_path: "", uploaded_by: user.id });
+            if (error) return "ERR " + error.message;
+            for (const r of prev) await api.from("opd_kpi_reports").delete().eq("id", r.id);
+            n++;
+          }
+          await reports();
+          return "synced " + n + " of " + recs.length;
+        };
 
         $("refresh").onclick = load;
         $("reload").onclick = reports;

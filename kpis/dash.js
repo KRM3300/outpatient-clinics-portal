@@ -70,7 +70,10 @@
         { k: "compliance", l: "الالتزام بالزمن المعياري", pct: true, good: 1 },
         { k: "overdue", l: "التجاوز الفعلي (مواعيد خارج الزمن)", good: -1 },
         { k: "warn14", l: "الإنذار المبكر (14 يوماً فأكثر)", good: -1 },
-        { k: "booked", l: "المواعيد المحجوزة", good: 0 },
+        { k: "urgent5", l: "العاجلة المحجوزة خلال 5 أيام", pct: true, good: 1 },
+        { k: "routine28", l: "الروتينية (حالات جديدة من المراكز) خلال 28 يوماً", pct: true, good: 1 },
+        { k: "urgent_total", l: "عدد الإحالات العاجلة", good: 0 },
+        { k: "booked", l: "المواعيد المحجوزة من المراكز", good: 0 },
         { k: "waiting", l: "قائمة الانتظار (آخر قيمة)", good: -1, last: true },
       ],
     },
@@ -87,7 +90,34 @@
         { k: "appointments", l: "إجمالي المواعيد", good: 0 },
       ],
     },
+    requests: {
+      label: "طلبات تجديد وتعديل المواعيد",
+      kind: "requests",
+      metrics: [
+        { k: "total", l: "إجمالي الطلبات", good: 0 },
+        { k: "renew", l: "طلبات التجديد (بعد عدم الحضور)", good: -1 },
+        { k: "modify", l: "طلبات التعديل", good: -1 },
+        { k: "cancel", l: "طلبات الإلغاء", good: 0 },
+      ],
+    },
+    satisfaction: {
+      label: "رضا المرضى (القياس الداخلي)",
+      kind: "satisfaction",
+      monthly: true,
+      metrics: [
+        { k: "overall", l: "نسبة الرضا العامة (ممتاز وجيد جداً)", pct: true, good: 1 },
+        { k: "reception", l: "الاستقبال", pct: true, good: 1 },
+        { k: "nursing", l: "التمريض", pct: true, good: 1 },
+        { k: "doctor", l: "الطبيب", pct: true, good: 1 },
+        { k: "pharmacy", l: "الصيدلية", pct: true, good: 1 },
+        { k: "facility", l: "المبنى والمرافق", pct: true, good: 1 },
+        { k: "n", l: "عدد الاستبيانات", good: 0 },
+      ],
+    },
   };
+  const AXES = ["reception", "nursing", "doctor", "pharmacy", "facility"];
+  const kindRows = (k) => ROWS.filter((r) => (r.summary || {}).kind === k);
+  const monthEnd = (mo) => { const d = D(mo + "-01"); return iso(new Date(d.getFullYear(), d.getMonth() + 1, 0)); };
 
   /* ---------- تجميع البيانات لفترة ---------- */
   let ROWS = [];
@@ -117,7 +147,17 @@
       for (let d = a; d <= b; d = add(d, 1)) if (days[d]) pts.push({ d, m: { incoming: days[d].in, outgoing: days[d].out }, rep: days[d].rep });
       return pts;
     }
-    return ROWS.filter((r) => IND[ind].types.includes(r.report_type) && r.period_to >= a && r.period_to <= b)
+    if (ind === "requests") {
+      const pts = [];
+      for (const r of kindRows("requests")) for (const x of r.summary.days || []) if (x.d >= a && x.d <= b) pts.push({ d: x.d, m: { renew: x.renew, modify: x.modify, cancel: x.cancel, total: x.renew + x.modify + x.cancel }, rep: r });
+      return pts.sort((x, y) => (x.d < y.d ? -1 : 1));
+    }
+    if (ind === "satisfaction") {
+      return kindRows("satisfaction").filter((r) => r.period_from <= b && r.period_to >= a)
+        .sort((x, y) => (x.period_from < y.period_from ? -1 : 1))
+        .map((r) => ({ d: r.period_from, m: r.summary.metrics || {}, rep: r }));
+    }
+    return ROWS.filter((r) => (IND[ind].types || []).includes(r.report_type) && r.period_to >= a && r.period_to <= b)
       .sort((x, y) => (x.period_to < y.period_to ? -1 : 1))
       .map((r) => ({ d: r.period_to, m: metricsOf(r), rep: r }));
   }
@@ -138,7 +178,17 @@
       for (const p of pts) if (p.m.routine_total != null) { haveParts = true; ok += (p.m.routine_ok || 0) + (p.m.urgent_ok || 0); tot += (p.m.routine_total || 0) + (p.m.urgent_total || 0); }
       const compliance = haveParts && tot ? Math.round((ok / tot) * 1000) / 10 : booked && overdue != null ? Math.round(((booked - overdue) / booked) * 1000) / 10 : null;
       const lastWait = [...pts].reverse().find((p) => p.m.waiting != null);
-      return { booked, overdue, warn14: sum("warn14"), compliance, waiting: lastWait ? lastWait.m.waiting : null };
+      const ut = sum("urgent_total"), uo = sum("urgent_ok"), rt = sum("routine_total"), ro = sum("routine_ok");
+      const pc = (x, y) => (y ? Math.round((x / y) * 1000) / 10 : null);
+      return { booked, overdue, warn14: sum("warn14"), compliance, waiting: lastWait ? lastWait.m.waiting : null, urgent5: pc(uo, ut), routine28: pc(ro, rt), urgent_total: ut };
+    }
+    if (ind === "requests") return { total: sum("total"), renew: sum("renew"), modify: sum("modify"), cancel: sum("cancel") };
+    if (ind === "satisfaction") {
+      const o = { n: sum("n") };
+      let tn = 0, tt = 0;
+      for (const a of AXES) { const n = sum(a + "_n"), t = sum(a + "_top") || 0; o[a] = n ? Math.round((t / n) * 1000) / 10 : null; if (n) { tn += n; tt += t; } }
+      o.overall = tn ? Math.round((tt / tn) * 1000) / 10 : null;
+      return o;
     }
     const o = {};
     for (const mt of IND.adaa.metrics) {
@@ -149,8 +199,8 @@
   }
 
   // تجميع النقاط في فترات للرسم: يومي حتى 31 يوم، أسبوعي حتى 6 أشهر، وإلا شهري
-  function buckets(a, b) {
-    const n = span(a, b), out = [];
+  function buckets(a, b, monthly) {
+    const n = monthly ? 999 : span(a, b), out = [];
     if (n <= 31) { for (let d = a; d <= b; d = add(d, 1)) out.push([d, d]); }
     else if (n <= 186) { for (let d = a; d <= b; d = add(d, 7)) out.push([d, add(d, 6) > b ? b : add(d, 6)]); }
     else {
@@ -159,7 +209,7 @@
     }
     return out;
   }
-  const unit = (a, b) => { const n = span(a, b); return n <= 31 ? "يوم" : n <= 186 ? "أسبوع" : "شهر"; };
+  const unit = (a, b) => { if (IND[st.ind].monthly) return "شهر"; const n = span(a, b); return n <= 31 ? "يوم" : n <= 186 ? "أسبوع" : "شهر"; };
 
   /* ---------- الحالة والفروقات ---------- */
   function status(mt, v) {
@@ -248,7 +298,7 @@
   }
 
   function chartSeries(a, b) {
-    return buckets(a, b).map(([x, y]) => {
+    return buckets(a, b, IND[st.ind].monthly).map(([x, y]) => {
       const ag = aggregate(st.ind, seriesPoints(st.ind, x, y));
       return { a: x, b: y, v: ag ? ag[st.metric] : null };
     });
@@ -369,8 +419,10 @@
   function drawRanking(cr) {
     const sec = $("d-rank-sec"), box = $("d-rank");
     box.replaceChildren();
+    if (st.ind === "requests") return drawReasons(cr);
     if (st.ind !== "reverse") { sec.hidden = true; return; }
     sec.hidden = false;
+    $("d-rank-title").textContent = "ترتيب الأقسام — مؤشر الإحالة العكسية";
     const cur = deptTotals(st.from, st.to);
     const prev = cr ? deptTotals(cr[0], cr[1]) : null;
     if (!cur) { box.append(node("p", "تفاصيل الأقسام غير متوفرة لهذه الفترة.", "empty")); return; }
@@ -404,6 +456,39 @@
     };
     box.append(table("الأعلى", rated.slice(0, 3)), table("الأقل", rated.slice(-3).reverse()));
     box.append(node("p", "يشمل الأقسام اللي وصلها " + MIN + " إحالات واردة فأكثر في الفترة.", "page-note"));
+  }
+
+  /* أسباب عدم الحضور كما ذكرها المراجع في طلبات التجديد (بالأشهر اللي تشملها الفترة) */
+  function reasonsFor(a, b) {
+    const m = {};
+    let have = false;
+    for (const r of kindRows("requests")) {
+      if (!(r.period_from <= b && r.period_to >= a)) continue;
+      for (const [k, v] of Object.entries(r.summary.reasons || {})) { m[k] = (m[k] || 0) + v; have = true; }
+    }
+    return have ? m : null;
+  }
+  function drawReasons(cr) {
+    const sec = $("d-rank-sec"), box = $("d-rank");
+    sec.hidden = false;
+    $("d-rank-title").textContent = "أسباب عدم الحضور (من طلبات التجديد)";
+    box.replaceChildren();
+    const cur = reasonsFor(st.from, st.to), prev = cr ? reasonsFor(cr[0], cr[1]) : null;
+    if (!cur) { box.append(node("p", "لا توجد بيانات لهذه الفترة.", "empty")); return; }
+    const tot = Object.values(cur).reduce((x, y) => x + y, 0), ptot = prev ? Object.values(prev).reduce((x, y) => x + y, 0) : 0;
+    const wrap = node("div", undefined, "rank");
+    const t = node("table"), hr = node("tr");
+    for (const h of ["السبب", "العدد", "النسبة"].concat(cr ? ["التغيّر"] : [])) hr.append(node("th", h));
+    t.append(hr);
+    const mt = { pct: true, good: -1 };
+    for (const [k, v] of Object.entries(cur).sort((x, y) => y[1] - x[1])) {
+      const tr = node("tr"), sh = (v / tot) * 100;
+      tr.append(node("td", k.replace(/[.:]$/, ""), "nm"), node("td", v.toLocaleString("en-US")), node("td", sh.toFixed(1) + "%"));
+      if (cr) { const dl = prev && ptot && prev[k] != null ? delta(mt, sh, (prev[k] / ptot) * 100) : null; tr.append(node("td", dl ? dl.arrow + " " + dl.txt : "—", dl ? "dl " + dl.tone : "")); }
+      t.append(tr);
+    }
+    wrap.append(t);
+    box.append(wrap, node("p", "الأسباب محسوبة بالشهر كامل للأشهر اللي تشملها الفترة.", "page-note"));
   }
 
   /* ---------- التشغيل ---------- */
