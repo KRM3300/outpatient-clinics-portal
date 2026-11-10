@@ -10,6 +10,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="../assets/portal.css?v=4" />
+    <style>
+      .stat-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 12px; }
+      .stat-tools select, .stat-tools input, .stat-tools button { width: auto; margin: 0; }
+      .stat-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-bottom: 14px; }
+      .stat-tile { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--surface); }
+      .stat-tile b { display: block; font-size: 22px; }
+      .stat-tile small { color: var(--ink-soft); display: block; }
+      .stat-tile .d { font-size: 12.5px; color: var(--ink-soft); }
+      .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+      .stat-grid h3 { font-size: 15px; margin: 0 0 6px; }
+      .bars button { display: grid; grid-template-columns: minmax(0, 1fr) 42px; gap: 4px 8px; width: 100%; text-align: start; background: none; color: inherit; border: 0; padding: 4px 0; margin: 0; cursor: pointer; font-weight: 500; }
+      .bars button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .bars button b { text-align: end; }
+      .bars button i { grid-column: 1 / -1; height: 7px; border-radius: 4px; background: var(--action); opacity: 0.85; display: block; }
+      .bars button[aria-pressed="true"] span { text-decoration: underline; font-weight: 700; }
+      .bars .none { color: var(--ink-soft); font-size: 14px; }
+    </style>
+    <script src="../assets/clinics.js?v=1"></script>
   </head>
   <body>
     <header class="site-header">
@@ -80,7 +98,13 @@
               </div>
               <div>
                 <label for="f-dept" data-ar="القسم" data-en="Department">القسم</label>
-                <input name="department" id="f-dept" required maxlength="120" />
+                <select id="f-dept" required></select>
+                <input id="f-dept-other" class="hidden" maxlength="120" placeholder="اكتب اسم القسم" aria-label="اسم القسم" />
+              </div>
+              <div>
+                <label for="f-doc">الطبيب أو الممارس</label>
+                <select id="f-doc"></select>
+                <input id="f-doc-other" class="hidden" maxlength="150" placeholder="اكتب اسم الطبيب" aria-label="اسم الطبيب" />
               </div>
               <div>
                 <label for="f-title" data-ar="العنوان" data-en="Title">العنوان</label>
@@ -108,7 +132,6 @@
             <div class="grid" id="apptFields">
               <div><label for="f-pname">اسم المراجع</label><input name="patient_name" id="f-pname" maxlength="150" /></div>
               <div><label for="f-pfile">رقم الملف</label><input name="patient_file" id="f-pfile" maxlength="30" dir="ltr" inputmode="numeric" /></div>
-              <div><label for="f-doc">اسم الطبيب أو الممارس</label><input name="doctor_name" id="f-doc" maxlength="150" /></div>
               <div><label for="f-reason">السبب</label><input name="reason" id="f-reason" maxlength="500" /></div>
               <div><label for="f-sol">الحل المطلوب</label><input name="solution" id="f-sol" maxlength="500" /></div>
             </div>
@@ -116,6 +139,30 @@
             <textarea name="description" id="f-desc"></textarea>
             <button type="submit" data-ar="حفظ البلاغ" data-en="Save case">حفظ البلاغ</button>
           </form>
+        </section>
+
+        <section id="stats" class="card hidden">
+          <h2>تحليل البلاغات</h2>
+          <p class="page-note">البلاغات المرفوعة من المنصة. اضغط على أي عمود لتصفية السجل.</p>
+          <div class="stat-tools">
+            <select id="st-period" aria-label="الفترة">
+              <option value="week">هذا الأسبوع (الجمعة–الخميس)</option>
+              <option value="month" selected>هذا الشهر</option>
+              <option value="q">آخر 90 يوم</option>
+              <option value="custom">من – إلى</option>
+            </select>
+            <input id="st-from" type="date" class="hidden" aria-label="من" />
+            <input id="st-to" type="date" class="hidden" aria-label="إلى" />
+            <button id="st-clear" type="button" class="alt hidden">إلغاء التصفية</button>
+          </div>
+          <div class="stat-tiles" id="st-tiles"></div>
+          <div class="stat-grid">
+            <div><h3>أكثر أنواع الطلبات والمشاكل</h3><div class="bars" id="st-type"></div></div>
+            <div><h3>أكثر العيادات</h3><div class="bars" id="st-dept"></div></div>
+            <div><h3>أكثر الأطباء</h3><div class="bars" id="st-doc"></div></div>
+            <div><h3>رفعها (تجربة المريض)</h3><div class="bars" id="st-by"></div></div>
+            <div><h3>أقفلها (العيادات)</h3><div class="bars" id="st-closer"></div></div>
+          </div>
         </section>
 
         <section class="card">
@@ -309,6 +356,7 @@
           hide("app", true);
           setIdentity();
           hide("create", isAdmin || pePerms.has("pe_submit") || pePerms.has("pe_supervisor"));
+          hide("stats", isAdmin || pePerms.has("pe_supervisor"));
           /* منح الصلاحيات صار من الصفحة الرئيسية للبوابة */
           hide("admin", false);
           await records();
@@ -323,12 +371,16 @@
           e.preventDefault();
           const data = Object.fromEntries(new FormData(e.target));
           data.created_by = user.id;
+          data.department = pickDept();
+          data.doctor_name = pickDoc();
+          if (!data.department) return err({ message: "اختر القسم" });
           if (data.case_type !== "appointment")
-            for (const k of ["patient_name", "patient_file", "doctor_name", "reason", "solution"]) delete data[k];
+            for (const k of ["patient_name", "patient_file", "reason", "solution"]) delete data[k];
           const { error } = await api.from("opd_pe_cases").insert(data);
           if (error) return err(error);
           e.target.reset();
           syncAppt();
+          fillDepts();
           msg(lang === "ar" ? "تم حفظ السجل" : "Case saved");
           await records();
         };
@@ -341,16 +393,159 @@
         function badge(text, tone) {
           return node("span", text, "badge" + (tone ? " " + tone : ""));
         }
+        /* القسم والطبيب: نفس قائمة طلب موعد المتابعة + «أخرى» يدوي */
+        const OTHER = "__other";
+        const clinicAr = window.OPD_CLINIC_AR || {},
+          clinicDocs = window.OPD_CLINIC_DOCTORS || {};
+        const deptSel = $("f-dept"),
+          docSel = $("f-doc");
+        function fillDepts() {
+          deptSel.replaceChildren(new Option("— اختر القسم —", ""));
+          for (const c of Object.keys(clinicDocs)) deptSel.add(new Option(clinicAr[c] || c, c));
+          deptSel.add(new Option("أخرى (اكتب يدوياً)", OTHER));
+          fillDocs();
+        }
+        function fillDocs() {
+          docSel.replaceChildren(new Option("— بدون طبيب محدد —", ""));
+          for (const [ar] of clinicDocs[deptSel.value] || []) docSel.add(new Option(ar, ar));
+          docSel.add(new Option("أخرى (اكتب يدوياً)", OTHER));
+          syncOther();
+        }
+        function syncOther() {
+          $("f-dept-other").classList.toggle("hidden", deptSel.value !== OTHER);
+          $("f-dept-other").required = deptSel.value === OTHER;
+          $("f-doc-other").classList.toggle("hidden", docSel.value !== OTHER);
+          $("f-doc-other").required = docSel.value === OTHER;
+        }
+        deptSel.addEventListener("change", fillDocs);
+        docSel.addEventListener("change", syncOther);
+        fillDepts();
+        const pickDept = () => (deptSel.value === OTHER ? $("f-dept-other").value.trim() : clinicAr[deptSel.value] || deptSel.value);
+        const pickDoc = () => (docSel.value === OTHER ? $("f-doc-other").value.trim() : docSel.value) || null;
+
+        /* تحليل البلاغات (للمدير ومشرف تجربة المريض): البلاغات المرفوعة من المنصة فقط */
+        let ALL = [],
+          stFilter = null;
+        const dayKey = (d) => new Date(d).toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" });
+        function stRange() {
+          const v = $("st-period").value,
+            now = new Date(),
+            today = dayKey(now);
+          const back = (n) => dayKey(new Date(now.getTime() - n * 864e5));
+          if (v === "week") {
+            const dow = new Date(today + "T12:00:00").getDay(); /* الجمعة = 5 */
+            return [back((dow - 5 + 7) % 7), today];
+          }
+          if (v === "month") return [today.slice(0, 8) + "01", today];
+          if (v === "q") return [back(89), today];
+          return [$("st-from").value || back(29), $("st-to").value || today];
+        }
+        function prevRange([a, b]) {
+          const A = new Date(a + "T12:00:00"),
+            B = new Date(b + "T12:00:00"),
+            n = Math.round((B - A) / 864e5) + 1;
+          return [dayKey(new Date(A.getTime() - n * 864e5)), dayKey(new Date(A.getTime() - 864e5))];
+        }
+        const inRange = (r, [a, b]) => {
+          const k = dayKey(r.created_at);
+          return k >= a && k <= b;
+        };
+        const hours = (r) => ((r.closed_at ? new Date(r.closed_at) : new Date()) - new Date(r.created_at)) / 36e5;
+        const STAT_KEYS = { type: (r) => r.request_type, dept: (r) => r.department, doc: (r) => r.doctor_name, by: (r) => r.created_by_name, closer: (r) => (r.status === "closed" ? r.opd_staff_name : null) };
+        function shownRows() {
+          if (!stFilter) return ALL;
+          const rg = stRange();
+          return ALL.filter((r) => r.source === "app" && inRange(r, rg) && (STAT_KEYS[stFilter.k](r) || "غير محدد") === stFilter.v);
+        }
+        function drawStats() {
+          if ($("stats").classList.contains("hidden")) return;
+          const rg = stRange(),
+            pr = prevRange(rg);
+          const cur = ALL.filter((r) => r.source === "app" && inRange(r, rg)),
+            prev = ALL.filter((r) => r.source === "app" && inRange(r, pr));
+          const closed = cur.filter((r) => r.status === "closed");
+          const inSla = closed.filter((r) => hours(r) <= 24).length;
+          const tone = (r) => (hours(r) < 8 ? "g" : hours(r) <= 24 ? "o" : "r");
+          const cnt = (k) => cur.filter((r) => tone(r) === k).length;
+          const tiles = [
+            ["البلاغات", cur.length, "السابقة: " + prev.length],
+            ["مقفلة", closed.length, "مفتوحة: " + (cur.length - closed.length)],
+            ["خلال يوم عمل", closed.length ? Math.round((inSla / closed.length) * 100) + "%" : "—", "من المقفلة"],
+            ["🟢 أقل من 8 س", cnt("g"), ""],
+            ["🟠 8–24 س", cnt("o"), ""],
+            ["🔴 أكثر من 24 س", cnt("r"), ""],
+          ];
+          $("st-tiles").replaceChildren(
+            ...tiles.map(([t, v, d]) => {
+              const e = node("div", undefined, "stat-tile");
+              e.append(node("small", t), node("b", String(v)), node("span", d, "d"));
+              return e;
+            }),
+          );
+          for (const [k, id] of [["type", "st-type"], ["dept", "st-dept"], ["doc", "st-doc"], ["by", "st-by"], ["closer", "st-closer"]]) {
+            const m = new Map();
+            for (const r of cur) {
+              const v = STAT_KEYS[k](r);
+              if (k === "closer" && r.status !== "closed") continue;
+              const key = v || "غير محدد";
+              m.set(key, (m.get(key) || 0) + 1);
+            }
+            const top = [...m].sort((a, b) => b[1] - a[1]).slice(0, 8),
+              max = top[0]?.[1] || 1;
+            const box = $(id);
+            box.replaceChildren();
+            if (!top.length) box.append(node("p", "لا توجد بيانات للفترة", "none"));
+            for (const [name, n] of top) {
+              const b = node("button");
+              b.type = "button";
+              b.setAttribute("aria-pressed", String(stFilter?.k === k && stFilter?.v === name));
+              const bar = node("i");
+              bar.style.width = Math.max(4, (n / max) * 100) + "%";
+              b.append(node("span", name), node("b", String(n)), bar);
+              b.onclick = () => {
+                stFilter = stFilter?.k === k && stFilter?.v === name ? null : { k, v: name };
+                drawStats();
+                drawList();
+              };
+              box.append(b);
+            }
+          }
+          $("st-clear").classList.toggle("hidden", !stFilter);
+        }
+        $("st-period").onchange = () => {
+          const c = $("st-period").value === "custom";
+          $("st-from").classList.toggle("hidden", !c);
+          $("st-to").classList.toggle("hidden", !c);
+          stFilter = null;
+          drawStats();
+          drawList();
+        };
+        $("st-from").onchange = $("st-to").onchange = () => {
+          drawStats();
+          drawList();
+        };
+        $("st-clear").onclick = () => {
+          stFilter = null;
+          drawStats();
+          drawList();
+        };
         async function records() {
           const { data, error } = await api
             .from("opd_pe_cases")
             .select("id,case_type,title,description,department,priority,status,resolution,created_at,created_by_name,patient_name,patient_file,request_type,reason,solution,doctor_name,pe_staff_name,opd_staff_name,closed_at,source")
             .order("created_at", { ascending: false })
-            .limit(300);
+            .limit(2000);
           if (error) return err(error);
+          ALL = data || [];
+          drawStats();
+          drawList();
+        }
+        function drawList() {
+          const data = shownRows().slice(0, 300);
           $("list").replaceChildren();
-          if (!data?.length) $("list").append(node("p", lang === "ar" ? "لا توجد سجلات" : "No records", "page-note"));
-          for (const c of data || []) {
+          if (stFilter) $("list").append(node("p", "مصفّى: " + stFilter.v + " (" + shownRows().length + ")", "page-note"));
+          if (!data.length) $("list").append(node("p", lang === "ar" ? "لا توجد سجلات" : "No records", "page-note"));
+          for (const c of data) {
             const box = node("div", undefined, "item");
             const head = node("div", undefined, "rec-head");
             head.append(
