@@ -16,7 +16,7 @@
       <div class="wrap">
         <img class="site-logo" src="../assets/logo.webp" width="220" height="144" alt="شعار مستشفى الرس العام" />
         <div class="site-titles">
-          <span class="crumb" data-ar="تطبيق العيادات الخارجية" data-en="Outpatient Clinics Portal">تطبيق العيادات الخارجية</span>
+          <span class="crumb" data-ar="منصة العيادات الخارجية" data-en="Outpatient Clinics Portal">منصة العيادات الخارجية</span>
           <h1 id="title">إدارة تجربة المريض</h1>
           <p id="subtitle">البلاغات والشكاوى والمتابعة، بحساب موحد مع طلبات المواعيد</p>
         </div>
@@ -26,7 +26,7 @@
             ><svg class="i" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M5 12h14" />
               <path d="m12 5 7 7-7 7" /></svg
-            ><span data-ar="العودة للتطبيق" data-en="Back to portal">العودة للتطبيق</span></a
+            ><span data-ar="العودة للمنصة" data-en="Back to portal">العودة للمنصة</span></a
           >
         </div>
       </div>
@@ -95,15 +95,19 @@
                 </select>
               </div>
             </div>
-            <div class="grid" id="apptFields">
-              <div><label for="f-pname">اسم المراجع</label><input name="patient_name" id="f-pname" maxlength="150" /></div>
-              <div><label for="f-pfile">رقم الملف</label><input name="patient_file" id="f-pfile" maxlength="30" dir="ltr" inputmode="numeric" /></div>
+            <div class="grid">
               <div>
                 <label for="f-rtype">نوع الطلب</label>
                 <select name="request_type" id="f-rtype">
-                  <option>حجز موعد</option><option>تأجيل موعد</option><option>تجديد موعد</option><option>تقديم موعد</option><option>أخرى</option>
+                  <optgroup label="طلبات المواعيد"><option>حجز موعد</option><option>تأجيل موعد</option><option>تجديد موعد</option><option>تقديم موعد</option></optgroup>
+                  <optgroup label="ملاحظات"><option>تأخير بالحضور</option><option>عدم حجز موعد متابعة</option><option>ورقة من التنويم والطوارئ بدون حجز على النظام</option><option>خروج قبل إنتهاء العمل</option><option>عدم الإلتزام بجدول العيادة</option><option>مشكلة مع مراجع</option><option>مشكلة مع زميل</option><option>تقصير بالعمل</option><option>عدم صرف العلاج مدة الموعد</option><option>عدم تحويل المراجع بالنظام فقط تم كتابته بالنوت</option><option>عدم وجود طلب تحاليل أو أشعة بالنظام</option></optgroup>
+                  <option>أخرى</option>
                 </select>
               </div>
+            </div>
+            <div class="grid" id="apptFields">
+              <div><label for="f-pname">اسم المراجع</label><input name="patient_name" id="f-pname" maxlength="150" /></div>
+              <div><label for="f-pfile">رقم الملف</label><input name="patient_file" id="f-pfile" maxlength="30" dir="ltr" inputmode="numeric" /></div>
               <div><label for="f-doc">اسم الطبيب أو الممارس</label><input name="doctor_name" id="f-doc" maxlength="150" /></div>
               <div><label for="f-reason">السبب</label><input name="reason" id="f-reason" maxlength="500" /></div>
               <div><label for="f-sol">الحل المطلوب</label><input name="solution" id="f-sol" maxlength="500" /></div>
@@ -320,7 +324,7 @@
           const data = Object.fromEntries(new FormData(e.target));
           data.created_by = user.id;
           if (data.case_type !== "appointment")
-            for (const k of ["patient_name", "patient_file", "request_type", "doctor_name", "reason", "solution"]) delete data[k];
+            for (const k of ["patient_name", "patient_file", "doctor_name", "reason", "solution"]) delete data[k];
           const { error } = await api.from("opd_pe_cases").insert(data);
           if (error) return err(error);
           e.target.reset();
@@ -361,11 +365,11 @@
             for (const [k, v] of [
               [labels[lang].dept, c.department],
               [lang === "ar" ? "رفعه" : "Submitted by", c.pe_staff_name || c.created_by_name],
+              ["نوع الطلب", c.request_type],
               ...(c.case_type === "appointment"
                 ? [
                     ["المراجع", c.patient_name],
                     ["رقم الملف", c.patient_file],
-                    ["نوع الطلب", c.request_type],
                     ["الطبيب", c.doctor_name],
                     ["السبب", c.reason],
                     ["الحل المطلوب", c.solution],

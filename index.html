@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#0f3a57" />
-    <meta name="description" content="تطبيق العيادات الخارجية - مستشفى الرس العام" />
-    <title>تطبيق العيادات الخارجية | مستشفى الرس العام</title>
+    <meta name="description" content="منصة العيادات الخارجية - مستشفى الرس العام" />
+    <title>منصة العيادات الخارجية | مستشفى الرس العام</title>
     <link rel="icon" href="assets/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -309,7 +309,7 @@
         <img class="site-logo" src="assets/logo.webp" width="220" height="144" alt="شعار مستشفى الرس العام" />
         <div class="site-titles">
           <span class="crumb">مستشفى الرس العام</span>
-          <h1>تطبيق العيادات الخارجية</h1>
+          <h1>منصة العيادات الخارجية</h1>
           <p>منصة موحدة للوصول إلى خدمات وأنظمة العيادات الخارجية</p>
         </div>
         <div class="site-actions">
@@ -490,14 +490,28 @@
           <p class="desc">البلاغات والشكاوى وطلبات المواعيد، ومتابعتها وإقفالها بمدة الإنجاز.</p>
           <a class="go" href="./patient-experience/">فتح الخدمة</a>
         </article>
-        <article class="tile" data-group="active" data-search="دليل استخدام التطبيق شرح تعليم ذاتي طريقة العمل SLA مسار الخدمة">
+        <article class="tile" data-group="active" data-search="جدول العيادات الخارجية جدول الأطباء العيادات الفترات الغرف">
+          <span class="tile-ico"
+            ><svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="17" rx="2" />
+              <path d="M3 9h18M8 2v4M16 2v4M8 13h3M13 13h3M8 17h3" /></svg
+          ></span>
+          <div class="tile-top">
+            <h3>جدول العيادات الخارجية</h3>
+            <span class="state">معتمد</span>
+          </div>
+          <div class="en">Outpatient Clinics Schedule</div>
+          <p class="desc">جدول الأطباء والعيادات للأسبوع: بحث بالطبيب أو التخصص، والفترات والغرف والإجازات.</p>
+          <a class="go" href="https://krm3300.github.io/opd-smart-guide/clinic-schedule/">فتح الجدول</a>
+        </article>
+        <article class="tile" data-group="active" data-search="دليل استخدام المنصة شرح تعليم ذاتي طريقة العمل SLA مسار الخدمة">
           <span class="tile-ico"
             ><svg class="i" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z" />
               <path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z" /></svg
           ></span>
           <div class="tile-top">
-            <h3>دليل استخدام التطبيق</h3>
+            <h3>دليل استخدام المنصة</h3>
             <span class="state">معتمد</span>
           </div>
           <div class="en">User Guide</div>
@@ -683,9 +697,9 @@
           مرفوض: "Rejected",
           موقوف: "Suspended",
           مستخدم: "User",
-          "مستشفى الرس العام — تطبيق العيادات الخارجية": "Al Rass General Hospital — Outpatient Clinics Portal",
+          "مستشفى الرس العام — منصة العيادات الخارجية": "Al Rass General Hospital — Outpatient Clinics Portal",
           "مستشفى الرس العام": "Al Rass General Hospital",
-          "تطبيق العيادات الخارجية": "Outpatient Clinics Portal",
+          "منصة العيادات الخارجية": "Outpatient Clinics Portal",
           "منصة موحدة للوصول إلى خدمات وأنظمة العيادات الخارجية": "One portal for outpatient clinic services and systems",
           "الأنظمة والخدمات": "Systems and services",
           "جميع الخدمات": "All services",
@@ -713,7 +727,7 @@
             "Operating instructions, physician schedules, employee guides and approved services.",
           "البلاغات والشكاوى وطلبات المواعيد، ومتابعتها وإقفالها بمدة الإنجاز.":
             "Complaints, reports and appointment requests, with follow-up, closure and turnaround time.",
-          "لوحة مخصصة لنشر المؤشرات والأرقام التشغيلية الدورية بعد تزويد التطبيق بالبيانات المعتمدة.":
+          "لوحة مخصصة لنشر المؤشرات والأرقام التشغيلية الدورية بعد تزويد المنصة بالبيانات المعتمدة.":
             "A dashboard for periodic operational indicators once approved data is provided.",
           "عرض نتائج رضا المرضى ومؤشراته واتجاهاته، وفق الأرقام الدورية التي تُعتمد لاحقًا.":
             "Patient satisfaction results, metrics and trends based on approved periodic data.",
@@ -861,7 +875,7 @@
           document.documentElement.lang = lang;
           document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
           document.title =
-            lang === "en" ? "Outpatient Clinics Portal | Al Rass General Hospital" : "تطبيق العيادات الخارجية | مستشفى الرس العام";
+            lang === "en" ? "Outpatient Clinics Portal | Al Rass General Hospital" : "منصة العيادات الخارجية | مستشفى الرس العام";
           document.getElementById("language-toggle").textContent = lang === "ar" ? "English" : "العربية";
           translateTree();
           render();
@@ -1051,6 +1065,7 @@
           ["تقرير عدم الالتزام", "nc_view", "اطلاع", "يشوف كل التقارير وإحصائياتها (فيها أسماء)", true],
           ["الأداء والمؤشرات", "kpi_view", "اطلاع", "يشوف لوحة المؤشرات والتقارير", true],
           ["دليل الموظف الذكي", "guide_view", "اطلاع", "يدخل الدليل برقمه الوظيفي (التعليمات، التعاميم، الجداول)"],
+          ["جدول العيادات الخارجية", "schedule_view", "اطلاع", "يشوف جدول الأطباء والعيادات برقمه الوظيفي، بدون الدليل"],
         ];
         const PERM_NAME = Object.fromEntries(PERMS.map((p) => [p[1], p[0] + ": " + p[2]]));
         const FRONT = ["appt_fu_request", "appt_fu_handle", "pe_handle", "nc_submit"];
