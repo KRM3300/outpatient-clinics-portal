@@ -13,6 +13,15 @@
     <link rel="stylesheet" href="assets/portal.css?v=4" />
     <style>
       /* تنسيقات خاصة بالصفحة الرئيسية فقط */
+      .access-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .who-email {
+        display: block;
+        text-align: start;
+      }
       .accessbar {
         display: flex;
         align-items: center;
@@ -288,7 +297,9 @@
         .accessbar {
           padding: 14px;
         }
-        .accessbar > button {
+        .accessbar > button,
+        .access-actions,
+        .access-actions button {
           width: 100%;
         }
         .tile {
@@ -329,6 +340,7 @@
           <div>
             <strong id="access-title">دخول المستخدمين وإدارة النظام</strong>
             <small id="access-info">سجّل دخولك بالبريد الإلكتروني لعرض صلاحياتك</small>
+            <small id="who-email" class="who-email hidden" dir="ltr"></small>
           </div>
         </div>
         <label id="view-as-wrap" class="hidden"
@@ -344,7 +356,16 @@
             <option value="guest">مستخدم غير معتمد</option>
           </select></label
         >
-        <button type="button" id="open-login">دخول / إدارة المستخدمين</button>
+        <div class="access-actions">
+          <button type="button" id="open-login">دخول / إدارة المستخدمين</button>
+          <button type="button" id="quick-logout" class="alt hidden">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m16 17 5-5-5-5" />
+              <path d="M21 12H9" />
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg
+            ><span>تسجيل الخروج</span>
+          </button>
+        </div>
       </div>
 
       <section id="role-preview" class="card authpanel hidden">
@@ -757,6 +778,7 @@
           "تسجيل مستخدم جديد": "New user registration",
           "إرسال طلب الاعتماد": "Submit approval request",
           "تسجيل الخروج": "Sign out",
+          "تم تسجيل الخروج. يمكن لمستخدم آخر الدخول الآن.": "Signed out. Another user can sign in now.",
           "إدارة الخدمات": "Service management",
           "تظهر الخدمة للمستخدمين بعد اعتمادها.": "Services become available to users after approval.",
           "اعتماد المستخدمين": "User approvals",
@@ -1040,18 +1062,33 @@
           msg.textContent = error ? error.message : "تم إرسال طلبك للمدير";
           if (!error) await check();
         };
-        byId("auth-logout").onclick = async () => {
-          await api.auth.signOut();
+        /* تسجيل الخروج من المنصة على هذا الجهاز فقط، ثم تجهيز شاشة الدخول للمستخدم التالي */
+        async function signOutHere() {
+          await api.auth.signOut({ scope: "local" });
           currentUser = null;
           isAdmin = false;
           accountApproved = false;
           viewWrap.classList.add("hidden");
           renderPreview();
           byId("auth-user").classList.add("hidden");
+          byId("auth-onboard").classList.add("hidden");
+          byId("auth-admin").classList.add("hidden");
           byId("auth-login").classList.remove("hidden");
+          byId("auth-verify-box").classList.add("hidden");
+          byId("auth-email").value = "";
+          byId("auth-code").value = "";
+          byId("quick-logout").classList.add("hidden");
+          byId("who-email").classList.add("hidden");
+          byId("who-email").textContent = "";
           title.textContent = "دخول المستخدمين وإدارة النظام";
+          info.textContent = "سجّل دخولك بالبريد الإلكتروني لعرض صلاحياتك";
+          panel.classList.remove("hidden");
+          msg.textContent = "تم تسجيل الخروج. يمكن لمستخدم آخر الدخول الآن.";
           render();
-        };
+          byId("auth-email").focus();
+        }
+        byId("auth-logout").onclick = signOutHere;
+        byId("quick-logout").onclick = signOutHere;
         /* الصلاحيات الموحّدة: الموظف يطلب، والمدير يعتمد أو يعدّل أو يرفض */
         const PERMS = [
           ["طلبات المواعيد", "appt_er_request", "طلب موعد طوارئ", "يرفع طلب موعد إضافي لمريض محوّل من الطوارئ"],
@@ -1320,6 +1357,9 @@
             isAdmin = false;
             accountApproved = false;
             viewWrap.classList.add("hidden");
+            byId("quick-logout").classList.toggle("hidden", !user);
+            byId("who-email").classList.toggle("hidden", !user);
+            byId("who-email").textContent = user ? user.email : "";
             if (!user) {
               byId("auth-login").classList.remove("hidden");
               byId("auth-onboard").classList.add("hidden");
