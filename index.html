@@ -569,6 +569,22 @@
           <p class="desc">أرشيف تقارير ومؤشرات العيادات الخارجية اليومية والأسبوعية، للمعتمدين فقط.</p>
           <a class="go" href="./kpis/">فتح الخدمة</a>
         </article>
+        <article class="tile" data-group="data" data-search="إنتاجية الموظفين البلاغات المرفوعة المقفلة مدة الإقفال عدم الالتزام productivity">
+          <span class="tile-ico"
+            ><svg class="i" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg
+          ></span>
+          <div class="tile-top">
+            <h3>إنتاجية الموظفين</h3>
+            <span class="state">معتمد</span>
+          </div>
+          <div class="en">Staff Productivity</div>
+          <p class="desc">ما رفعه وأقفله كل موظف في تجربة المريض ومدة الإقفال، وتقارير عدم الالتزام، مع المقارنة بالفترة السابقة.</p>
+          <a class="go" href="./productivity/">فتح الخدمة</a>
+        </article>
         <article class="tile" data-group="data" data-search="رضا المريض رضا المستفيدين نتائج التقييمات الأرقام">
           <span class="tile-ico"
             ><svg class="i" viewBox="0 0 24 24" aria-hidden="true">
@@ -734,6 +750,9 @@
           "إدارة تجربة المريض": "Patient Experience Management",
           "الأداء والمؤشرات": "Performance and KPIs",
           "رضا المريض": "Patient Satisfaction",
+          "إنتاجية الموظفين": "Staff Productivity",
+          "ما رفعه وأقفله كل موظف في تجربة المريض ومدة الإقفال، وتقارير عدم الالتزام، مع المقارنة بالفترة السابقة.":
+            "Cases raised and closed by each employee with closing time, plus non-compliance reports, compared with the previous period.",
           "طلب موعد إضافي من الطوارئ": "Emergency additional appointment request",
           "طلب حجز موعد متابعة": "Follow-up appointment request",
           "فتح الخدمة": "Open service",
@@ -1098,9 +1117,11 @@
           ["تجربة المريض", "pe_submit", "رفع بلاغ واطلاع", "يسجّل بلاغات المرضى ويتابع حالتها"],
           ["تجربة المريض", "pe_handle", "معالجة وإقفال", "يستلم البلاغ ويكتب الإجراء ويقفله بـ«تم»"],
           ["تجربة المريض", "pe_supervisor", "مشرف", "يتابع كل البلاغات ويعالجها"],
+          ["تجربة المريض", "pe_alert", "تنبيه صوتي", "يرن عند البلاغ الجديد والتصعيد والتحويل وصفحة تجربة المريض مفتوحة (مع صلاحية اطلاع على البلاغات)"],
           ["تقرير عدم الالتزام", "nc_submit", "رفع", "يسجّل ملاحظة عدم التزام على موظف"],
           ["تقرير عدم الالتزام", "nc_view", "اطلاع", "يشوف كل التقارير وإحصائياتها (فيها أسماء)", true],
           ["الأداء والمؤشرات", "kpi_view", "اطلاع", "يشوف لوحة المؤشرات والتقارير", true],
+          ["إنتاجية الموظفين", "prod_view", "اطلاع", "يشوف عدد ما رفعه وأقفله كل موظف ومدة الإقفال (فيها أسماء موظفين)", true],
           ["دليل الموظف الذكي", "guide_view", "اطلاع", "يدخل الدليل برقمه الوظيفي (التعليمات، التعاميم، الجداول)"],
           ["جدول العيادات الخارجية", "schedule_view", "اطلاع", "يشوف جدول الأطباء والعيادات برقمه الوظيفي، بدون الدليل"],
         ];

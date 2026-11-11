@@ -32,6 +32,14 @@
       .list-tools .seg button + button { border-inline-start: 1px solid var(--line-strong); }
       .list-tools .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
       .list-tools input[type="search"] { flex: 1 1 240px; width: auto; margin: 0; }
+      .smart { border: 1px solid var(--line-strong); border-radius: var(--radius); padding: 12px 14px 0; margin: 0 0 14px; }
+      .smart legend { font-weight: 600; padding: 0 6px; }
+      .smart .check { font-weight: 500; margin: -6px 0 14px; cursor: pointer; }
+      .smart input:disabled { opacity: 0.5; }
+      .s-warn { margin: 0 0 12px; font-size: 14px; color: var(--warn-ink); }
+      .s-warn.bad { color: var(--danger); }
+      .s-warn:empty { display: none; }
+      #alertBtn[aria-pressed="true"] { background: var(--ok-bg); color: var(--ok-ink); border-color: var(--ok-ink); }
     </style>
     <script src="../assets/clinics.js?v=1"></script>
   </head>
@@ -82,6 +90,7 @@
           <div class="toolbar">
             <strong id="identity"></strong>
             <div>
+              <button id="alertBtn" class="alt hidden" type="button" aria-pressed="false">تفعيل التنبيه الصوتي</button>
               <button id="reload" class="alt" type="button" data-ar="تحديث السجلات" data-en="Refresh records">تحديث السجلات</button>
               <button id="logout" class="alt" type="button" data-ar="تسجيل الخروج" data-en="Sign out">تسجيل الخروج</button>
             </div>
@@ -138,9 +147,46 @@
             <div class="grid" id="apptFields">
               <div><label for="f-pname">اسم المراجع</label><input name="patient_name" id="f-pname" maxlength="150" /></div>
               <div><label for="f-pfile">رقم الملف</label><input name="patient_file" id="f-pfile" maxlength="30" dir="ltr" inputmode="numeric" /></div>
-              <div><label for="f-reason">السبب</label><input name="reason" id="f-reason" maxlength="500" /></div>
-              <div><label for="f-sol">الحل المطلوب</label><input name="solution" id="f-sol" maxlength="500" /></div>
+              <div class="legacy-appt"><label for="f-reason">السبب</label><input name="reason" id="f-reason" maxlength="500" /></div>
+              <div class="legacy-appt"><label for="f-sol">الحل المطلوب</label><input name="solution" id="f-sol" maxlength="500" /></div>
             </div>
+            <fieldset id="smartAppt" class="smart hidden">
+              <legend id="s-legend">تفاصيل الموعد</legend>
+              <div class="grid">
+                <div id="s-cur-box">
+                  <label for="s-cur-date" id="s-cur-label">الموعد الحالي</label>
+                  <input id="s-cur-date" type="date" />
+                </div>
+                <div id="s-cur-period-box">
+                  <label for="s-cur-period">فترة الموعد الحالي</label>
+                  <select id="s-cur-period" class="period"></select>
+                </div>
+                <div id="s-req-box">
+                  <label for="s-req-date" id="s-req-label">التاريخ المطلوب</label>
+                  <input id="s-req-date" type="date" />
+                  <label class="check" id="s-earliest-box"><input id="s-earliest" type="checkbox" /> أقرب موعد متاح</label>
+                </div>
+                <div>
+                  <label for="s-req-period">الفترة المطلوبة</label>
+                  <select id="s-req-period" class="period"></select>
+                </div>
+                <div id="s-renew-box">
+                  <label for="s-renew">سبب التجديد</label>
+                  <select id="s-renew">
+                    <option value="">— اختر السبب —</option>
+                    <option>لم يحضر</option>
+                    <option>انتهت صلاحيته</option>
+                    <option value="__other">أخرى</option>
+                  </select>
+                  <input id="s-renew-other" class="hidden" maxlength="300" placeholder="اكتب السبب" aria-label="سبب التجديد" />
+                </div>
+                <div id="s-reason-box">
+                  <label for="s-reason">السبب</label>
+                  <input id="s-reason" maxlength="300" />
+                </div>
+              </div>
+              <p id="s-warn" class="s-warn" role="status" aria-live="polite"></p>
+            </fieldset>
             <label for="f-desc" data-ar="الوصف" data-en="Description">الوصف</label>
             <textarea name="description" id="f-desc"></textarea>
             <button type="submit" data-ar="حفظ البلاغ" data-en="Save case">حفظ البلاغ</button>
@@ -284,14 +330,8 @@
           const txt = (closed ? "المدة: " : "مفتوح منذ: ") + (h < 48 ? Math.max(0, Math.round(h)) + " ساعة" : Math.round(h / 24) + " يوم");
           return badge(txt, h < 8 ? "" : h <= 24 ? "warn" : "danger");
         }
-        const syncAppt = () => {
-          const on = $("f-type").value === "appointment";
-          $("apptFields").classList.toggle("hidden", !on);
-          $("f-pname").required = on;
-          $("f-pfile").required = on;
-        };
-        $("f-type").addEventListener("change", syncAppt);
-        syncAppt();
+        /* يُعرّف بعد قوائم العيادات (انظر النموذج الذكي) */
+        let syncAppt = () => {};
         const priorityTone = { normal: "wait", high: "draft", urgent: "danger" };
 
         function translate() {
@@ -348,7 +388,7 @@
           hide("login", !u);
           hide("pending", false);
           hide("app", false);
-          if (!u) return;
+          if (!u) return setupAlert(false);
           const [member, grant] = await Promise.all([
             api.from("opd_appt_members").select("role,status").eq("user_id", u.id).maybeSingle(),
             api.from("opd_user_perms").select("perm").eq("user_id", u.id),
@@ -360,6 +400,7 @@
           access = pePerms.has("pe_supervisor") ? "supervisor" : pePerms.has("pe_handle") ? "department" : pePerms.has("pe_submit") ? "agent" : null;
           const allowed = isAdmin || (member.data?.status === "approved" && !!access);
           if (!allowed) {
+            setupAlert(false);
             hide("pending", true);
             $("pendingText").textContent =
               lang === "ar"
@@ -371,6 +412,7 @@
           setIdentity();
           hide("create", isAdmin || pePerms.has("pe_submit") || pePerms.has("pe_supervisor"));
           hide("stats", isAdmin || pePerms.has("pe_supervisor"));
+          setupAlert(isAdmin || pePerms.has("pe_alert"));
           /* منح الصلاحيات صار من الصفحة الرئيسية للبوابة */
           hide("admin", false);
           await records();
@@ -378,6 +420,7 @@
         $("refresh").onclick = load;
         $("reload").onclick = records;
         $("logout").onclick = async () => {
+          setupAlert(false);
           await api.auth.signOut();
           await load();
         };
@@ -390,9 +433,21 @@
           if (!data.department) return err({ message: "اختر القسم" });
           if (data.case_type !== "appointment")
             for (const k of ["patient_name", "patient_file", "reason", "solution"]) delete data[k];
+          if (smartRule()) {
+            smartTouched = true;
+            const [bad] = smartCheck();
+            syncSmart();
+            if (bad) return err({ message: bad });
+            autoTitle();
+            Object.assign(data, smartValues(), { title: $("f-title").value });
+            data.solution = apptSummary(data);
+          }
           const { error } = await api.from("opd_pe_cases").insert(data);
           if (error) return err(error);
           e.target.reset();
+          smartTouched = false;
+          for (const id of ["s-cur-date", "s-cur-period", "s-req-date", "s-req-period", "s-renew", "s-renew-other", "s-reason"]) $(id).value = "";
+          $("s-earliest").checked = false;
           syncAppt();
           fillDepts();
           msg(lang === "ar" ? "تم حفظ السجل" : "Case saved");
@@ -436,6 +491,129 @@
         fillDepts();
         const pickDept = () => (deptSel.value === OTHER ? $("f-dept-other").value.trim() : clinicAr[deptSel.value] || deptSel.value);
         const pickDoc = () => (docSel.value === OTHER ? $("f-doc-other").value.trim() : docSel.value) || null;
+
+        /* النموذج الذكي لطلبات المواعيد: الخانات حسب نوع الطلب، عنوان تلقائي، وفحص التواريخ */
+        const SMART = {
+          "حجز موعد": { cur: false, earliest: true, reason: false },
+          "تجديد موعد": { cur: "last", earliest: true, reason: "renew" },
+          "تأجيل موعد": { cur: "current", earliest: false, reason: "text", after: true },
+          "تقديم موعد": { cur: "current", earliest: true, reason: "text", before: true },
+        };
+        const PERIODS = [
+          ["صباحية", "صباحية (10:30 ص)"],
+          ["ظهرية", "ظهرية (02:30 م)"],
+          ["مسائية", "مسائية (06:30 م)"],
+        ];
+        for (const sel of document.querySelectorAll("#smartAppt select.period")) {
+          sel.add(new Option("— اختر الفترة —", ""));
+          for (const [v, t] of PERIODS) sel.add(new Option(t, v));
+        }
+        const todayKey = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" });
+        const ddmm = (d) => (d ? d.slice(8, 10) + "/" + d.slice(5, 7) : "");
+        const smartRule = () => ($("f-type").value === "appointment" ? SMART[$("f-rtype").value] : null);
+        function apptSummary(c) {
+          const req = c.appt_earliest ? "أقرب موعد" : ddmm(c.appt_requested_date);
+          if (!req && !c.appt_current_date) return null;
+          const parts = [];
+          if (c.appt_current_date)
+            parts.push(
+              c.request_type === "تجديد موعد"
+                ? "آخر موعد " + ddmm(c.appt_current_date)
+                : ("الحالي " + ddmm(c.appt_current_date) + " " + (c.appt_current_period || "")).trim(),
+            );
+          if (req) parts.push(("المطلوب " + req + " " + (c.appt_requested_period || "")).trim());
+          return parts.join(" ← ");
+        }
+        function smartValues() {
+          const rule = smartRule();
+          if (!rule) return null;
+          const v = {
+            appt_current_date: rule.cur ? $("s-cur-date").value || null : null,
+            appt_current_period: rule.cur === "current" ? $("s-cur-period").value || null : null,
+            appt_earliest: rule.earliest && $("s-earliest").checked,
+            appt_requested_period: $("s-req-period").value || null,
+          };
+          v.appt_requested_date = v.appt_earliest ? null : $("s-req-date").value || null;
+          v.reason =
+            rule.reason === "renew"
+              ? $("s-renew").value === OTHER
+                ? $("s-renew-other").value.trim()
+                : $("s-renew").value
+              : rule.reason === "text"
+                ? $("s-reason").value.trim()
+                : null;
+          return v;
+        }
+        /* يرجّع [خطأ يمنع الحفظ، تنبيه فقط] */
+        function smartCheck() {
+          const rule = smartRule(),
+            v = smartValues();
+          if (!rule) return ["", ""];
+          const today = todayKey();
+          if (rule.cur && !v.appt_current_date) return [rule.cur === "last" ? "أدخل تاريخ آخر موعد" : "أدخل تاريخ الموعد الحالي", ""];
+          if (rule.cur === "current" && v.appt_current_date < today) return ["تاريخ الموعد الحالي قبل اليوم", ""];
+          if (rule.cur === "current" && !v.appt_current_period) return ["اختر فترة الموعد الحالي", ""];
+          if (!v.appt_earliest && !v.appt_requested_date) return [rule.earliest ? "أدخل التاريخ المطلوب أو اختر «أقرب موعد متاح»" : "أدخل التاريخ المطلوب", ""];
+          if (v.appt_requested_date && v.appt_requested_date < today) return ["التاريخ المطلوب لا يكون قبل اليوم", ""];
+          if (rule.after && v.appt_requested_date && v.appt_requested_date <= v.appt_current_date)
+            return ["في التأجيل يجب أن يكون التاريخ المطلوب بعد الموعد الحالي", ""];
+          if (rule.before && v.appt_requested_date && v.appt_requested_date >= v.appt_current_date)
+            return ["في التقديم يجب أن يكون التاريخ المطلوب قبل الموعد الحالي", ""];
+          if (!v.appt_requested_period) return ["اختر الفترة المطلوبة", ""];
+          if (rule.reason && !v.reason) return [rule.reason === "renew" ? "اختر سبب التجديد" : "اكتب السبب", ""];
+          const dow = v.appt_requested_date ? new Date(v.appt_requested_date + "T12:00:00").getDay() : -1;
+          return ["", dow === 5 || dow === 6 ? "تنبيه: التاريخ المطلوب يوم " + (dow === 5 ? "جمعة" : "سبت") + "، تأكد أن العيادة تعمل فيه." : ""];
+        }
+        function autoTitle() {
+          if (!smartRule()) return;
+          const clinic = deptSel.value ? pickDept() : "";
+          $("f-title").value = [$("f-rtype").value, clinic, $("f-pfile").value.trim()].filter(Boolean).join(" – ");
+        }
+        let smartTouched = false;
+        function syncSmart() {
+          const rule = smartRule();
+          hide("smartAppt", !!rule);
+          document.querySelectorAll(".legacy-appt").forEach((e) => e.classList.toggle("hidden", !!rule));
+          $("f-title").readOnly = !!rule;
+          if (!rule) return;
+          const today = todayKey();
+          hide("s-cur-box", !!rule.cur);
+          hide("s-cur-period-box", rule.cur === "current");
+          $("s-cur-label").textContent = rule.cur === "last" ? "تاريخ آخر موعد" : "تاريخ الموعد الحالي";
+          if (rule.cur === "current") $("s-cur-date").min = today;
+          else $("s-cur-date").removeAttribute("min");
+          hide("s-earliest-box", rule.earliest);
+          if (!rule.earliest) $("s-earliest").checked = false;
+          $("s-req-date").disabled = $("s-earliest").checked;
+          $("s-req-date").min = today;
+          hide("s-renew-box", rule.reason === "renew");
+          hide("s-renew-other", rule.reason === "renew" && $("s-renew").value === OTHER);
+          hide("s-reason-box", rule.reason === "text");
+          $("s-legend").textContent = "تفاصيل " + $("f-rtype").value;
+          autoTitle();
+          const [bad, warn] = smartCheck();
+          $("s-warn").textContent = (smartTouched && bad) || warn;
+          $("s-warn").classList.toggle("bad", !!(smartTouched && bad));
+        }
+        syncAppt = () => {
+          const on = $("f-type").value === "appointment";
+          $("apptFields").classList.toggle("hidden", !on);
+          $("f-pname").required = on;
+          $("f-pfile").required = on;
+          syncSmart();
+        };
+        $("f-type").addEventListener("change", syncAppt);
+        $("f-rtype").addEventListener("change", () => {
+          smartTouched = false;
+          syncSmart();
+        });
+        $("smartAppt").addEventListener("input", syncSmart);
+        $("smartAppt").addEventListener("change", syncSmart);
+        for (const id of ["f-pfile", "f-dept", "f-dept-other"]) {
+          $(id).addEventListener("input", autoTitle);
+          $(id).addEventListener("change", autoTitle);
+        }
+        syncAppt();
 
         /* تحليل البلاغات (للمدير ومشرف تجربة المريض): البلاغات المرفوعة من المنصة فقط */
         let ALL = [],
@@ -546,13 +724,98 @@
         async function records() {
           const { data, error } = await api
             .from("opd_pe_cases")
-            .select("id,case_type,title,description,department,priority,status,resolution,created_at,created_by_name,patient_name,patient_file,request_type,reason,solution,doctor_name,pe_staff_name,opd_staff_name,closed_at,source")
+            .select("id,case_type,title,description,department,priority,status,resolution,created_at,created_by_name,patient_name,patient_file,request_type,reason,solution,doctor_name,pe_staff_name,opd_staff_name,closed_at,source,appt_current_date,appt_current_period,appt_requested_date,appt_requested_period,appt_earliest")
             .order("created_at", { ascending: false })
             .limit(2000);
           if (error) return err(error);
           ALL = data || [];
           drawStats();
           drawList();
+        }
+        /* التنبيه الصوتي (لمن عنده صلاحية pe_alert): يرن عند بلاغ جديد أو تصعيد أو تحويل، ونغمة مختلفة للعاجل.
+           المتصفح لا يسمح بالصوت إلا بعد ضغطة من المستخدم، لذلك التفعيل بزر ويُحفظ على هذا الجهاز */
+        let alertAllowed = false,
+          alertOn = false,
+          audio = null,
+          channel = null,
+          refreshTimer = null;
+        const ALERT_KEY = "opd_pe_alert_on";
+        function ensureAudio() {
+          try {
+            audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+            if (audio.state === "suspended") audio.resume();
+          } catch (e) {
+            audio = null;
+          }
+          return audio;
+        }
+        function chime(urgent) {
+          const ctx = ensureAudio();
+          if (!ctx) return;
+          const notes = urgent ? [988, 740, 988, 740, 988] : [660, 880];
+          const step = urgent ? 0.16 : 0.22;
+          notes.forEach((f, i) => {
+            const o = ctx.createOscillator(),
+              g = ctx.createGain(),
+              t = ctx.currentTime + i * step;
+            o.type = urgent ? "square" : "sine";
+            o.frequency.value = f;
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(urgent ? 0.18 : 0.3, t + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + step - 0.02);
+            o.connect(g).connect(ctx.destination);
+            o.start(t);
+            o.stop(t + step);
+          });
+        }
+        function drawAlertBtn() {
+          $("alertBtn").textContent = alertOn ? "التنبيه الصوتي مفعّل" : "تفعيل التنبيه الصوتي";
+          $("alertBtn").setAttribute("aria-pressed", String(alertOn));
+        }
+        $("alertBtn").onclick = () => {
+          alertOn = !alertOn;
+          try {
+            localStorage.setItem(ALERT_KEY, alertOn ? "1" : "0");
+          } catch (e) {}
+          drawAlertBtn();
+          if (alertOn) chime(false);
+          msg(alertOn ? "التنبيه الصوتي مفعّل. اترك الصفحة مفتوحة ليصلك التنبيه." : "تم إيقاف التنبيه الصوتي.");
+        };
+        /* بعد إعادة فتح الصفحة: أول ضغطة في أي مكان تسمح بالصوت */
+        document.addEventListener("pointerdown", () => alertOn && ensureAudio(), { passive: true });
+        function onCaseChange(p) {
+          const n = p.new || {};
+          let what = "";
+          if (p.eventType === "INSERT" && n.created_by !== user?.id) what = "بلاغ جديد";
+          if (p.eventType === "UPDATE" && ["escalated", "transferred"].includes(n.status)) {
+            const before = ALL.find((r) => r.id === n.id);
+            if (!before || before.status !== n.status) what = n.status === "escalated" ? "تصعيد بلاغ" : "تحويل بلاغ";
+          }
+          if (what && alertOn) {
+            chime(n.priority === "urgent");
+            msg(what + (n.priority === "urgent" ? " (عاجل)" : "") + ": " + (n.title || ""));
+          }
+          clearTimeout(refreshTimer);
+          refreshTimer = setTimeout(records, 800);
+        }
+        function setupAlert(allowed) {
+          alertAllowed = allowed;
+          hide("alertBtn", allowed);
+          if (channel) {
+            api.removeChannel(channel);
+            channel = null;
+          }
+          if (!allowed) return;
+          try {
+            alertOn = localStorage.getItem(ALERT_KEY) === "1";
+          } catch (e) {
+            alertOn = false;
+          }
+          drawAlertBtn();
+          channel = api
+            .channel("pe-cases-alert")
+            .on("postgres_changes", { event: "*", schema: "public", table: "opd_pe_cases" }, onCaseChange)
+            .subscribe();
         }
         /* المفتوحة افتراضيًا: المقفلة تختفي، والبحث يشمل الكل حتى المقفلة */
         let listMode = "open",
@@ -634,7 +897,7 @@
                     ["رقم الملف", c.patient_file],
                     ["الطبيب", c.doctor_name],
                     ["السبب", c.reason],
-                    ["الحل المطلوب", c.solution],
+                    apptSummary(c) ? ["الموعد", apptSummary(c)] : ["الحل المطلوب", c.solution],
                   ]
                 : []),
               ...(c.status === "closed" ? [["أقفله", c.opd_staff_name], ["الإجراء", c.resolution]] : []),

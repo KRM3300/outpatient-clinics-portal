@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#0f3a57" />
+    <title>إنتاجية الموظفين | العيادات الخارجية</title>
+    <link rel="icon" href="../assets/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/portal.css?v=4" />
+    <style>
+      :root { --sla-g: #1f8a4c; --sla-o: #d97706; --sla-r: var(--danger); }
+      .presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 2px; }
+      .presets button { padding: 5px 12px; font-size: 13.5px; background: var(--surface); color: var(--action); border: 1px solid var(--line-strong); }
+      .presets button[aria-pressed="true"] { background: var(--action); color: #fff; border-color: var(--action); }
+      .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+      .bar > div { flex: 1 1 160px; }
+      .muted { color: var(--ink-soft); font-size: 13px; }
+      .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin: 12px 0 4px; }
+      .tile-k { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 12px 14px; }
+      .tile-k .tl { color: var(--ink-soft); font-size: 13px; }
+      .tile-k .tv { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+      .tile-k .tc { font-size: 12.5px; color: var(--ink-soft); }
+      .tw { overflow-x: auto; margin-top: 8px; }
+      table.recs { width: 100%; border-collapse: collapse; font-size: 14px; }
+      table.recs th { text-align: right; color: var(--ink-soft); font-weight: 500; border-bottom: 1px solid var(--line-strong); padding: 7px 6px; white-space: nowrap; }
+      table.recs td { padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; font-variant-numeric: tabular-nums; }
+      table.recs td.name { font-weight: 600; }
+      .dl { font-size: 12.5px; margin-inline-start: 6px; color: var(--ink-soft); }
+      .sla { display: flex; height: 10px; min-width: 120px; border-radius: 5px; overflow: hidden; background: var(--line); }
+      .sla i { display: block; height: 100%; }
+      .sla .g { background: var(--sla-g); } .sla .o { background: var(--sla-o); } .sla .r { background: var(--sla-r); }
+      .sla-n { display: flex; gap: 10px; font-size: 12.5px; margin-top: 3px; white-space: nowrap; }
+      .sla-n .g { color: var(--sla-g); } .sla-n .o { color: var(--sla-o); } .sla-n .r { color: var(--sla-r); }
+      .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--ink-soft); margin: 4px 0 0; }
+      .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-inline-end: 5px; vertical-align: -1px; background: currentColor; }
+      .legend .g { color: var(--sla-g); } .legend .o { color: var(--sla-o); } .legend .r { color: var(--sla-r); }
+      h3 { margin: 18px 0 0; font-size: 16px; }
+      .empty { color: var(--ink-soft); padding: 8px 0; }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <img class="site-logo" src="../assets/logo.webp" width="220" height="144" alt="شعار مستشفى الرس العام" />
+        <div class="site-titles">
+          <span class="crumb">منصة العيادات الخارجية</span>
+          <h1>إنتاجية الموظفين</h1>
+          <p>ما رفعه وأقفله كل موظف في تجربة المريض وتقرير عدم الالتزام</p>
+        </div>
+        <div class="site-actions">
+          <a class="back" href="../"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg><span>العودة للمنصة</span></a>
+        </div>
+      </div>
+    </header>
+
+    <main class="page wrap">
+      <div id="message" class="status-msg" role="status" aria-live="polite"></div>
+
+      <section id="login" class="card">
+        <h2>تسجيل الدخول</h2>
+        <label for="email">البريد الإلكتروني</label>
+        <input id="email" type="email" autocomplete="email" dir="ltr" />
+        <button id="send" type="button">إرسال رمز الدخول</button>
+        <div id="verifyBox" class="hidden">
+          <label for="code" style="margin-top: 16px">رمز التحقق</label>
+          <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" dir="ltr" />
+          <button id="verify" type="button">تحقق</button>
+        </div>
+      </section>
+
+      <section id="noaccess" class="card hidden">
+        <h2>لا توجد صلاحية</h2>
+        <p>صفحة الإنتاجية متاحة لمدير العيادات الخارجية ولمن يمنحه صلاحية «إنتاجية الموظفين: اطلاع» من الصفحة الرئيسية.</p>
+      </section>
+
+      <div id="app" class="hidden">
+        <div class="card">
+          <div class="toolbar">
+            <strong id="identity"></strong>
+            <button id="logout" class="alt" type="button">تسجيل الخروج</button>
+          </div>
+        </div>
+
+        <section class="card">
+          <h2>الفترة</h2>
+          <div class="bar">
+            <div><label for="v-from">من تاريخ</label><input id="v-from" type="date" dir="ltr" /></div>
+            <div><label for="v-to">إلى تاريخ</label><input id="v-to" type="date" dir="ltr" /></div>
+            <div>
+              <label for="v-cmp">المقارنة مع</label>
+              <select id="v-cmp">
+                <option value="prev">الفترة السابقة (بنفس الطول)</option>
+                <option value="none">بدون مقارنة</option>
+              </select>
+            </div>
+          </div>
+          <div class="presets" id="v-presets">
+            <button type="button" data-p="week">هذا الأسبوع</button>
+            <button type="button" data-p="month">هذا الشهر</button>
+            <button type="button" data-p="30">آخر 30 يوماً</button>
+            <button type="button" data-p="quarter">هذا الربع</button>
+            <button type="button" data-p="year">هذه السنة</button>
+          </div>
+          <p class="muted" id="v-period"></p>
+        </section>
+
+        <section class="card">
+          <h2>تجربة المريض</h2>
+          <div class="tiles" id="pe-tiles"></div>
+          <h3>البلاغات التي رفعها كل موظف</h3>
+          <div class="tw"><table class="recs" id="pe-raised"></table></div>
+          <h3>البلاغات التي أقفلها كل موظف ومدة الإقفال</h3>
+          <p class="legend"><span class="g">أقل من 8 ساعات</span><span class="o">من 8 إلى 24 ساعة</span><span class="r">أكثر من 24 ساعة</span></p>
+          <div class="tw"><table class="recs" id="pe-closers"></table></div>
+          <p class="muted">مدة الإقفال تُحسب للبلاغات المرفوعة من المنصة فقط؛ السجلات المنقولة من الشيت تدخل في العدد بدون مدة.</p>
+        </section>
+
+        <section class="card">
+          <h2>تقرير عدم الالتزام</h2>
+          <div class="tiles" id="nc-tiles"></div>
+          <h3>التقارير التي رفعها كل موظف</h3>
+          <div class="tw"><table class="recs" id="nc-table"></table></div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="credit" dir="ltr">
+        <span>Prepared by</span>
+        <strong>Khalid Rumayh Alrumayh</strong>
+        <span>Information Systems Specialist</span>
+      </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+    <script>
+      (() => {
+        const $ = (id) => document.getElementById(id);
+        const api = supabase.createClient("https://omugonzzrulsdpnycact.supabase.co", "sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs");
+        const msg = (t) => ($("message").textContent = t || "");
+        const err = (e) => msg(e?.message || String(e));
+        const hide = (id, show) => $(id).classList.toggle("hidden", !show);
+        const node = (t, text, cls) => {
+          const e = document.createElement(t);
+          if (text !== undefined) e.textContent = text;
+          if (cls) e.className = cls;
+          return e;
+        };
+
+        $("send").onclick = async () => {
+          const email = $("email").value.trim();
+          if (!email) return;
+          const { error } = await api.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+          if (error) return err(error);
+          hide("verifyBox", true);
+          $("code").focus();
+          msg("تم إرسال رمز التحقق إلى بريدك الإلكتروني.");
+        };
+        $("verify").onclick = async () => {
+          const { error } = await api.auth.verifyOtp({ email: $("email").value.trim(), token: $("code").value.trim(), type: "email" });
+          if (error) return err(error);
+          msg("");
+          await load();
+        };
+        $("logout").onclick = async () => {
+          await api.auth.signOut({ scope: "local" });
+          await load();
+        };
+
+        async function load() {
+          const {
+            data: { user: u },
+          } = await api.auth.getUser();
+          hide("login", !u);
+          hide("app", false);
+          hide("noaccess", false);
+          if (!u) return;
+          const ok = await api.rpc("opd_has_perm", { p: "prod_view" });
+          if (ok.error) return err(ok.error);
+          if (!ok.data) return hide("noaccess", true);
+          hide("app", true);
+          $("identity").textContent = u.email;
+          if (!st.from) preset("month");
+          await render();
+        }
+
+        /* الفترة: بتوقيت الرياض، والمقارنة بالفترة السابقة بنفس الطول */
+        const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" });
+        const D = (s) => new Date(s + "T12:00:00");
+        const iso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+        const add = (s, n) => {
+          const d = D(s);
+          d.setDate(d.getDate() + n);
+          return iso(d);
+        };
+        const span = (a, b) => Math.round((D(b) - D(a)) / 864e5) + 1;
+        const fmt = (s) => s.slice(8, 10) + "/" + s.slice(5, 7) + "/" + s.slice(0, 4);
+        const st = { from: "", to: "", cmp: "prev" };
+        function preset(p) {
+          const t = today();
+          if (p === "week") st.from = add(t, -((D(t).getDay() - 5 + 7) % 7)); /* الأسبوع من الجمعة */
+          else if (p === "month") st.from = t.slice(0, 8) + "01";
+          else if (p === "30") st.from = add(t, -29);
+          else if (p === "quarter") st.from = t.slice(0, 5) + String(Math.floor((+t.slice(5, 7) - 1) / 3) * 3 + 1).padStart(2, "0") + "-01";
+          else if (p === "year") st.from = t.slice(0, 4) + "-01-01";
+          if (p !== "custom") st.to = t;
+          $("v-from").value = st.from;
+          $("v-to").value = st.to;
+          for (const b of document.querySelectorAll("#v-presets button")) b.setAttribute("aria-pressed", String(b.dataset.p === p));
+        }
+        for (const b of document.querySelectorAll("#v-presets button"))
+          b.onclick = () => {
+            preset(b.dataset.p);
+            render();
+          };
+        $("v-from").onchange = $("v-to").onchange = () => {
+          if (!$("v-from").value || !$("v-to").value) return;
+          st.from = $("v-from").value;
+          st.to = $("v-to").value;
+          if (st.to < st.from) [st.from, st.to] = [st.to, st.from];
+          preset("custom");
+          render();
+        };
+        $("v-cmp").onchange = () => {
+          st.cmp = $("v-cmp").value;
+          render();
+        };
+
+        let seq = 0;
+        async function render() {
+          const my = ++seq,
+            n = span(st.from, st.to),
+            pFrom = add(st.from, -n),
+            pTo = add(st.from, -1),
+            cmp = st.cmp === "prev";
+          $("v-period").textContent =
+            "من " + fmt(st.from) + " إلى " + fmt(st.to) + " (" + n + " يوم)" + (cmp ? " — مقارنة مع " + fmt(pFrom) + " إلى " + fmt(pTo) : "");
+          const [cur, prev] = await Promise.all([
+            api.rpc("opd_productivity", { p_from: st.from, p_to: st.to }),
+            cmp ? api.rpc("opd_productivity", { p_from: pFrom, p_to: pTo }) : Promise.resolve({ data: null }),
+          ]);
+          if (my !== seq) return;
+          if (cur.error || prev.error) return err(cur.error || prev.error);
+          msg("");
+          draw(cur.data || {}, cmp ? prev.data || {} : null);
+        }
+
+        const byName = (list) => new Map((list || []).map((r) => [r.name, r]));
+        function delta(c, p) {
+          if (p === null || p === undefined) return null;
+          const d = c - p;
+          return node("span", "السابقة " + p + (d ? "، " + (d > 0 ? "زيادة " : "نقص ") + Math.abs(d) : ""), "dl");
+        }
+        function tiles(root, items) {
+          root.replaceChildren(
+            ...items.map(([label, v, sub]) => {
+              const e = node("div", undefined, "tile-k");
+              e.append(node("div", label, "tl"), node("div", String(v), "tv"));
+              if (sub) e.append(node("div", sub, "tc"));
+              return e;
+            }),
+          );
+        }
+        function table(root, head, rows) {
+          root.replaceChildren();
+          if (!rows.length) {
+            root.append(Object.assign(node("caption", "لا توجد بيانات في هذه الفترة", "empty")));
+            return;
+          }
+          const thead = node("thead"),
+            tr = node("tr");
+          for (const h of head) tr.append(node("th", h));
+          thead.append(tr);
+          const tb = node("tbody");
+          for (const cells of rows) {
+            const r = node("tr");
+            cells.forEach((c, i) => {
+              const td = node("td", undefined, i === 0 ? "name" : "");
+              if (c instanceof Node) td.append(c);
+              else if (Array.isArray(c)) td.append(...c.filter(Boolean));
+              else td.textContent = c ?? "—";
+              r.append(td);
+            });
+            tb.append(r);
+          }
+          root.append(thead, tb);
+        }
+        const pctTxt = (a, b) => (b ? Math.round((a / b) * 100) + "%" : "—");
+        const hrs = (h) => (h === null || h === undefined ? "—" : h < 48 ? h + " ساعة" : Math.round(h / 24) + " يوم");
+        function slaCell(r) {
+          const timed = r.green + r.orange + r.red,
+            wrap = node("div");
+          if (!timed) return node("span", "بدون مدة", "muted");
+          const bar = node("div", undefined, "sla"),
+            nums = node("div", undefined, "sla-n");
+          bar.setAttribute("role", "img");
+          bar.setAttribute("aria-label", "أخضر " + r.green + "، برتقالي " + r.orange + "، أحمر " + r.red);
+          for (const k of ["green", "orange", "red"]) {
+            const c = k[0] === "g" ? "g" : k[0] === "o" ? "o" : "r";
+            if (r[k]) {
+              const i = node("i", undefined, c);
+              i.style.width = (r[k] / timed) * 100 + "%";
+              bar.append(i);
+            }
+            nums.append(node("span", String(r[k]), c));
+          }
+          wrap.append(bar, nums);
+          return wrap;
+        }
+
+        function draw(c, p) {
+          /* تجربة المريض */
+          const closersAll = c.closers || [],
+            timedAll = closersAll.reduce((s, r) => s + r.green + r.orange + r.red, 0),
+            inDay = closersAll.reduce((s, r) => s + r.green + r.orange, 0);
+          tiles($("pe-tiles"), [
+            ["البلاغات المرفوعة", c.pe_total || 0, p ? "السابقة: " + (p.pe_total || 0) : ""],
+            ["المقفلة", c.pe_closed || 0, p ? "السابقة: " + (p.pe_closed || 0) : ""],
+            ["المفتوحة", (c.pe_total || 0) - (c.pe_closed || 0), ""],
+            ["أُقفلت خلال يوم عمل", pctTxt(inDay, timedAll), "من المقفلة بمدة محسوبة"],
+          ]);
+          const pr = p ? byName(p.raised) : null;
+          table(
+            $("pe-raised"),
+            ["الموظف", "رفع", "أُقفل منها", "مفتوحة"],
+            (c.raised || []).map((r) => [r.name, [node("span", String(r.total)), pr && delta(r.total, pr.get(r.name)?.total || 0)], r.closed, r.open]),
+          );
+          const pc = p ? byName(p.closers) : null;
+          table(
+            $("pe-closers"),
+            ["الموظف", "أقفل", "متوسط المدة", "التوزيع حسب المدة"],
+            closersAll.map((r) => [r.name, [node("span", String(r.total)), pc && delta(r.total, pc.get(r.name)?.total || 0)], hrs(r.avg_h), slaCell(r)]),
+          );
+          /* عدم الالتزام */
+          tiles($("nc-tiles"), [
+            ["التقارير المرفوعة", c.nc_total || 0, p ? "السابقة: " + (p.nc_total || 0) : ""],
+            ["عدد الموظفين الرافعين", (c.nc || []).length, ""],
+          ]);
+          const pn = p ? byName(p.nc) : null;
+          table(
+            $("nc-table"),
+            ["الموظف", "عدد التقارير"],
+            (c.nc || []).map((r) => [r.name, [node("span", String(r.total)), pn && delta(r.total, pn.get(r.name)?.total || 0)]]),
+          );
+        }
+
+        load();
+        api.auth.onAuthStateChange((event) => {
+          if (event === "SIGNED_IN" || event === "SIGNED_OUT") setTimeout(load, 0);
+        });
+      })();
+    </script>
+  </body>
+</html>
