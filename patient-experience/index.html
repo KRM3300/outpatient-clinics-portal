@@ -26,6 +26,12 @@
       .bars button i { grid-column: 1 / -1; height: 7px; border-radius: 4px; background: var(--action); opacity: 0.85; display: block; }
       .bars button[aria-pressed="true"] span { text-decoration: underline; font-weight: 700; }
       .bars .none { color: var(--ink-soft); font-size: 14px; }
+      .list-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 4px 0 12px; }
+      .list-tools .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius); overflow: hidden; }
+      .list-tools .seg button { min-height: 40px; margin: 0; border: 0; border-radius: 0; background: var(--surface); color: var(--ink); font-weight: 500; }
+      .list-tools .seg button + button { border-inline-start: 1px solid var(--line-strong); }
+      .list-tools .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+      .list-tools input[type="search"] { flex: 1 1 240px; width: auto; margin: 0; }
     </style>
     <script src="../assets/clinics.js?v=1"></script>
   </head>
@@ -167,6 +173,14 @@
 
         <section class="card">
           <h2 data-ar="سجل البلاغات والشكاوى" data-en="Cases and complaints">سجل البلاغات والشكاوى</h2>
+          <div class="list-tools">
+            <div class="seg" role="group" aria-label="حالة السجلات">
+              <button type="button" data-mode="open" aria-pressed="true">المفتوحة</button>
+              <button type="button" data-mode="closed" aria-pressed="false">المقفلة</button>
+              <button type="button" data-mode="all" aria-pressed="false">الكل</button>
+            </div>
+            <input id="list-q" type="search" placeholder="بحث بالاسم أو رقم الملف أو العنوان أو العيادة أو الطبيب" aria-label="بحث في السجل" />
+          </div>
           <div id="list"></div>
         </section>
 
@@ -540,10 +554,63 @@
           drawStats();
           drawList();
         }
+        /* المفتوحة افتراضيًا: المقفلة تختفي، والبحث يشمل الكل حتى المقفلة */
+        let listMode = "open",
+          listQ = "";
+        const isClosed = (r) => r.status === "closed";
+        const norm = (t) =>
+          String(t || "")
+            .toLowerCase()
+            .replace(/[إأآا]/g, "ا")
+            .replace(/ى/g, "ي")
+            .replace(/ة/g, "ه")
+            .replace(/[\u064B-\u0652]/g, "");
+        const SEARCH_FIELDS = ["title", "patient_name", "patient_file", "department", "doctor_name", "request_type", "description", "created_by_name", "pe_staff_name", "opd_staff_name", "resolution", "reason"];
+        function listRows() {
+          let rows = shownRows();
+          if (listQ) {
+            const q = norm(listQ);
+            return rows.filter((r) => SEARCH_FIELDS.some((f) => norm(r[f]).includes(q)));
+          }
+          if (stFilter || listMode === "all") return rows;
+          return rows.filter((r) => (listMode === "closed" ? isClosed(r) : !isClosed(r)));
+        }
+        function drawModeButtons() {
+          const base = shownRows(),
+            closedN = base.filter(isClosed).length,
+            names = { open: ["المفتوحة", "Open"], closed: ["المقفلة", "Closed"], all: ["الكل", "All"] },
+            counts = { open: base.length - closedN, closed: closedN, all: base.length };
+          document.querySelectorAll(".list-tools .seg button").forEach((b) => {
+            const m = b.dataset.mode;
+            b.textContent = names[m][lang === "ar" ? 0 : 1] + " (" + counts[m] + ")";
+            b.setAttribute("aria-pressed", String(!listQ && !stFilter && m === listMode));
+          });
+          $("list-q").placeholder =
+            lang === "ar" ? "بحث بالاسم أو رقم الملف أو العنوان أو العيادة أو الطبيب" : "Search by name, file number, title, clinic or doctor";
+        }
+        document.querySelectorAll(".list-tools .seg button").forEach((b) => {
+          b.onclick = () => {
+            listMode = b.dataset.mode;
+            listQ = "";
+            $("list-q").value = "";
+            drawList();
+          };
+        });
+        let qTimer;
+        $("list-q").addEventListener("input", () => {
+          clearTimeout(qTimer);
+          qTimer = setTimeout(() => {
+            listQ = $("list-q").value.trim();
+            drawList();
+          }, 200);
+        });
         function drawList() {
-          const data = shownRows().slice(0, 300);
+          drawModeButtons();
+          const all = listRows(),
+            data = all.slice(0, 300);
           $("list").replaceChildren();
           if (stFilter) $("list").append(node("p", "مصفّى: " + stFilter.v + " (" + shownRows().length + ")", "page-note"));
+          if (listQ) $("list").append(node("p", (lang === "ar" ? "نتائج البحث (تشمل المقفلة): " : "Search results (including closed): ") + all.length, "page-note"));
           if (!data.length) $("list").append(node("p", lang === "ar" ? "لا توجد سجلات" : "No records", "page-note"));
           for (const c of data) {
             const box = node("div", undefined, "item");
