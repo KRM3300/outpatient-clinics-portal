@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#0f3a57" />
+    <title>إجازات وجدول الموظفين | العيادات الخارجية</title>
+    <link rel="icon" href="../assets/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/portal.css?v=4" />
+    <style>
+      .muted { color: var(--ink-soft); font-size: 13.5px; }
+      .req { border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 14px; margin-top: 12px; background: var(--surface); }
+      .req.conflict { border-color: var(--warn-ink); }
+      .req-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
+      .req-head strong { font-size: 17px; }
+      .pill { display: inline-block; font-size: 12.5px; border-radius: 6px; padding: 1px 8px; border: 1px solid var(--line-strong); margin-inline-start: 6px; }
+      .pill.warn { color: var(--warn-ink); border-color: var(--warn-ink); }
+      .pill.ok { color: var(--ok-ink); border-color: var(--ok-ink); }
+      .pill.bad { color: var(--danger); border-color: var(--danger); }
+      .facts { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0; font-size: 14px; }
+      .facts b { font-weight: 600; }
+      .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+      .actions input { flex: 1 1 220px; margin: 0; }
+      table.t { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+      table.t th { text-align: right; color: var(--ink-soft); font-weight: 500; border-bottom: 1px solid var(--line-strong); padding: 6px; white-space: nowrap; }
+      table.t td { padding: 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+      table.t tr.me td { background: var(--surface-alt); font-weight: 600; }
+      .tw { overflow-x: auto; }
+      .weekbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+      .weekbar strong { margin-inline: 4px; }
+      .shifts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+      .shift { border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
+      .shift > h3 { margin: 0; padding: 10px 12px; background: var(--surface-alt); border-bottom: 1px solid var(--line); font-size: 15.5px; }
+      .shift > h3 span { color: var(--ink-soft); font-weight: 500; font-size: 13px; }
+      .role { padding: 8px 12px; border-bottom: 1px solid var(--line); }
+      .role:last-child { border-bottom: 0; }
+      .role h4 { margin: 0 0 4px; font-size: 13px; color: var(--ink-soft); }
+      .slot { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 14.5px; }
+      .slot .nm { flex: 1; }
+      .slot select { width: auto; min-height: 30px; padding: 2px 4px; font-size: 13px; margin: 0; }
+      .slot button { min-height: 30px; padding: 2px 9px; font-size: 13px; }
+      .addrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+      .addrow select, .addrow input { flex: 1 1 110px; min-height: 34px; padding: 4px 6px; font-size: 13.5px; margin: 0; }
+      .addrow button { min-height: 34px; padding: 4px 12px; font-size: 13.5px; }
+      .tag { font-size: 12px; border: 1px solid var(--line-strong); border-radius: 5px; padding: 0 5px; color: var(--ink-soft); }
+      .tag.lv { color: var(--warn-ink); border-color: var(--warn-ink); }
+      .empno { width: 120px; min-height: 32px; padding: 3px 6px; margin: 0; }
+      @media (max-width: 860px) { .shifts { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <img class="site-logo" src="../assets/logo.webp" width="220" height="144" alt="شعار مستشفى الرس العام" />
+        <div class="site-titles">
+          <span class="crumb">منصة العيادات الخارجية</span>
+          <h1>إجازات وجدول الموظفين</h1>
+          <p>اعتماد طلبات الإجازة، وتوزيع الموظفين على الشفتات، وإحصاء إجازات كل موظف</p>
+        </div>
+        <div class="site-actions">
+          <a class="back" href="../"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg><span>العودة للمنصة</span></a>
+        </div>
+      </div>
+    </header>
+
+    <main class="page wrap">
+      <div id="message" class="status-msg" role="status" aria-live="polite"></div>
+
+      <section id="login" class="card">
+        <h2>تسجيل الدخول</h2>
+        <label for="email">البريد الإلكتروني</label>
+        <input id="email" type="email" autocomplete="email" dir="ltr" />
+        <button id="send" type="button">إرسال رمز الدخول</button>
+        <div id="verifyBox" class="hidden">
+          <label for="code" style="margin-top: 16px">رمز التحقق</label>
+          <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" dir="ltr" />
+          <button id="verify" type="button">تحقق</button>
+        </div>
+      </section>
+
+      <section id="noaccess" class="card hidden">
+        <h2>لا توجد صلاحية</h2>
+        <p>هذه الصفحة لمدير العيادات الخارجية فقط.</p>
+      </section>
+
+      <div id="app" class="hidden">
+        <div class="card">
+          <div class="toolbar">
+            <strong id="identity"></strong>
+            <button id="logout" class="alt" type="button">تسجيل الخروج</button>
+          </div>
+          <nav class="tabs" aria-label="أقسام الصفحة">
+            <button type="button" class="alt" data-tab="req">طلبات الإجازة <span id="pendingCount"></span></button>
+            <button type="button" class="alt" data-tab="week">الجدول الأسبوعي</button>
+            <button type="button" class="alt" data-tab="staff">الموظفون والإحصاء</button>
+          </nav>
+        </div>
+
+        <section class="card" id="tab-req">
+          <div class="toolbar">
+            <h2 style="margin: 0">طلبات الإجازة</h2>
+            <select id="reqFilter" style="width: auto; margin: 0" aria-label="تصفية الطلبات">
+              <option value="pending">بانتظار الاعتماد</option>
+              <option value="approved">المعتمدة</option>
+              <option value="rejected">المرفوضة</option>
+            </select>
+          </div>
+          <div id="reqList"></div>
+        </section>
+
+        <section class="card hidden" id="tab-week">
+          <div class="weekbar">
+            <button class="alt" type="button" id="wPrev">الأسبوع السابق</button>
+            <strong id="wTitle"></strong>
+            <button class="alt" type="button" id="wNext">الأسبوع التالي</button>
+            <button class="alt" type="button" id="wNow">هذا الأسبوع</button>
+            <button type="button" id="wCopy">انسخ الأسبوع السابق</button>
+          </div>
+          <p class="muted">«الأسبوع كله» يعني من الأحد إلى الخميس. لنقل موظف لشفت ثاني اختر الشفت من القائمة بجانب اسمه، والتغيير يظهر في دليل الموظف مباشرة.</p>
+          <div id="weekGrid" class="shifts"></div>
+        </section>
+
+        <section class="card hidden" id="tab-staff">
+          <div class="toolbar">
+            <h2 style="margin: 0">الموظفون والإحصاء</h2>
+            <label class="muted" style="display: flex; gap: 6px; align-items: center; margin: 0">السنة <select id="yearSel" style="width: auto; margin: 0"></select></label>
+          </div>
+          <div class="tw"><table class="t" id="staffTable"></table></div>
+          <div class="addrow" style="max-width: 420px; margin-top: 14px">
+            <input id="newName" placeholder="اسم موظف جديد" aria-label="اسم موظف جديد" />
+            <button type="button" id="addStaff">إضافة موظف</button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="credit" dir="ltr">
+        <span>Prepared by</span>
+        <strong>Khalid Rumayh Alrumayh</strong>
+        <span>Information Systems Specialist</span>
+      </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+    <script>
+      (() => {
+        const $ = (id) => document.getElementById(id);
+        const api = supabase.createClient("https://omugonzzrulsdpnycact.supabase.co", "sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs");
+        const msg = (t) => ($("message").textContent = t || "");
+        const err = (e) => msg(e?.message || String(e));
+        const hide = (id, show) => $(id).classList.toggle("hidden", !show);
+        const el = (t, txt, cls) => {
+          const e = document.createElement(t);
+          if (txt != null) e.textContent = txt;
+          if (cls) e.className = cls;
+          return e;
+        };
+        const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+        const SHIFTS = [
+          ["A", "الشفت الأول", "7:30 ص – 3:30 م", ["supervisor", "reception", "transfer", "eye"]],
+          ["B", "الشفت الثاني", "11:30 ص – 7:30 م", ["supervisor", "reception", "transfer", "eye", "eservices"]],
+          ["C", "الشفت الثالث", "3:30 م – 11:30 م", ["supervisor", "reception"]],
+        ];
+        const SHIFT_NAME = { A: "الأول", B: "الثاني", C: "الثالث" };
+        const ROLES = { supervisor: "المشرف", reception: "الاستقبال", transfer: "التحويل", eye: "مركز العيون", eservices: "الخدمات الإلكترونية" };
+        const TYPES = ["اعتيادية", "مرضية", "تعويضية"];
+        const iso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+        const D = (s) => new Date(s + "T12:00:00");
+        const add = (s, n) => {
+          const d = D(s);
+          d.setDate(d.getDate() + n);
+          return iso(d);
+        };
+        const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" });
+        const sundayOf = (s) => add(s, -D(s).getDay());
+        const dm = (s) => (s ? +s.slice(8, 10) + "/" + +s.slice(5, 7) : "—");
+        const dmy = (s) => (s ? dm(s) + "/" + s.slice(0, 4) : "—");
+        const overlap = (a, b) => a.start_date <= b.end_date && a.end_date >= b.start_date;
+
+        let user = null,
+          STAFF = [],
+          LEAVES = [],
+          tab = "req",
+          week = sundayOf(today()),
+          year = today().slice(0, 4);
+        const staffName = (id) => STAFF.find((s) => s.id === id)?.name || "—";
+
+        /* الدخول */
+        $("send").onclick = async () => {
+          const email = $("email").value.trim();
+          if (!email) return;
+          const { error } = await api.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+          if (error) return err(error);
+          hide("verifyBox", true);
+          $("code").focus();
+          msg("تم إرسال رمز التحقق إلى بريدك الإلكتروني.");
+        };
+        $("verify").onclick = async () => {
+          const { error } = await api.auth.verifyOtp({ email: $("email").value.trim(), token: $("code").value.trim(), type: "email" });
+          if (error) return err(error);
+          msg("");
+          await load();
+        };
+        $("logout").onclick = async () => {
+          await api.auth.signOut({ scope: "local" });
+          await load();
+        };
+
+        async function load() {
+          const {
+            data: { user: u },
+          } = await api.auth.getUser();
+          user = u;
+          hide("login", !u);
+          hide("app", false);
+          hide("noaccess", false);
+          if (!u) return;
+          const ok = await api.rpc("opd_kpi_is_admin");
+          if (ok.error) return err(ok.error);
+          if (!ok.data) return hide("noaccess", true);
+          hide("app", true);
+          $("identity").textContent = u.email;
+          await refresh();
+        }
+        async function refresh() {
+          const [s, l] = await Promise.all([
+            api.from("opd_team").select("id,name,employee_no,active").order("name"),
+            api.from("opd_team_leaves").select("*").order("start_date", { ascending: false }).limit(3000),
+          ]);
+          if (s.error || l.error) return err(s.error || l.error);
+          STAFF = s.data;
+          LEAVES = l.data;
+          const n = LEAVES.filter((x) => x.status === "pending").length;
+          $("pendingCount").textContent = n ? "(" + n + ")" : "";
+          await draw();
+        }
+        async function draw() {
+          for (const b of document.querySelectorAll("[data-tab]")) {
+            if (b.dataset.tab === tab) b.setAttribute("aria-current", "page");
+            else b.removeAttribute("aria-current");
+          }
+          for (const t of ["req", "week", "staff"]) hide("tab-" + t, t === tab);
+          if (tab === "req") await drawRequests();
+          if (tab === "week") await drawWeek();
+          if (tab === "staff") drawStaff();
+        }
+        for (const b of document.querySelectorAll("[data-tab]"))
+          b.onclick = () => {
+            tab = b.dataset.tab;
+            msg("");
+            draw();
+          };
+
+        /* إحصاء موظف لسنة */
+        function stats(staffId, y) {
+          const mine = LEAVES.filter((l) => l.staff_id === staffId && l.start_date.slice(0, 4) === y);
+          const ok = mine.filter((l) => l.status === "approved");
+          const days = Object.fromEntries(TYPES.map((t) => [t, ok.filter((l) => l.leave_type === t).reduce((a, l) => a + l.days, 0)]));
+          const last = LEAVES.filter((l) => l.staff_id === staffId && l.status === "approved" && l.end_date < today()).sort((a, b) => (a.end_date < b.end_date ? 1 : -1))[0];
+          return {
+            total: mine.length,
+            approved: ok.length,
+            rejected: mine.filter((l) => l.status === "rejected").length,
+            pending: mine.filter((l) => l.status === "pending").length,
+            days,
+            allDays: ok.reduce((a, l) => a + l.days, 0),
+            last: last?.end_date || null,
+          };
+        }
+
+        /* الطلبات + المفاضلة */
+        async function slotsBetween(from, to) {
+          const { data, error } = await api.from("opd_team_slots").select("*").gte("week_start", sundayOf(from)).lte("week_start", sundayOf(to));
+          if (error) throw error;
+          return data;
+        }
+        async function drawRequests() {
+          const f = $("reqFilter").value;
+          const list = LEAVES.filter((l) => l.status === f && (f === "pending" || l.start_date.slice(0, 4) >= String(+year - 1))).sort((a, b) =>
+            f === "pending" ? (a.submitted_at < b.submitted_at ? -1 : 1) : a.start_date < b.start_date ? 1 : -1,
+          );
+          const root = $("reqList");
+          root.replaceChildren();
+          if (!list.length) return root.append(el("p", f === "pending" ? "لا توجد طلبات بانتظار الاعتماد." : "لا توجد طلبات.", "muted"));
+          let slots = [];
+          if (f === "pending") {
+            try {
+              slots = await slotsBetween(list.reduce((a, l) => (l.start_date < a ? l.start_date : a), list[0].start_date), list.reduce((a, l) => (l.end_date > a ? l.end_date : a), list[0].end_date));
+            } catch (e) {
+              err(e);
+            }
+          }
+          for (const r of list) root.append(requestCard(r, slots));
+        }
+        function requestCard(r, slots) {
+          const box = el("article", null, "req");
+          const name = staffName(r.staff_id),
+            st = stats(r.staff_id, r.start_date.slice(0, 4));
+          const head = el("div", null, "req-head");
+          const t = el("strong", name);
+          if (r.first_empno) t.append(el("span", "أول طلب بالرقم " + (STAFF.find((s) => s.id === r.staff_id)?.employee_no || ""), "pill warn"));
+          head.append(t, el("span", "قُدّم " + new Date(r.submitted_at).toLocaleString("ar-SA-u-nu-latn", { dateStyle: "medium", timeStyle: "short" }), "muted"));
+          box.append(head);
+          const facts = el("div", null, "facts");
+          const fact = (k, v) => {
+            const s = el("span");
+            s.append(el("b", k + ": "), document.createTextNode(v));
+            facts.append(s);
+          };
+          fact("النوع", r.leave_type);
+          fact("المدة", "من " + dmy(r.start_date) + " إلى " + dmy(r.end_date) + " (" + r.days + " يوم)");
+          if (r.note) fact("ملاحظة الموظف", r.note);
+          if (r.manager_note) fact("ملاحظتك", r.manager_note);
+          fact("إجازاته المعتمدة هذه السنة", st.approved + " (" + st.allDays + " يوم)");
+          box.append(facts);
+
+          if (r.status === "pending") {
+            /* التعارض: طلبات أو إجازات متداخلة لموظفين في نفس الشفت */
+            const myShifts = new Set(slots.filter((s) => s.staff_id === r.staff_id).map((s) => s.shift));
+            const others = LEAVES.filter(
+              (l) => l.id !== r.id && l.staff_id !== r.staff_id && l.status !== "rejected" && overlap(l, r) && (!myShifts.size || slots.some((s) => s.staff_id === l.staff_id && myShifts.has(s.shift))),
+            );
+            if (others.length) {
+              box.classList.add("conflict");
+              box.append(el("p", "يوجد تعارض مع " + others.length + " في نفس الشفت والتواريخ — قارن قبل الاعتماد:", "pill warn"));
+              const tw = el("div", null, "tw"),
+                tb = el("table", null, "t"),
+                hr = el("tr");
+              ["الموظف", "الحالة", "التواريخ", "تاريخ التقديم", "إجازاته هذه السنة", "آخر إجازة انتهت"].forEach((h) => hr.append(el("th", h)));
+              tb.append(hr);
+              for (const x of [r, ...others]) {
+                const s2 = stats(x.staff_id, r.start_date.slice(0, 4)),
+                  tr = el("tr", null, x.id === r.id ? "me" : "");
+                [staffName(x.staff_id), { pending: "بانتظار الاعتماد", approved: "معتمدة" }[x.status], dm(x.start_date) + " – " + dm(x.end_date), dmy(x.submitted_at.slice(0, 10)), s2.approved + " إجازة / " + s2.allDays + " يوم", dmy(s2.last)].forEach((v) =>
+                  tr.append(el("td", v)),
+                );
+                tb.append(tr);
+              }
+              tw.append(tb);
+              box.append(tw);
+            }
+            /* التغطية: كم يبقى في دوره بالشفت بعد الاعتماد */
+            const mySlots = slots.filter((s) => s.staff_id === r.staff_id && s.day == null && s.week_start === sundayOf(r.start_date));
+            for (const ms of mySlots) {
+              const same = slots.filter((s) => s.week_start === ms.week_start && s.shift === ms.shift && s.role === ms.role && s.day == null && s.staff_id);
+              const away = same.filter((s) => s.staff_id === r.staff_id || LEAVES.some((l) => l.staff_id === s.staff_id && l.status === "approved" && overlap(l, r)));
+              box.append(el("p", "بعد الاعتماد يبقى في " + ROLES[ms.role] + " بالشفت " + SHIFT_NAME[ms.shift] + ": " + (same.length - away.length) + " من " + same.length, "muted"));
+            }
+            const act = el("div", null, "actions"),
+              note = el("input");
+            note.placeholder = "ملاحظة للموظف (اختياري)";
+            note.setAttribute("aria-label", "ملاحظة للموظف");
+            const ok = el("button", "اعتماد"),
+              no = el("button", "رفض", "alt");
+            ok.type = no.type = "button";
+            ok.onclick = () => decide(r, "approved", note.value);
+            no.onclick = () => decide(r, "rejected", note.value);
+            act.append(note, ok, no);
+            box.append(act);
+          } else if (r.status === "approved") {
+            const act = el("div", null, "actions"),
+              b = el("button", "إلغاء الإجازة", "alt");
+            b.type = "button";
+            b.onclick = () => decide(r, "rejected", "أُلغيت بعد الاعتماد");
+            act.append(b);
+            box.append(act);
+          }
+          return box;
+        }
+        async function decide(r, status, note) {
+          const { error } = await api
+            .from("opd_team_leaves")
+            .update({ status, manager_note: (note || "").trim() || null, decided_at: new Date().toISOString(), decided_by: user.id })
+            .eq("id", r.id);
+          if (error) return err(error);
+          msg((status === "approved" ? "تم اعتماد إجازة " : "تم رفض طلب ") + staffName(r.staff_id) + ".");
+          await refresh();
+        }
+        $("reqFilter").onchange = drawRequests;
+
+        /* الجدول الأسبوعي */
+        let SLOTS = [];
+        async function drawWeek() {
+          $("wTitle").textContent = "الأسبوع من " + dm(week) + " إلى " + dm(add(week, 6));
+          const { data, error } = await api.from("opd_team_slots").select("*").eq("week_start", week).order("sort");
+          if (error) return err(error);
+          SLOTS = data;
+          $("wCopy").disabled = SLOTS.length > 0;
+          const work = [0, 1, 2, 3, 4].map((i) => add(week, i));
+          const active = STAFF.filter((s) => s.active);
+          const grid = $("weekGrid");
+          grid.replaceChildren(
+            ...SHIFTS.map(([code, title, time, roles]) => {
+              const card = el("section", null, "shift"),
+                h = el("h3", title + " ");
+              h.append(el("span", time));
+              card.append(h);
+              for (const role of roles) {
+                const box = el("div", null, "role");
+                box.append(el("h4", ROLES[role]));
+                for (const s of SLOTS.filter((x) => x.shift === code && x.role === role)) {
+                  const row = el("div", null, "slot"),
+                    nm = el("span", s.staff_id ? staffName(s.staff_id) : s.label, "nm");
+                  if (s.day != null) nm.append(" ", el("span", DAYS[s.day], "tag"));
+                  const days = s.day == null ? work : [add(week, s.day)];
+                  const off = s.staff_id ? days.filter((d) => LEAVES.some((l) => l.staff_id === s.staff_id && l.status === "approved" && l.start_date <= d && l.end_date >= d)) : [];
+                  if (off.length) nm.append(" ", el("span", off.length === days.length ? "في إجازة" : "إجازة " + off.map((d) => DAYS[D(d).getDay()]).join("، "), "tag lv"));
+                  const mv = el("select");
+                  mv.setAttribute("aria-label", "نقل إلى شفت");
+                  for (const [c] of SHIFTS) mv.add(new Option("الشفت " + SHIFT_NAME[c], c, false, c === code));
+                  mv.onchange = () => moveSlot(s, mv.value);
+                  const del = el("button", "حذف", "alt");
+                  del.type = "button";
+                  del.setAttribute("aria-label", "حذف " + nm.textContent + " من " + ROLES[role]);
+                  del.onclick = () => removeSlot(s);
+                  row.append(nm, mv, del);
+                  box.append(row);
+                }
+                const addr = el("div", null, "addrow"),
+                  who = el("select"),
+                  day = el("select"),
+                  btn = el("button", "إضافة");
+                who.setAttribute("aria-label", "موظف لـ" + ROLES[role]);
+                who.add(new Option("— موظف —", ""));
+                for (const s of active) who.add(new Option(s.name, s.id));
+                who.add(new Option("ملاحظة نصية…", "__label"));
+                day.setAttribute("aria-label", "الأيام");
+                day.add(new Option("الأسبوع كله", ""));
+                [0, 1, 2, 3, 4, 6].forEach((i) => day.add(new Option(DAYS[i], String(i))));
+                btn.type = "button";
+                btn.onclick = () => addSlot(code, role, who.value, day.value);
+                addr.append(who, day, btn);
+                box.append(addr);
+                card.append(box);
+              }
+              return card;
+            }),
+          );
+        }
+        async function addSlot(shift, role, who, day) {
+          if (!who) return msg("اختر الموظف أولاً");
+          let label = null,
+            staff_id = who;
+          if (who === "__label") {
+            label = (prompt("النص الذي يظهر في الخانة (مثال: إدارة العيادات)") || "").trim();
+            if (!label) return;
+            staff_id = null;
+          }
+          const sort = SLOTS.filter((s) => s.shift === shift && s.role === role).length + 1;
+          const { error } = await api.from("opd_team_slots").insert({ week_start: week, shift, role, staff_id, label, day: day === "" ? null : +day, sort });
+          if (error) return err(error);
+          msg("");
+          drawWeek();
+        }
+        async function moveSlot(s, shift) {
+          const roles = SHIFTS.find(([c]) => c === shift)[3];
+          const role = roles.includes(s.role) ? s.role : "reception";
+          const { error } = await api.from("opd_team_slots").update({ shift, role }).eq("id", s.id);
+          if (error) return err(error);
+          msg("نُقل " + (s.staff_id ? staffName(s.staff_id) : s.label) + " إلى الشفت " + SHIFT_NAME[shift] + (role !== s.role ? " (" + ROLES[role] + ")" : "") + ".");
+          drawWeek();
+        }
+        async function removeSlot(s) {
+          const { error } = await api.from("opd_team_slots").delete().eq("id", s.id);
+          if (error) return err(error);
+          drawWeek();
+        }
+        $("wCopy").onclick = async () => {
+          const prev = add(week, -7);
+          const { data, error } = await api.from("opd_team_slots").select("shift,role,staff_id,label,day,sort").eq("week_start", prev);
+          if (error) return err(error);
+          if (!data.length) return msg("الأسبوع السابق فاضي، لا يوجد شيء للنسخ.");
+          const ins = await api.from("opd_team_slots").insert(data.map((r) => ({ ...r, week_start: week })));
+          if (ins.error) return err(ins.error);
+          msg("تم نسخ جدول الأسبوع السابق. عدّل ما تغيّر فقط.");
+          drawWeek();
+        };
+        $("wPrev").onclick = () => {
+          week = add(week, -7);
+          drawWeek();
+        };
+        $("wNext").onclick = () => {
+          week = add(week, 7);
+          drawWeek();
+        };
+        $("wNow").onclick = () => {
+          week = sundayOf(today());
+          drawWeek();
+        };
+
+        /* الموظفون والإحصاء */
+        function drawStaff() {
+          const ys = [...new Set([today().slice(0, 4), ...LEAVES.map((l) => l.start_date.slice(0, 4))])].sort().reverse();
+          if ($("yearSel").options.length !== ys.length) {
+            $("yearSel").replaceChildren(...ys.map((y) => new Option(y, y)));
+            $("yearSel").value = year;
+          }
+          const tb = $("staffTable"),
+            hr = el("tr");
+          tb.replaceChildren();
+          ["الموظف", "الرقم الوظيفي", "الطلبات", "المعتمدة", "المرفوضة", "بانتظار", "اعتيادية (يوم)", "مرضية (يوم)", "تعويضية (يوم)", "آخر إجازة", "الحالة"].forEach((h) => hr.append(el("th", h)));
+          tb.append(hr);
+          for (const s of STAFF) {
+            const st = stats(s.id, year),
+              tr = el("tr");
+            tr.append(el("td", s.name));
+            const noTd = el("td"),
+              no = el("input", null, "empno");
+            no.value = s.employee_no || "";
+            no.inputMode = "numeric";
+            no.placeholder = "لم يُسجَّل";
+            no.setAttribute("aria-label", "الرقم الوظيفي لـ" + s.name);
+            no.onchange = async () => {
+              const v = no.value.replace(/\D/g, "") || null;
+              const { error } = await api.from("opd_team").update({ employee_no: v }).eq("id", s.id);
+              if (error) return err(error.code === "23505" ? { message: "الرقم مسجل لموظف آخر" } : error);
+              s.employee_no = v;
+              msg("حُفظ رقم " + s.name + ".");
+            };
+            noTd.append(no);
+            tr.append(noTd);
+            [st.total, st.approved, st.rejected, st.pending, st.days["اعتيادية"], st.days["مرضية"], st.days["تعويضية"], dmy(st.last)].forEach((v) => tr.append(el("td", String(v))));
+            const actTd = el("td"),
+              b = el("button", s.active ? "نشط — إيقاف" : "موقوف — تفعيل", "alt");
+            b.type = "button";
+            b.style.minHeight = "30px";
+            b.style.padding = "2px 10px";
+            b.onclick = async () => {
+              const { error } = await api.from("opd_team").update({ active: !s.active }).eq("id", s.id);
+              if (error) return err(error);
+              await refresh();
+            };
+            actTd.append(b);
+            tr.append(actTd);
+            tb.append(tr);
+          }
+        }
+        $("yearSel").onchange = () => {
+          year = $("yearSel").value;
+          drawStaff();
+        };
+        $("addStaff").onclick = async () => {
+          const name = $("newName").value.trim();
+          if (!name) return;
+          const { error } = await api.from("opd_team").insert({ name });
+          if (error) return err(error.code === "23505" ? { message: "الاسم موجود" } : error);
+          $("newName").value = "";
+          msg("أُضيف " + name + ".");
+          await refresh();
+        };
+
+        load();
+        api.auth.onAuthStateChange((event) => {
+          if (event === "SIGNED_IN" || event === "SIGNED_OUT") setTimeout(load, 0);
+        });
+      })();
+    </script>
+  </body>
+</html>
