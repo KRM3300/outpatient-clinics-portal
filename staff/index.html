@@ -50,7 +50,39 @@
       .tag { font-size: 12px; border: 1px solid var(--line-strong); border-radius: 5px; padding: 0 5px; color: var(--ink-soft); }
       .tag.lv { color: var(--warn-ink); border-color: var(--warn-ink); }
       .empno { width: 120px; min-height: 32px; padding: 3px 6px; margin: 0; }
-      @media (max-width: 860px) { .shifts { grid-template-columns: 1fr; } }
+      main.page.wrap { max-width: 1440px; }
+      :root { --line2: var(--line-strong); --card: var(--surface); --soft: var(--ink-soft); --act: var(--action); --leave: #8a5a00; --leave-bg: #fff4dc; }
+  .rgwrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+  table.rg { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1120px; font-size: 13.5px; margin: 0; }
+  table.rg th, table.rg td { border-bottom: 1px solid var(--line); border-inline-start: 1px solid var(--line); padding: 5px 6px; text-align: center; vertical-align: top; }
+  table.rg thead th { background: #e8f0f6; color: var(--ink); font-weight: 600; }
+  table.rg thead th.grp small { display: block; font-weight: 500; color: var(--soft); font-size: 12px; }
+  table.rg th.day { position: sticky; right: 0; z-index: 1; background: #f7fafc; min-width: 86px; white-space: nowrap; }
+  table.rg thead th.day { background: #e8f0f6; }
+  table.rg tbody th.day b { display: block; font-size: 13.5px; }
+  table.rg tbody th.day span { color: var(--soft); font-size: 12.5px; }
+  table.rg td div { line-height: 1.5; white-space: nowrap; }
+  table.rg td div.lbl { color: var(--soft); font-style: italic; }
+  table.rg tr.wk > * { border-top: 3px solid var(--line2); }
+  table.rg tr.off > * { background: #e9edf1; color: var(--soft); }
+  table.rg tr.now > th.day { background: #dceefa; box-shadow: inset -4px 0 0 var(--act); }
+  table.rg td.lv, table.rg th.lvh { background: var(--leave-bg); color: var(--leave); font-weight: 600; min-width: 110px; }
+  table.rg tr.off td.lv { background: #e9edf1; }
+  table.rg td.edit { cursor: pointer; }
+  table.rg td.edit:hover, table.rg td.edit:focus-visible { background: #eef6fc; outline: 2px solid var(--act); outline-offset: -2px; }
+  .monthbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 12px; }
+  .monthbar strong { font-size: 16px; margin-inline: 4px; }
+      dialog#cellEd { border: 1px solid var(--line-strong); border-radius: var(--radius-lg); padding: 18px; width: min(520px, calc(100vw - 32px)); }
+      dialog#cellEd::backdrop { background: rgba(15, 30, 45, 0.35); }
+      dialog#cellEd h3 { margin: 0 0 4px; }
+      .ed-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+      .ed-row small { display: block; color: var(--ink-soft); }
+      .ed-row button { min-height: 34px; padding: 4px 12px; font-size: 14px; }
+      .ed-add { margin-top: 14px; padding: 12px; border-radius: var(--radius); background: var(--surface-alt); }
+      .ed-add .scope { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 10px; }
+      .ed-add .scope label { display: flex; gap: 8px; align-items: center; font-weight: 500; margin: 0; }
+      .ed-add .scope input { width: auto; margin: 0; }
+      .ed-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; }
     </style>
   </head>
   <body>
@@ -96,7 +128,7 @@
           </div>
           <nav class="tabs" aria-label="أقسام الصفحة">
             <button type="button" class="alt" data-tab="req">طلبات الإجازة <span id="pendingCount"></span></button>
-            <button type="button" class="alt" data-tab="week">الجدول الأسبوعي</button>
+            <button type="button" class="alt" data-tab="week">الجدول الشهري</button>
             <button type="button" class="alt" data-tab="staff">الموظفون والإحصاء</button>
           </nav>
         </div>
@@ -114,16 +146,32 @@
         </section>
 
         <section class="card hidden" id="tab-week">
-          <div class="weekbar">
-            <button class="alt" type="button" id="wPrev">الأسبوع السابق</button>
+          <div class="monthbar">
+            <button class="alt" type="button" id="wPrev">الأسابيع السابقة</button>
             <strong id="wTitle"></strong>
-            <button class="alt" type="button" id="wNext">الأسبوع التالي</button>
-            <button class="alt" type="button" id="wNow">هذا الأسبوع</button>
-            <button type="button" id="wCopy">انسخ الأسبوع السابق</button>
+            <button class="alt" type="button" id="wNext">الأسابيع التالية</button>
+            <button class="alt" type="button" id="wNow">من هذا الأسبوع</button>
           </div>
-          <p class="muted">«الأسبوع كله» يعني من الأحد إلى الخميس. تحت كل اسم قائمة للشفت وقائمة للدور: غيّر أيّهما ويُحفظ مباشرة. لإضافة موظف استخدم المربع الرمادي تحت الدور. تعديل الاسم والرقم الوظيفي من «الموظفون والإحصاء».</p>
-          <div id="weekGrid" class="shifts"></div>
+          <p class="muted">اضغط على أي خانة لتعديلها. الجدول يستمر كما هو حتى تغيّره، والإجازة المعتمدة تنقل الموظف لعمود «الإجازات» في أيامها فقط.</p>
+          <div class="rgwrap" id="weekGrid"></div>
         </section>
+        <dialog id="cellEd" aria-labelledby="edTitle">
+          <h3 id="edTitle"></h3>
+          <p class="muted" id="edSub"></p>
+          <div id="edList"></div>
+          <div class="ed-add">
+            <label for="edWho">إضافة</label>
+            <select id="edWho"></select>
+            <input id="edLabel" class="hidden" maxlength="60" placeholder="النص الذي يظهر في الخانة، مثل: إدارة العيادات" aria-label="نص الخانة" />
+            <div class="scope" role="radiogroup" aria-label="مدة الإضافة">
+              <label><input type="radio" name="edScope" value="week" checked /> <span id="edScopeWeek">كل أيام الأسبوع من هذا اليوم فصاعداً</span></label>
+              <label><input type="radio" name="edScope" value="weekday" /> <span id="edScopeDay"></span></label>
+              <label><input type="radio" name="edScope" value="one" /> <span>هذا اليوم فقط</span></label>
+            </div>
+            <button type="button" id="edAdd">إضافة</button>
+          </div>
+          <div class="ed-actions"><span class="muted" id="edMsg" role="status"></span><button type="button" class="alt" id="edClose">إغلاق</button></div>
+        </dialog>
 
         <section class="card hidden" id="tab-staff">
           <div class="toolbar">
@@ -186,6 +234,7 @@
         let user = null,
           STAFF = [],
           LEAVES = [],
+          ROSTER = [],
           tab = "req",
           week = sundayOf(today()),
           year = today().slice(0, 4);
@@ -229,13 +278,15 @@
           await refresh();
         }
         async function refresh() {
-          const [s, l] = await Promise.all([
+          const [s, l, ro] = await Promise.all([
             api.from("opd_team").select("id,name,employee_no,active").order("name"),
             api.from("opd_team_leaves").select("*").order("start_date", { ascending: false }).limit(3000),
+            api.from("opd_team_roster").select("*").order("sort").limit(5000),
           ]);
-          if (s.error || l.error) return err(s.error || l.error);
+          if (s.error || l.error || ro.error) return err(s.error || l.error || ro.error);
           STAFF = s.data;
           LEAVES = l.data;
+          ROSTER = ro.data;
           const n = LEAVES.filter((x) => x.status === "pending").length;
           $("pendingCount").textContent = n ? "(" + n + ")" : "";
           await draw();
@@ -275,11 +326,9 @@
         }
 
         /* الطلبات + المفاضلة */
-        async function slotsBetween(from, to) {
-          const { data, error } = await api.from("opd_team_slots").select("*").gte("week_start", sundayOf(from)).lte("week_start", sundayOf(to));
-          if (error) throw error;
-          return data;
-        }
+        /* خانات الموظف في أيام الطلب (حتى 14 يوماً) */
+        const daysOf = (l) => Array.from({ length: Math.min(l.days || 1, 14) }, (_, i) => add(l.start_date, i));
+        const rowsOn = (staffId, days) => ROSTER.filter((x) => x.staff_id === staffId && days.some((d) => applies(x, d)));
         async function drawRequests() {
           const f = $("reqFilter").value;
           const list = LEAVES.filter((l) => l.status === f && (f === "pending" || l.start_date.slice(0, 4) >= String(+year - 1))).sort((a, b) =>
@@ -288,17 +337,9 @@
           const root = $("reqList");
           root.replaceChildren();
           if (!list.length) return root.append(el("p", f === "pending" ? "لا توجد طلبات بانتظار الاعتماد." : "لا توجد طلبات.", "muted"));
-          let slots = [];
-          if (f === "pending") {
-            try {
-              slots = await slotsBetween(list.reduce((a, l) => (l.start_date < a ? l.start_date : a), list[0].start_date), list.reduce((a, l) => (l.end_date > a ? l.end_date : a), list[0].end_date));
-            } catch (e) {
-              err(e);
-            }
-          }
-          for (const r of list) root.append(requestCard(r, slots));
+          for (const r of list) root.append(requestCard(r));
         }
-        function requestCard(r, slots) {
+        function requestCard(r) {
           const box = el("article", null, "req");
           const name = staffName(r.staff_id),
             st = stats(r.staff_id, r.start_date.slice(0, 4));
@@ -322,9 +363,10 @@
 
           if (r.status === "pending") {
             /* التعارض: طلبات أو إجازات متداخلة لموظفين في نفس الشفت */
-            const myShifts = new Set(slots.filter((s) => s.staff_id === r.staff_id).map((s) => s.shift));
+            const rDays = daysOf(r);
+            const myShifts = new Set(rowsOn(r.staff_id, rDays).map((x) => x.shift));
             const others = LEAVES.filter(
-              (l) => l.id !== r.id && l.staff_id !== r.staff_id && l.status !== "rejected" && overlap(l, r) && (!myShifts.size || slots.some((s) => s.staff_id === l.staff_id && myShifts.has(s.shift))),
+              (l) => l.id !== r.id && l.staff_id !== r.staff_id && l.status !== "rejected" && overlap(l, r) && (!myShifts.size || rowsOn(l.staff_id, rDays).some((x) => myShifts.has(x.shift))),
             );
             if (others.length) {
               box.classList.add("conflict");
@@ -346,11 +388,11 @@
               box.append(tw);
             }
             /* التغطية: كم يبقى في دوره بالشفت بعد الاعتماد */
-            const mySlots = slots.filter((s) => s.staff_id === r.staff_id && s.day == null && s.week_start === sundayOf(r.start_date));
-            for (const ms of mySlots) {
-              const same = slots.filter((s) => s.week_start === ms.week_start && s.shift === ms.shift && s.role === ms.role && s.day == null && s.staff_id);
-              const away = same.filter((s) => s.staff_id === r.staff_id || LEAVES.some((l) => l.staff_id === s.staff_id && l.status === "approved" && overlap(l, r)));
-              box.append(el("p", "بعد الاعتماد يبقى في " + ROLES[ms.role] + " بالشفت " + SHIFT_NAME[ms.shift] + ": " + (same.length - away.length) + " من " + same.length, "muted"));
+            const firstWork = rDays.find((d) => D(d).getDay() <= 4) || r.start_date;
+            for (const ms of ROSTER.filter((x) => x.staff_id === r.staff_id && applies(x, firstWork))) {
+              const same = ROSTER.filter((x) => x.shift === ms.shift && x.role === ms.role && x.staff_id && applies(x, firstWork));
+              const away = same.filter((x) => x.staff_id === r.staff_id || LEAVES.some((l) => l.staff_id === x.staff_id && l.status === "approved" && overlap(l, r)));
+              box.append(el("p", "بعد الاعتماد يبقى في " + ROLES[ms.role] + " بالشفت " + SHIFT_NAME[ms.shift] + " يوم " + dm(firstWork) + ": " + (same.length - away.length) + " من " + same.length, "muted"));
             }
             const act = el("div", null, "actions"),
               note = el("input");
@@ -384,124 +426,158 @@
         }
         $("reqFilter").onchange = drawRequests;
 
-        /* الجدول الأسبوعي */
-        let SLOTS = [];
-        async function drawWeek() {
-          $("wTitle").textContent = "الأسبوع من " + dm(week) + " إلى " + dm(add(week, 6));
-          const { data, error } = await api.from("opd_team_slots").select("*").eq("week_start", week).order("sort");
-          if (error) return err(error);
-          SLOTS = data;
-          $("wCopy").disabled = SLOTS.length > 0;
-          const work = [0, 1, 2, 3, 4].map((i) => add(week, i));
-          const active = STAFF.filter((s) => s.active);
-          const grid = $("weekGrid");
-          grid.replaceChildren(
-            ...SHIFTS.map(([code, title, time, roles]) => {
-              const card = el("section", null, "shift"),
-                h = el("h3", title + " ");
-              h.append(el("span", time));
-              card.append(h);
-              for (const role of roles) {
-                const box = el("div", null, "role");
-                box.append(el("h4", ROLES[role]));
-                for (const s of SLOTS.filter((x) => x.shift === code && x.role === role)) {
-                  const row = el("div", null, "slot"),
-                    nm = el("span", s.staff_id ? staffName(s.staff_id) : s.label, "nm");
-                  if (s.day != null) nm.append(" ", el("span", DAYS[s.day], "tag"));
-                  const days = s.day == null ? work : [add(week, s.day)];
-                  const off = s.staff_id ? days.filter((d) => LEAVES.some((l) => l.staff_id === s.staff_id && l.status === "approved" && l.start_date <= d && l.end_date >= d)) : [];
-                  if (off.length) nm.append(" ", el("span", off.length === days.length ? "في إجازة" : "إجازة " + off.map((d) => DAYS[D(d).getDay()]).join("، "), "tag lv"));
-                  const mv = el("select");
-                  mv.setAttribute("aria-label", "الشفت");
-                  for (const [c] of SHIFTS) mv.add(new Option("الشفت " + SHIFT_NAME[c], c, false, c === code));
-                  mv.onchange = () => moveSlot(s, mv.value);
-                  const rl = el("select");
-                  rl.setAttribute("aria-label", "الدور");
-                  for (const r of roles) rl.add(new Option(ROLES[r], r, false, r === role));
-                  rl.onchange = () => changeRole(s, rl.value);
-                  const del = el("button", "حذف", "alt");
-                  del.type = "button";
-                  del.setAttribute("aria-label", "حذف " + nm.textContent + " من " + ROLES[role]);
-                  del.onclick = () => removeSlot(s);
-                  row.append(nm, mv, rl, del);
-                  box.append(row);
-                }
-                const addr = el("div", null, "addrow"),
-                  who = el("select"),
-                  day = el("select"),
-                  btn = el("button", "إضافة");
-                who.setAttribute("aria-label", "موظف لـ" + ROLES[role]);
-                who.add(new Option("— موظف —", ""));
-                for (const s of active) who.add(new Option(s.name, s.id));
-                who.add(new Option("ملاحظة نصية…", "__label"));
-                day.setAttribute("aria-label", "الأيام");
-                day.add(new Option("الأسبوع كله", ""));
-                [0, 1, 2, 3, 4, 6].forEach((i) => day.add(new Option(DAYS[i], String(i))));
-                btn.type = "button";
-                btn.onclick = () => addSlot(code, role, who.value, day.value);
-                addr.append(el("span", "إضافة إلى " + ROLES[role], "addlbl"), who, day, btn);
-                box.append(addr);
-                card.append(box);
+        /* الجدول الشهري */
+        /* الجدول الشهري: 4 أسابيع، أعمدة الشيت، والإجازات في عمود مستقل */
+        const COLS = [["A", "supervisor"], ["A", "reception"], ["A", "transfer"], ["A", "eye"], ["B", "supervisor"], ["B", "reception"], ["B", "transfer"], ["B", "eye"], ["C", "supervisor"], ["C", "reception"], ["B", "eservices"]];
+        const GROUPS = [["الشفت الأول", "7:30 ص – 3:30 م", 4], ["الشفت الثاني", "11:30 ص – 7:30 م", 4], ["الشفت الثالث", "3:30 م – 11:30 م", 2], ["الخدمات الإلكترونية", "11:30 ص – 7:30 م", 1]];
+        const ROLE_NAMES = { supervisor: "المشرف", reception: "الاستقبال", transfer: "التحويل", eye: "مركز العيون", eservices: "الموظف" };
+        function applies(r, d) {
+          if (d < r.valid_from || (r.valid_to && d > r.valid_to)) return false;
+          if (r.one_day) return d === r.valid_from;
+          const w = D(d).getDay();
+          return r.weekday == null ? w <= 4 : w === r.weekday;
+        }
+        /* roster: خانات بأسمائها (name/label)، leaves: {staff_id,name,start,end}، onCell اختياري للتعديل */
+        function rosterGrid(from, roster, leaves, onCell) {
+          const t = el("table", null, "rg"), thead = el("thead"), h1 = el("tr"), h2 = el("tr");
+          const th = (txt, cls, rs, cs) => { const e = el("th", txt, cls); if (rs) e.rowSpan = rs; if (cs) e.colSpan = cs; return e; };
+          h1.append(th("اليوم", "day", 2));
+          for (const [g, time, n] of GROUPS) { const e = th(g + " ", "grp", 0, n); e.append(el("small", time)); h1.append(e); }
+          h1.append(th("الإجازات", "lvh", 2));
+          for (const [, role] of COLS) h2.append(th(ROLE_NAMES[role]));
+          thead.append(h1, h2);
+          const tb = el("tbody"), now = today();
+          for (let i = 0; i < 28; i++) {
+            const d = add(from, i), w = D(d).getDay(), tr = el("tr");
+            if (w === 0) tr.classList.add("wk");
+            if (w === 5) tr.classList.add("off");
+            if (d === now) tr.classList.add("now");
+            const dc = el("th", null, "day");
+            dc.scope = "row";
+            dc.append(el("b", DAYS[w]), el("span", dm(d)));
+            tr.append(dc);
+            const away = leaves.filter((l) => l.start <= d && l.end >= d);
+            const awayIds = new Set(away.map((l) => l.staff_id));
+            for (const [shift, role] of COLS) {
+              const all = roster.filter((r) => r.shift === shift && r.role === role && applies(r, d));
+              const td = el("td");
+              for (const r of all) {
+                if (r.staff_id && awayIds.has(r.staff_id)) continue;
+                td.append(el("div", r.name || r.label, r.staff_id ? "" : "lbl"));
               }
-              return card;
-            }),
-          );
-        }
-        async function addSlot(shift, role, who, day) {
-          if (!who) return msg("اختر الموظف أولاً");
-          let label = null,
-            staff_id = who;
-          if (who === "__label") {
-            label = (prompt("النص الذي يظهر في الخانة (مثال: إدارة العيادات)") || "").trim();
-            if (!label) return;
-            staff_id = null;
+              if (onCell && w !== 5) {
+                td.tabIndex = 0;
+                td.classList.add("edit");
+                td.setAttribute("role", "button");
+                td.setAttribute("aria-label", "تعديل " + ROLE_NAMES[role] + " " + GROUPS[{ A: 0, B: 1, C: 2 }[shift]][0] + " يوم " + DAYS[w] + " " + dm(d));
+                const go = () => onCell(d, shift, role, all, awayIds);
+                td.onclick = go;
+                td.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+              }
+              tr.append(td);
+            }
+            const lv = el("td", null, "lv");
+            for (const l of away) lv.append(el("div", l.name));
+            tr.append(lv);
+            tb.append(tr);
           }
-          const sort = SLOTS.filter((s) => s.shift === shift && s.role === role).length + 1;
-          const { error } = await api.from("opd_team_slots").insert({ week_start: week, shift, role, staff_id, label, day: day === "" ? null : +day, sort });
-          if (error) return err(error);
-          msg("");
-          drawWeek();
+          t.append(thead, tb);
+          return t;
         }
-        async function moveSlot(s, shift) {
-          const roles = SHIFTS.find(([c]) => c === shift)[3];
-          const role = roles.includes(s.role) ? s.role : "reception";
-          const { error } = await api.from("opd_team_slots").update({ shift, role }).eq("id", s.id);
-          if (error) return err(error);
-          msg("نُقل " + (s.staff_id ? staffName(s.staff_id) : s.label) + " إلى الشفت " + SHIFT_NAME[shift] + (role !== s.role ? " (" + ROLES[role] + ")" : "") + ".");
-          drawWeek();
+
+        let from = sundayOf(today());
+        async function drawWeek() {
+          $("wTitle").textContent = "من " + dm(from) + " إلى " + dm(add(from, 27));
+          const named = ROSTER.map((x) => ({ ...x, name: x.staff_id ? staffName(x.staff_id) : null }));
+          const lv = LEAVES.filter((l) => l.status === "approved").map((l) => ({ staff_id: l.staff_id, name: staffName(l.staff_id), start: l.start_date, end: l.end_date }));
+          $("weekGrid").replaceChildren(rosterGrid(from, named, lv, openCell));
         }
-        async function changeRole(s, role) {
-          const { error } = await api.from("opd_team_slots").update({ role }).eq("id", s.id);
-          if (error) return err(error);
-          msg("صار " + (s.staff_id ? staffName(s.staff_id) : s.label) + " في " + ROLES[role] + ".");
-          drawWeek();
-        }
-        async function removeSlot(s) {
-          const { error } = await api.from("opd_team_slots").delete().eq("id", s.id);
-          if (error) return err(error);
-          drawWeek();
-        }
-        $("wCopy").onclick = async () => {
-          const prev = add(week, -7);
-          const { data, error } = await api.from("opd_team_slots").select("shift,role,staff_id,label,day,sort").eq("week_start", prev);
-          if (error) return err(error);
-          if (!data.length) return msg("الأسبوع السابق فاضي، لا يوجد شيء للنسخ.");
-          const ins = await api.from("opd_team_slots").insert(data.map((r) => ({ ...r, week_start: week })));
-          if (ins.error) return err(ins.error);
-          msg("تم نسخ جدول الأسبوع السابق. عدّل ما تغيّر فقط.");
-          drawWeek();
-        };
         $("wPrev").onclick = () => {
-          week = add(week, -7);
+          from = add(from, -28);
           drawWeek();
         };
         $("wNext").onclick = () => {
-          week = add(week, 7);
+          from = add(from, 28);
           drawWeek();
         };
         $("wNow").onclick = () => {
-          week = sundayOf(today());
+          from = sundayOf(today());
           drawWeek();
+        };
+
+        /* تعديل خانة */
+        let cell = null;
+        const scopeText = (x) => (x.one_day ? "هذا اليوم فقط" : (x.weekday == null ? "كل أيام الأسبوع" : "كل " + DAYS[x.weekday]) + " من " + dmy(x.valid_from) + (x.valid_to ? " إلى " + dmy(x.valid_to) : ""));
+        function openCell(d, shift, role, rows, awayIds) {
+          cell = { d, shift, role };
+          const w = D(d).getDay();
+          $("edTitle").textContent = ROLES[role] + " — الشفت " + SHIFT_NAME[shift];
+          $("edSub").textContent = DAYS[w] + " " + dmy(d);
+          const list = $("edList");
+          list.replaceChildren();
+          if (!rows.length) list.append(el("p", "الخانة فاضية في هذا اليوم.", "muted"));
+          for (const x of rows) {
+            const row = el("div", null, "ed-row"),
+              info = el("div");
+            info.append(el("strong", x.staff_id ? staffName(x.staff_id) : x.label), el("small", scopeText(x) + (x.staff_id && awayIds.has(x.staff_id) ? " — في إجازة هذا اليوم" : "")));
+            const rm = el("button", x.one_day ? "حذف" : "إزالة من هذا اليوم فصاعداً", "alt");
+            rm.type = "button";
+            rm.onclick = () => removeFrom(x, d);
+            row.append(info, rm);
+            list.append(row);
+          }
+          const who = $("edWho");
+          who.replaceChildren(new Option("— اختر الموظف —", ""));
+          for (const s2 of STAFF.filter((x) => x.active)) who.add(new Option(s2.name, s2.id));
+          who.add(new Option("نص (مثل: إدارة العيادات)…", "__label"));
+          $("edLabel").value = "";
+          hide("edLabel", false);
+          $("edScopeDay").textContent = "كل " + DAYS[w] + " من هذا اليوم فصاعداً";
+          const weekOk = w <= 4;
+          $("edScopeWeek").parentElement.classList.toggle("hidden", !weekOk);
+          document.querySelector('input[name="edScope"][value="' + (weekOk ? "week" : "weekday") + '"]').checked = true;
+          $("edMsg").textContent = "";
+          $("cellEd").showModal();
+        }
+        $("edWho").onchange = () => hide("edLabel", $("edWho").value === "__label");
+        $("edClose").onclick = () => $("cellEd").close();
+        async function afterEdit(text) {
+          const ro = await api.from("opd_team_roster").select("*").order("sort").limit(5000);
+          if (ro.error) return err(ro.error);
+          ROSTER = ro.data;
+          drawWeek();
+          $("cellEd").close();
+          msg(text);
+        }
+        async function removeFrom(x, d) {
+          const name = x.staff_id ? staffName(x.staff_id) : x.label;
+          const q = x.one_day || x.valid_from >= d ? api.from("opd_team_roster").delete().eq("id", x.id) : api.from("opd_team_roster").update({ valid_to: add(d, -1) }).eq("id", x.id);
+          const { error } = await q;
+          if (error) return ($("edMsg").textContent = error.message);
+          afterEdit(x.one_day ? "حُذف " + name + " من يوم " + dm(d) + "." : "أُزيل " + name + " من " + ROLES[x.role] + " بالشفت " + SHIFT_NAME[x.shift] + " ابتداءً من " + dm(d) + ".");
+        }
+        $("edAdd").onclick = async () => {
+          const who = $("edWho").value;
+          if (!who) return ($("edMsg").textContent = "اختر الموظف أولاً");
+          const label = who === "__label" ? $("edLabel").value.trim() : null;
+          if (who === "__label" && !label) return ($("edMsg").textContent = "اكتب النص");
+          const scope = document.querySelector('input[name="edScope"]:checked').value;
+          const { d, shift, role } = cell;
+          const row = {
+            shift,
+            role,
+            staff_id: who === "__label" ? null : who,
+            label,
+            weekday: scope === "weekday" ? D(d).getDay() : null,
+            one_day: scope === "one",
+            valid_from: d,
+            valid_to: scope === "one" ? d : null,
+            sort: ROSTER.filter((x) => x.shift === shift && x.role === role).length + 1,
+          };
+          const { error } = await api.from("opd_team_roster").insert(row);
+          if (error) return ($("edMsg").textContent = error.message);
+          const name = label || staffName(who);
+          afterEdit("أُضيف " + name + " في " + ROLES[role] + " بالشفت " + SHIFT_NAME[shift] + " — " + (scope === "one" ? "يوم " + dm(d) + " فقط" : scope === "weekday" ? "كل " + DAYS[D(d).getDay()] + " من " + dm(d) : "من " + dm(d) + " فصاعداً") + ".");
         };
 
         /* الموظفون والإحصاء */
