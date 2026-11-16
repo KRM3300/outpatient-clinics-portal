@@ -96,8 +96,9 @@
                 <select id="f-nature" required></select>
               </div>
               <div>
-                <label for="f-spec">التخصص</label>
+                <label for="f-spec">العيادة / القسم</label>
                 <select id="f-spec"></select>
+                <input id="f-spec-other" class="hidden" maxlength="120" placeholder="اكتب اسم القسم" aria-label="اسم القسم" style="margin-top: 6px" />
               </div>
               <div>
                 <label for="f-type">نوع الملاحظة *</label>
@@ -158,7 +159,7 @@
           <div class="cols">
             <div><h3>حسب نوع الملاحظة</h3><div class="bars" id="v-type"></div></div>
             <div><h3>حسب طبيعة العمل</h3><div class="bars" id="v-nature"></div></div>
-            <div><h3>حسب التخصص</h3><div class="bars" id="v-spec"></div></div>
+            <div><h3>حسب العيادة / القسم</h3><div class="bars" id="v-spec"></div></div>
             <div><h3>الأكثر تكراراً (الموظف محل الملاحظة)</h3><div class="bars" id="v-emp"></div></div>
           </div>
           <h3 style="margin-top: 18px">السجلات <span class="muted" id="v-count"></span></h3>
@@ -187,13 +188,17 @@
       </div>
     </footer>
 
+    <script src="../assets/clinics.js?v=2"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
     <script>
       (() => {
         const $ = (id) => document.getElementById(id);
         const api = supabase.createClient("https://omugonzzrulsdpnycact.supabase.co", "sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs");
         const NATURE = ["طبيب", "تمريض", "استقبال", "صيدلي", "مختبر", "أشعة", "أمن صحي", "أمن", "مشرف الصيانة والنظافة", "عامل النظافة", "قسم آخر"];
-        const SPEC = ["الصدرية", "طب المخ والأعصاب العامة", "جراحة المخ والأعصاب", "الروماتزم", "الأخصائي النفسي", "الطب النفسي", "القلب", "الأطفال", "الباطنة", "النساء والولادة", "الكلى", "الجهاز الهضمي", "الجلدية", "التجميل", "الجراحة", "المسالك البولية", "العظام", "الأنف والأذن والحنجرة", "السمعيات", "العيون", "البصريات", "أخرى"];
+        const CLINICS = window.OPD_UNIFIED_CLINICS || [],
+          DEPTS = window.OPD_HOSPITAL_DEPTS || [];
+        const SPEC_OTHER = "__other";
         const TYPES = ["تأخير بالحضور", "عدم حجز موعد متابعة", "ورقة من التنويم والطوارئ بدون حجز على النظام", "خروج قبل إنتهاء العمل", "عدم الإلتزام بجدول العيادة", "مشكلة مع مراجع", "مشكلة مع زميل", "تقصير بالعمل", "عدم صرف العلاج مدة الموعد", "عدم تحويل المراجع بالنظام فقط تم كتابته بالنوت", "عدم وجود طلب تحاليل أو أشعة بالنظام"];
         let user = null, isAdmin = false, canView = false, canSubmit = false, ALL = [];
 
@@ -203,7 +208,21 @@
         const node = (t, text, cls) => { const e = document.createElement(t); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; };
         const fill = (sel, list, first) => { if (first) sel.add(new Option(first, "")); for (const x of list) sel.add(new Option(x, x)); };
         fill($("f-nature"), NATURE, "اختر");
-        fill($("f-spec"), SPEC, "—");
+        {
+          const sel = $("f-spec");
+          sel.add(new Option("—", ""));
+          for (const [label, list] of [["العيادات الخارجية", CLINICS], ["أقسام المستشفى", DEPTS]]) {
+            const g = document.createElement("optgroup");
+            g.label = label;
+            for (const x of list) g.append(new Option(x, x));
+            sel.append(g);
+          }
+          sel.add(new Option("أخرى (اكتب يدوياً)", SPEC_OTHER));
+          sel.onchange = () => {
+            hide("f-spec-other", sel.value === SPEC_OTHER);
+            $("f-spec-other").required = sel.value === SPEC_OTHER;
+          };
+        }
         fill($("f-type"), TYPES.concat(["أخرى"]), "اختر");
         $("f-type").onchange = () => hide("f-other-box", $("f-type").value === "أخرى");
 
@@ -248,7 +267,7 @@
           if ($("f-type").value === "أخرى" && !$("f-other").value.trim()) return msg("حدّد نوع الملاحظة");
           $("f-submit").disabled = true;
           const row = {
-            employee_name: $("f-emp").value.trim(), work_nature: $("f-nature").value, specialty: $("f-spec").value || null,
+            employee_name: $("f-emp").value.trim(), work_nature: $("f-nature").value, specialty: ($("f-spec").value === SPEC_OTHER ? $("f-spec-other").value.trim() : $("f-spec").value) || null,
             observation_type: type, notes: $("f-notes").value.trim() || null, patient_file: $("f-file").value.trim() || null,
             reporter_name: $("f-rname").value.trim(), reporter_empno: $("f-rno").value.trim(), created_by: user.id,
           };
@@ -258,6 +277,8 @@
           if (error) return err(error);
           for (const id of ["f-emp", "f-notes", "f-file", "f-other", "f-when"]) $(id).value = "";
           for (const id of ["f-nature", "f-spec", "f-type"]) $(id).selectedIndex = 0;
+          $("f-spec-other").value = "";
+          hide("f-spec-other", false);
           hide("f-other-box", false);
           msg("تم إرسال الملاحظة، شكراً لك");
           if (canView) await records();
@@ -328,7 +349,7 @@
           const cur = inRange(st.from, st.to), prev = cr ? inRange(cr[0], cr[1]) : null;
           $("v-period").textContent = "الفترة: " + fmt(st.from) + " – " + fmt(st.to) + (cr ? " · المقارنة مع " + cr[2] + " (" + fmt(cr[0]) + " – " + fmt(cr[1]) + ")" : "");
           const fl = $("v-filters"); fl.replaceChildren();
-          const names = { type: "النوع", nature: "طبيعة العمل", spec: "التخصص", emp: "الموظف" };
+          const names = { type: "النوع", nature: "طبيعة العمل", spec: "العيادة / القسم", emp: "الموظف" };
           for (const [k, v] of Object.entries(st.f)) if (v) { const b = node("button", names[k] + ": " + v + " ✕", "alt"); b.type = "button"; b.onclick = () => { st.f[k] = null; render(); }; fl.append(b); }
 
           const tiles = $("v-tiles"); tiles.replaceChildren();
@@ -338,6 +359,10 @@
           tile("تأخير بالحضور", late(cur), prev ? late(prev) : null);
           const fu = (l) => l.filter((r) => /موعد متابعة/.test(r.observation_type)).length;
           tile("عدم حجز موعد متابعة", fu(cur), prev ? fu(prev) : null);
+          const inClinics = (l) => l.filter((r) => CLINICS.includes(r.specialty)).length;
+          tile("في العيادات الخارجية", inClinics(cur), prev ? inClinics(prev) : null);
+          const inDepts = (l) => l.filter((r) => r.specialty && !CLINICS.includes(r.specialty)).length;
+          tile("في أقسام المستشفى الأخرى", inDepts(cur), prev ? inDepts(prev) : null);
           tile("موظفون محل ملاحظة", new Set(cur.map((r) => r.employee_name)).size, prev ? new Set(prev.map((r) => r.employee_name)).size : null);
 
           bars("v-type", cur, prev, (r) => baseType(r.observation_type), "type");
@@ -348,7 +373,7 @@
           const t = $("v-list"); t.replaceChildren();
           $("v-count").textContent = "(" + cur.length + ")";
           const hr = node("tr");
-          for (const h of ["التاريخ", "الموظف", "طبيعة العمل", "التخصص", "نوع الملاحظة", "ملاحظات", "رقم الملف", "المُعدّ"].concat(isAdmin ? [""] : [])) hr.append(node("th", h));
+          for (const h of ["التاريخ", "الموظف", "طبيعة العمل", "العيادة / القسم", "نوع الملاحظة", "ملاحظات", "رقم الملف", "المُعدّ"].concat(isAdmin ? [""] : [])) hr.append(node("th", h));
           t.append(hr);
           for (const r of cur.slice(0, 300)) {
             const tr = node("tr");

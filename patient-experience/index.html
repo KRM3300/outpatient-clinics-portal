@@ -41,7 +41,7 @@
       .s-warn:empty { display: none; }
       #alertBtn[aria-pressed="true"] { background: var(--ok-bg); color: var(--ok-ink); border-color: var(--ok-ink); }
     </style>
-    <script src="../assets/clinics.js?v=1"></script>
+    <script src="../assets/clinics.js?v=2"></script>
   </head>
   <body>
     <header class="site-header">
@@ -112,9 +112,9 @@
                 </select>
               </div>
               <div>
-                <label for="f-dept" data-ar="القسم" data-en="Department">القسم</label>
+                <label for="f-dept" data-ar="العيادة" data-en="Clinic">العيادة</label>
                 <select id="f-dept" required></select>
-                <input id="f-dept-other" class="hidden" maxlength="120" placeholder="اكتب اسم القسم" aria-label="اسم القسم" />
+                <input id="f-dept-other" class="hidden" maxlength="120" placeholder="اكتب اسم العيادة" aria-label="اسم العيادة" />
               </div>
               <div>
                 <label for="f-doc">الطبيب أو الممارس</label>
@@ -297,7 +297,7 @@
               admin: "مدير تجربة المريض",
               sysadmin: "مدير النظام",
             },
-            dept: "القسم",
+            dept: "العيادة",
             prio: "الأولوية",
             date: "التاريخ",
             active: "مفعّل",
@@ -314,7 +314,7 @@
               admin: "Patient experience admin",
               sysadmin: "System administrator",
             },
-            dept: "Department",
+            dept: "Clinic",
             prio: "Priority",
             date: "Date",
             active: "Active",
@@ -430,7 +430,7 @@
           data.created_by = user.id;
           data.department = pickDept();
           data.doctor_name = pickDoc();
-          if (!data.department) return err({ message: "اختر القسم" });
+          if (!data.department) return err({ message: "اختر العيادة" });
           if (data.case_type !== "appointment")
             for (const k of ["patient_name", "patient_file", "reason", "solution"]) delete data[k];
           if (smartRule()) {
@@ -462,21 +462,23 @@
         function badge(text, tone) {
           return node("span", text, "badge" + (tone ? " " + tone : ""));
         }
-        /* القسم والطبيب: نفس قائمة طلب موعد المتابعة + «أخرى» يدوي */
+        /* العيادة والطبيب: قائمة العيادات الموحدة (نفس الخدمات الإلكترونية) + «أخرى» يدوي */
         const OTHER = "__other";
         const clinicAr = window.OPD_CLINIC_AR || {},
           clinicDocs = window.OPD_CLINIC_DOCTORS || {};
         const deptSel = $("f-dept"),
           docSel = $("f-doc");
         function fillDepts() {
-          deptSel.replaceChildren(new Option("— اختر القسم —", ""));
-          for (const c of Object.keys(clinicDocs)) deptSel.add(new Option(clinicAr[c] || c, c));
+          deptSel.replaceChildren(new Option("— اختر العيادة —", ""));
+          for (const c of window.OPD_UNIFIED_CLINICS || []) deptSel.add(new Option(c, c));
           deptSel.add(new Option("أخرى (اكتب يدوياً)", OTHER));
           fillDocs();
         }
         function fillDocs() {
           docSel.replaceChildren(new Option("— بدون طبيب محدد —", ""));
-          for (const [ar] of clinicDocs[deptSel.value] || []) docSel.add(new Option(ar, ar));
+          const seen = new Set();
+          for (const key of (window.OPD_UNIFIED_DOCTOR_KEYS || {})[deptSel.value] || [])
+            for (const [ar] of clinicDocs[key] || []) if (!seen.has(ar)) (seen.add(ar), docSel.add(new Option(ar, ar)));
           docSel.add(new Option("أخرى (اكتب يدوياً)", OTHER));
           syncOther();
         }
@@ -489,7 +491,7 @@
         deptSel.addEventListener("change", fillDocs);
         docSel.addEventListener("change", syncOther);
         fillDepts();
-        const pickDept = () => (deptSel.value === OTHER ? $("f-dept-other").value.trim() : clinicAr[deptSel.value] || deptSel.value);
+        const pickDept = () => (deptSel.value === OTHER ? $("f-dept-other").value.trim() : deptSel.value);
         const pickDoc = () => (docSel.value === OTHER ? $("f-doc-other").value.trim() : docSel.value) || null;
 
         /* النموذج الذكي لطلبات المواعيد: الخانات حسب نوع الطلب، عنوان تلقائي، وفحص التواريخ */
