@@ -70,6 +70,32 @@
   const rejectedReasons=["عدم توفر موعد","بيانات ناقصة","عدم انطباق ضوابط المسار",
     "طلب مكرر","توجيه لجهة أخرى","سبب آخر"];
   let user=null,member=null,perms=new Set(),settings={emergency:false,phc_triage:false};
+  // VIDA doctor list is read from Supabase after approved sign-in.
+  // Local window.OPD_VIDA_DOCTORS stays an unchanged read-only fallback.
+  let vidaDoctorsMap=window.OPD_VIDA_DOCTORS||{};
+  async function refreshVidaDoctors(){
+    try{
+      const {data,error}=await api.from("opd_vida_doctors")
+        .select("clinic,full_name").order("clinic").order("full_name").limit(2500);
+      if(error || !Array.isArray(data) || !data.length){
+        vidaDoctorsMap=window.OPD_VIDA_DOCTORS||{};
+        return;
+      }
+      const map=Object.create(null);
+      for(const entry of data){
+        const clinic=String(entry.clinic||"").trim();
+        const fullName=String(entry.full_name||"").trim();
+        if(!clinic||!fullName||["__proto__","constructor","prototype"].includes(clinic))continue;
+        if(!map[clinic])map[clinic]=[];
+        if(!map[clinic].includes(fullName))map[clinic].push(fullName);
+      }
+      for(const list of Object.values(map))list.sort((a,b)=>a.localeCompare(b,"ar"));
+      vidaDoctorsMap=Object.keys(map).length?map:(window.OPD_VIDA_DOCTORS||{});
+    }catch(_error){
+      vidaDoctorsMap=window.OPD_VIDA_DOCTORS||{};
+    }
+  }
+
   let queueData=[],queueKind="all",queueOffset=0,queueHasMore=true,lastReport=null;
   let section="entry",queueBusy=false;
   const can = x => member?.role==="admin" || perms.has(x);
@@ -129,7 +155,7 @@
   }
   function drawDoctors(){
     const k=currentKind(),clinic=$("clinic").value,need=doctorRoutes.includes(k);
-    const list=clinic&&clinic!==OTHER?((window.OPD_VIDA_DOCTORS||{})[clinic]||[]):[];
+    const list=clinic&&clinic!==OTHER?(vidaDoctorsMap[clinic]||[]):[];
     setupSelect("doctorSel",[...list.map(n=>[n,n]),...(clinic?[[OTHER,OTHER_LABEL]]:[])],clinic?"اختر الطبيب":"اختر العيادة أولًا");
     if(need&&clinic&&!list.length)$("doctorSel").value=OTHER;
     $("doctorSel").required=need;
@@ -168,6 +194,7 @@
     }
     perms=new Set((p.data||[]).map(v=>v.perm));
     if(!c.error)for(const s of c.data||[])settings[s.kind]=s.enabled;
+    await refreshVidaDoctors();
     $("identity").textContent=member.full_name+" — "+(member.department||"");
     showState("app");
     $("navSettings").classList.toggle("hidden",!admin());
