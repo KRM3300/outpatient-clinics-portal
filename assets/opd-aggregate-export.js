@@ -18,7 +18,12 @@ function checked(sections){
   const headers=(s.headers||[]).map(v=>String(v));
   if(headers.some(h=>/اسم المريض|اسم المراجع|رقم الهوية|رقم الملف|تاريخ ميلاد|patient.*name|patient.*id|patient.*file|mobile.*number|اسم الأم|mother.*name/i.test(h)))
     throw Error("تم منع تصدير بيانات المرضى الشخصية");
-  const rows=(s.rows||[]).map(row=>(row||[]).map(v=>typeof v==="number"?v:String(v??"")));
+  const rows=(s.rows||[]).map(row=>(row||[]).map((v,i)=>{
+   if(typeof v==="number")return v;
+   const text=String(v??"");
+   if(i>0 && /^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$/.test(text.trim()) && Number.isFinite(Number(text)))return Number(text);
+   return text;
+  }));
   return {title:String(s.title||"مؤشرات"),headers,rows};
  });
 }
