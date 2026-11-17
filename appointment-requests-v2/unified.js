@@ -78,6 +78,7 @@
     const node=$(id);clear(node);node.add(new Option(placeholder||"اختر",""));
     for(const [value,label] of items)node.add(new Option(label,value));
   }
+  const isPhysician=()=>["doctor","phc_doctor"].includes(member?.role)||["doctor","phc_doctor"].includes(member?.job_title);
   const currentKind=()=>$("kind").value;
   function available(k){return settings[k] !== false;}
   function allowedKinds(){return Object.keys(names).filter(k=>can(permission[k])&&available(k));}
@@ -107,7 +108,7 @@
     input.required=k==="affiliate";
     // For nurses and scheduling staff, record the treating doctor's name without
     // claiming the signed-in staff member was the physician.
-    const nonDoctor=member && !["doctor","phc_doctor"].includes(member.role);
+    const nonDoctor=member && !isPhysician();
     $("requestDoctorWrap").classList.toggle("hidden",!nonDoctor);
     document.querySelector('[name="referring_doctor"]').required=!!nonDoctor;
     $("expectedDateWrap").classList.toggle("hidden",!["followup","emergency"].includes(k));
@@ -210,7 +211,7 @@
       mother_name:k==="affiliate"?String(f.get("mother_name")||"").trim():null,
       diagnosis_reason:String(f.get("diagnosis_reason")||"").trim(),
       request_note:String(f.get("request_note")||"").trim()||null,
-      referring_doctor:["doctor","phc_doctor"].includes(member.role)?
+      referring_doctor:isPhysician()?
         member.full_name:String(f.get("referring_doctor")||"").trim(),
       doctor_name:null,clinic_date:d||null,
       period:["followup","emergency"].includes(k)?f.get("period")||null:null,
