@@ -283,11 +283,16 @@
     const root=$("statCards");clear(root);
     const vals=data?.totals||{};
     for(const [title,k] of [["إجمالي الطلبات","total"],["المحجوزة","booked"],
-      ["خلال 24 ساعة","within_24"],["المتأخرة المفتوحة","overdue"],["المرفوضة","rejected"]])
+      ["خلال 24 ساعة","within_24"],["المتأخرة المفتوحة","overdue"],["المرفوضة","rejected"],["السجلات التاريخية","historical"]])
       root.append(statCard(title,String(vals[k]??"—")));
+    if(Number(vals.eligible_24||0)>0)root.append(statCard("الالتزام خلال 24 ساعة",
+      (100*Number(vals.within_24||0)/Number(vals.eligible_24)).toFixed(1)+"%"));
+    if(vals.mean_booking_hours!=null)root.append(statCard("متوسط إنجاز الحجز",vals.mean_booking_hours+" ساعة"));
+    if(vals.mean_wait_days!=null)root.append(statCard("متوسط انتظار الموعد",vals.mean_wait_days+" يوم"));
     const box=$("statBreakdown");clear(box);
+    box.append(el("p","مؤشر 24 ساعة يُحسب للسجلات ذات وقت إغلاق موثّق فقط؛ لا نختلق زمن إنجاز لردود Google القديمة.","hint"));
     for(const [group,title] of [["by_route","حسب المسار"],["by_facility","حسب الجهة"],
-      ["by_clinic","حسب العيادة"],["by_doctor","حسب الطبيب"],["by_month","حسب الشهر"]]){
+      ["by_clinic","حسب العيادة"],["by_doctor","حسب الطبيب"],["by_employee","إنتاجية موظفي المواعيد"],["by_rejection_reason","أسباب الرفض"],["by_month","حسب الشهر"]]){
       const h=el("h3",title);box.append(h);
       const a=data?.[group]||[];
       if(!a.length)box.append(el("p","لا توجد بيانات.","hint"));
