@@ -26,8 +26,8 @@
   };
   const affiliates=["مستشفى النبهانية","مستشفى عقلة الصقور","مستشفى ضرية","مركز ضلع رشيد","مركز دخنة"];
   const phcs=[
-    "مركز صحي الحوطه","مركز صحي الملك خالد","مركز صحي الروضة","مركز صحي الجريف",
-    "مركز صحي الملك عبد العزيز","مركز صحي الغربي","مركز صحي دخنه","مركز صحي الجندل",
+    "مركز صحي الحوطة","مركز صحي الملك خالد","مركز صحي الروضة","مركز صحي الجريف",
+    "مركز صحي الملك عبد العزيز","مركز صحي الغربي","مركز صحي دخنة","مركز صحي الجندل",
     "مركز صحي قصر بن عقيل","مركز صحي الخشيبي","مركز صحي الصليبي","مركز صحي الشبيكية",
     "مركز صحي الجرذاوية","مركز صحي ضليع رشيد","مركز صحي الغضياء والسلمات",
     "مركز صحي رفايع اللهيب","مركز صحي الهمجه","مركز صحي الدحلة",
@@ -173,10 +173,10 @@
     e.preventDefault();
     const full=$("joinName").value.trim(),emp=$("joinNumber").value.trim(),
       job=$("joinJob").value,dept=$("joinDepartment").value.trim(),phone=$("joinPhone").value.trim();
-    if(full.split(/\\s+/).length<4)return feedback("joinMessage","أدخل اسمك الرباعي.");
-    if(!/^\\d{4,12}$/.test(emp))return feedback("joinMessage","أدخل رقمًا وظيفيًا صحيحًا.");
+    if(full.split(/\s+/).length<4)return feedback("joinMessage","أدخل اسمك الرباعي.");
+    if(!/^\d{4,12}$/.test(emp))return feedback("joinMessage","أدخل رقمًا وظيفيًا صحيحًا.");
     if(!job||dept.length<2)return feedback("joinMessage","اختر الفئة وحدد القسم أو المنشأة.");
-    if(phone&&!/^\\+?\\d{9,15}$/.test(phone))return feedback("joinMessage","أدخل رقم جوال صحيحًا.");
+    if(phone&&!/^\+?\d{9,15}$/.test(phone))return feedback("joinMessage","أدخل رقم جوال صحيحًا.");
     $("joinSave").disabled=true;
     const r=await api.from("opd_appt_members").insert({
       user_id:user.id,full_name:full,employee_no:emp,job_title:job,
