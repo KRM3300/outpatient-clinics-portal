@@ -236,7 +236,11 @@
   };
   function buildTabs(){
     const root=$("routeTabs");clear(root);root.append(showTab("all"));
-    for(const k of (handler()?Object.keys(names):allowedKinds()))root.append(showTab(k));
+    const visible=can("appt_booking_handle")?Object.keys(names):
+      [...new Set([...allowedKinds(),
+        ...(can("appt_er_handle")?["emergency"]:[]),
+        ...(can("appt_fu_handle")?["followup"]:[])])];
+    for(const k of visible)root.append(showTab(k));
   }
   function hoursUntilNow(date){
     return (Date.now()-new Date(date).getTime())/3600000;
