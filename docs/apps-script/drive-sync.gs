@@ -40,16 +40,19 @@ function setup() {
 }
 
 /** Returns only the results of the existing 3 source calculations + VIDA staff names. */
+var DRIVE_SYNC_LAST_FILE = '';
+var DRIVE_SYNC_LAST_SOURCE = 'drive_kpi';
 function buildPayload_() {
-  let source = 'drive_kpi', filename = '';
+  DRIVE_SYNC_LAST_SOURCE = 'drive_kpi';
+  DRIVE_SYNC_LAST_FILE = '';
 
   function grid(id, tab) {
-    filename = id + ' / ' + tab;
+    DRIVE_SYNC_LAST_FILE = id + ' / ' + tab;
     const spreadsheet = SpreadsheetApp.openById(id);
     const sheet = spreadsheet.getSheetByName(tab);
-    if (!sheet) throw new Error('تبويب مفقود: ' + filename);
+    if (!sheet) throw new Error('تبويب مفقود: ' + DRIVE_SYNC_LAST_FILE);
     const values = sheet.getDataRange().getDisplayValues();
-    if (!values.length) throw new Error('المصدر فارغ: ' + filename);
+    if (!values.length) throw new Error('المصدر فارغ: ' + DRIVE_SYNC_LAST_FILE);
     return values.map(row => row.map(value => String(value == null ? '' : value).trim()));
   }
   const p2 = n => String(n).padStart(2, '0');
@@ -118,7 +121,7 @@ function buildPayload_() {
 
   // Staff Names, sheet gid=2080242207.
   // Row 3 is currently the header; find column names rather than hard-code C/F.
-  source = 'vida_doctors';
+  DRIVE_SYNC_LAST_SOURCE = 'vida_doctors';
   const staff = grid(DRIVE_SYNC.SCHEDULE_ID, DRIVE_SYNC.STAFF_TAB);
   const headAt = staff.findIndex(r => r.includes('Clinic') && r.includes('Full Name'));
   if (headAt < 0) throw new Error('أعمدة Staff Names تغيّرت: Clinic أو Full Name غير موجود');
@@ -209,12 +212,12 @@ function emailError_(source, filename, details) {
 
 function syncDrive() {
   const secret = PropertiesService.getScriptProperties().getProperty('SYNC_SECRET');
-  let source = 'drive_kpi', filename = '';
+  DRIVE_SYNC_LAST_SOURCE = 'drive_kpi';
+  DRIVE_SYNC_LAST_FILE = '';
   try {
     if (!secret || secret.length < 24)
       throw new Error('مفتاح SYNC_SECRET غير مهيأ في Script Properties.');
     const payload = buildPayload_();
-    source = 'drive_kpi';
     const res = rpc_(secret, payload);
     if (!res || res.ok !== true)
       throw new Error('فشل الاستيراد إلى Supabase: ' + String(res && (res.message || res.error) || 'غير معروف'));
@@ -225,9 +228,9 @@ function syncDrive() {
   } catch (err) {
     const errorText = String(err && err.message || err);
     // Keep logs and emails operational; never include the secret, payload or raw rows.
-    const label = (/Staff Names|أطباء VIDA/.test(errorText) ? 'vida_doctors' : source);
+    const label = DRIVE_SYNC_LAST_SOURCE;
     if (secret) reportError_(secret, label, errorText);
-    try { emailError_(label, filename, errorText); }
+    try { emailError_(label, DRIVE_SYNC_LAST_FILE, errorText); }
     catch (emailErr) { Logger.log('تعذر إرسال البريد؛ تحقق من صلاحيات MailApp.'); }
     Logger.log('فشلت مزامنة العيادات: ' + errorText.slice(0,200));
     throw new Error('فشلت المزامنة؛ راجع إشعار البريد وسجل التنفيذ.');
