@@ -26,6 +26,11 @@ textarea{min-height:76px}.hint{font-size:.83rem;color:#536873}.error{color:#a51d
 </head><body>
 <header><strong>العيادات الخارجية | خدمة طلبات الحجز الموحّدة</strong><br><small>Unified Booking Requests</small></header>
 <main>
+<nav class="nav" aria-label="التنقل" style="margin:10px 0">
+<a href="../" style="color:#0e6875">العودة للبوابة</a>
+<a href="../reports-preview/" style="color:#0e6875">معاينة التقارير</a>
+<a href="../staff-approvals-preview/" style="color:#0e6875">المعتمدون والصلاحيات</a>
+</nav>
 <p class="notice">الطلب ليس حجزًا مؤكدًا في VIDA. يعتمد الحجز بعد معالجة موظف المواعيد وتسجيل موعده الفعلي. لا ترفق أي مستندات.</p>
 <section id="auth" class="panel">
 <h1>دخول الموظف</h1><p class="hint">تسجيل شخصي بالبريد الإلكتروني ورمز التحقق. يلزم اعتماد الحساب والصلاحية مسبقًا.</p>
@@ -38,6 +43,7 @@ textarea{min-height:76px}.hint{font-size:.83rem;color:#536873}.error{color:#a51d
 <div class="nav"><button id="navNew">طلب جديد</button><button id="navQueue" class="alt">الطلبات</button><button id="navStats" class="alt">المؤشرات</button><button id="navSettings" class="alt hidden">التحكم بالخدمات</button></div>
 <section id="entry" class="panel">
 <h2>طلب حجز جديد</h2>
+<p id="routeDescription" class="hint"></p>
 <form id="bookingForm">
 <div class="grid">
 <label>نوع الخدمة<select id="kind" required></select></label>
