@@ -51,13 +51,13 @@
   const allClinics=(window.OPD_UNIFIED_CLINICS||[]).map(s=>[s,s]);
   const sourceFacility = {followup:["مستشفى الرس العام"],affiliate:affiliates,
     low_back:["المركز الصحي"],breast_screening:["قسم الأشعة"],
-    emergency:["الطوارئ"],phc_triage:phcs};
+    emergency:["الطوارئ"],phc_triage:[...phcs,"__other__"]};
   const statuses={pending:"بانتظار الحجز",processing:"قيد المعالجة",
     booked:"تم الحجز",unable:"تعذر الحجز",rejected:"مرفوض",cancelled:"ملغي"};
   const rejectedReasons=["عدم توفر موعد","بيانات ناقصة","عدم انطباق ضوابط المسار",
     "طلب مكرر","توجيه لجهة أخرى","سبب آخر"];
   let user=null,member=null,perms=new Set(),settings={emergency:false,phc_triage:false};
-  let queueData=[],queueKind="all",queueOffset=0,queueHasMore=true;
+  let queueData=[],queueKind="all",queueOffset=0,queueHasMore=true,lastReport=null;
   let section="entry",queueBusy=false;
   const can = x => member?.role==="admin" || perms.has(x);
   const handler = () => can("appt_booking_handle") || can("appt_er_handle") || can("appt_fu_handle");
@@ -82,7 +82,9 @@
   }
   function updateKind(){
     const k=currentKind(),f=sourceFacility[k]||[];
-    setupSelect("facility",f.map(v=>[v,v]),"اختر الجهة");
+    setupSelect("facility",f.map(v=>[v,v==="__other__"?"مركز صحي آخر (حدد الاسم)":v]),"اختر الجهة");
+    $("facilityOtherWrap").classList.add("hidden");
+    $("facilityOther").required=false;
     let clinics=(k==="affiliate" ? affiliateClinics :
       k==="phc_triage" ? phcClinics :
       k==="low_back" ? [["Neurosurgery","جراحة المخ والأعصاب"]] :
@@ -148,6 +150,11 @@
   };
   $("logout").onclick=async()=>{await api.auth.signOut();user=null;member=null;perms=new Set();await load();};
   $("kind").onchange=updateKind;
+  $("facility").onchange=()=>{
+    const other=currentKind()==="phc_triage"&&$("facility").value==="__other__";
+    $("facilityOtherWrap").classList.toggle("hidden",!other);
+    $("facilityOther").required=other;
+  };
   $("bookingForm").onsubmit=async e=>{
     e.preventDefault();feedback("entryMessage","");
     const k=currentKind();
@@ -160,7 +167,7 @@
     const d=["followup","emergency"].includes(k)?f.get("clinic_date"):null;
     const form= {
       kind:k, requested_by:user.id, requester_name:member.full_name,
-      source_facility:String($("facility").value||""),
+      source_facility:$("facility").value==="__other__"?$("facilityOther").value.trim():String($("facility").value||""),
       clinic_name:$("clinic").value,
       patient_name:pn,patient_identifier:String(f.get("patient_identifier")||"").trim(),
       patient_dob:f.get("patient_dob")||null,patient_mobile:String(f.get("patient_mobile")||"").trim(),
@@ -253,6 +260,13 @@
         " | العيادة: "+r.clinic_name+" | الطبيب الطالب: "+(r.referring_doctor||r.requester_name||"—"),"muted"));
       card.append(el("p","وقت الطلب: "+new Date(r.created_at).toLocaleString("ar-SA")+
         " | المرجع: "+r.id.slice(0,8),"muted"));
+      const extra=el("details");const summary=el("summary","تفاصيل المريض وسبب الطلب");extra.append(summary);
+      for(const [caption,value] of [
+        ["رقم الهوية",r.patient_identifier],["تاريخ الميلاد",r.patient_dob],
+        ["الجوال",r.patient_mobile],["اسم الأم",r.mother_name],
+        ["السبب/التشخيص",r.diagnosis_reason],["الملاحظات",r.request_note]
+      ])if(value)extra.append(el("p",caption+": "+value,"muted"));
+      card.append(extra);
       if(r.status==="booked")card.append(el("p","تاريخ الموعد المحجوز: "+(r.booked_date||"غير موثق تاريخيًا"),"success"));
       if(r.status==="rejected"||r.status==="unable")card.append(el("p","سبب الرفض/التعذر: "+(r.rejection_reason||"غير مسجل"),"error"));
       if(canManage&&!statusClosed(r.status))actionBox(r,card);
@@ -267,7 +281,7 @@
     if(queueBusy)return;queueBusy=true;
     if(reset){queueOffset=0;queueData=[];queueHasMore=true;}
     const query=api.from("opd_appt_requests")
-      .select("id,kind,patient_name,patient_identifier,source_facility,clinic_name,referring_doctor,requester_name,status,created_at,closed_at,booked_date,rejection_reason")
+      .select("id,kind,patient_name,patient_identifier,patient_dob,patient_mobile,mother_name,diagnosis_reason,request_note,source_facility,clinic_name,referring_doctor,requester_name,status,created_at,closed_at,booked_date,rejection_reason")
       .order("created_at",{ascending:false}).range(queueOffset,queueOffset+199);
     const r=await query;queueBusy=false;
     if(r.error)return feedback("queueMessage",r.error.message);
@@ -280,6 +294,7 @@
     const n=el("div",undefined,"stat");n.append(el("span",title),el("b",value));return n;
   }
   function drawStats(data){
+    lastReport=data;
     const root=$("statCards");clear(root);
     const vals=data?.totals||{};
     for(const [title,k] of [["إجمالي الطلبات","total"],["المحجوزة","booked"],
@@ -306,7 +321,7 @@
     }
   }
   async function stats(){
-    clear($("statCards"));clear($("statBreakdown"));
+    lastReport=null;clear($("statCards"));clear($("statBreakdown"));
     const r=await api.rpc("opd_booking_dashboard",{p_from:$("statsFrom").value,p_to:$("statsTo").value});
     if(r.error)return $("statBreakdown").append(el("p","لم تُفعّل بعد خدمة إحصائيات الحجز الشاملة: "+r.error.message,"hint"));
     drawStats(r.data||{});
@@ -338,6 +353,34 @@
   $("status").onchange=renderQueue;$("q").oninput=renderQueue;
   $("refresh").onclick=()=>loadQueue(true);
   $("runStats").onclick=stats;
+  function reportSections(){
+    if(!lastReport)throw Error("اعرض المؤشرات أولًا قبل التحميل.");
+    const v=lastReport.totals||{};
+    const titles=[
+      ["إجمالي الطلبات","total"],["تم الحجز","booked"],["خلال 24 ساعة","within_24"],
+      ["المستحقة للمعيار","eligible_24"],["المتأخرة المفتوحة","overdue"],["المرفوضة","rejected"],
+      ["السجلات التاريخية","historical"],["متوسط زمن إنجاز الحجز (ساعات)","mean_booking_hours"],
+      ["متوسط مدة انتظار الموعد (أيام)","mean_wait_days"],["الفترة السابقة","previous_total"]
+    ];
+    const sections=[{title:"ملخص المؤشرات",headers:["المؤشر","القيمة"],
+      rows:titles.map(([title,key])=>[title,key==="previous_total"?(lastReport.previous_total??0):(v[key]??"غير متاح")])}];
+    for(const [key,title] of [
+      ["by_route","حسب المسار"],["by_facility","حسب الجهة"],["by_clinic","حسب العيادة"],
+      ["by_doctor","حسب الطبيب الطالب"],["by_employee","إنتاجية موظفي المواعيد"],
+      ["by_rejection_reason","أسباب الرفض"],["by_month","حسب الشهر"]
+    ])sections.push({title,headers:["الفئة","عدد الطلبات"],
+      rows:(lastReport[key]||[]).map(x=>[String(x.name||"غير محدد"),Number(x.total||0)])});
+    return sections;
+  }
+  const period=()=>$("statsFrom").value+" — "+$("statsTo").value;
+  $("statsPdf").onclick=()=>{
+    try{window.OPDExport.downloadPDF("تقرير طلبات الحجز",reportSections(),period());feedback("exportMessage","تم تجهيز تقرير PDF.",true)}
+    catch(e){feedback("exportMessage",String(e.message||e));}
+  };
+  $("statsExcel").onclick=()=>{
+    try{window.OPDExport.downloadExcel("تقرير طلبات الحجز",reportSections(),period());feedback("exportMessage","تم تجهيز تقرير Excel.",true)}
+    catch(e){feedback("exportMessage",String(e.message||e));}
+  };
   const date=new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Riyadh"});
   $("statsTo").value=date;$("statsFrom").value=date.slice(0,8)+"01";
   load();
