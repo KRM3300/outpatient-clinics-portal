@@ -2,3 +2,6 @@
 grant update on public.opd_nc_reports to authenticated;
 create policy nc_reports_update on public.opd_nc_reports for update to authenticated
   using (public.opd_kpi_is_admin()) with check (public.opd_kpi_is_admin());
+
+-- الرقم الوظيفي لمُعدّ التقرير صار اختيارياً
+alter table public.opd_nc_reports alter column reporter_empno drop not null;

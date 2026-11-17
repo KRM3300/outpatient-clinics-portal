@@ -125,8 +125,8 @@
                 <input id="f-rname" required minlength="2" maxlength="150" />
               </div>
               <div>
-                <label for="f-rno">الرقم الوظيفي لمُعدّ التقرير *</label>
-                <input id="f-rno" required minlength="2" maxlength="20" dir="ltr" inputmode="numeric" />
+                <label for="f-rno">الرقم الوظيفي لمُعدّ التقرير (اختياري)</label>
+                <input id="f-rno" maxlength="20" dir="ltr" inputmode="numeric" />
               </div>
             </div>
             <label for="f-notes">ملاحظات</label>
@@ -365,7 +365,7 @@
           const row = {
             employee_name: $("f-emp").value.trim(), work_nature: $("f-nature").value, specialty: ($("f-spec").value === SPEC_OTHER ? $("f-spec-other").value.trim() : $("f-spec").value) || null,
             observation_type: type, notes: $("f-notes").value.trim() || null, patient_file: $("f-file").value.trim() || null,
-            reporter_name: $("f-rname").value.trim(), reporter_empno: $("f-rno").value.trim(), created_by: user.id,
+            reporter_name: $("f-rname").value.trim(), reporter_empno: $("f-rno").value.trim().length >= 2 ? $("f-rno").value.trim() : null, created_by: user.id,
           };
           if ($("f-when").value) row.occurred_at = new Date($("f-when").value).toISOString();
           const { error } = await api.from("opd_nc_reports").insert(row);
