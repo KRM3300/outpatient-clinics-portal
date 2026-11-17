@@ -24,7 +24,6 @@ const DRIVE_SYNC = Object.freeze({
   STAFF_GID: 2080242207,
   LEAVES_GID: 304595282,
   SCHEDULE_URL: 'https://omugonzzrulsdpnycact.supabase.co/rest/v1/rpc/opd_schedule_ingest',
-  LEAVE_COLORS: ['#dd7e6b', '#e06666', '#ea9999', '#ff0000', '#cc0000', '#f4cccc'],
   ZONE: 'Asia/Riyadh',
   OWNER_LABEL: 'العيادات الخارجية'
 });
@@ -221,9 +220,9 @@ function emailError_(source, filename, details) {
 }
 
 /* ===== جدول أطباء العيادات (بديل مهمة الخميس) =====
-   يقرأ Weekly OPD Schedule كما هو: الصف 2 تواريخ الأسبوع، الأعمدة F..T = 5 أيام × 3 فترات،
-   العمود A رقم الغرفة (مدمج أحياناً لأكثر من صف)، B العيادة. الخلية الحمراء = إجازة.
-   الاسم الكامل من Staff Names (Schedule Name → Full Name)، وتواريخ الإجازة من تبويب الإجازات ثم ملاحظة الخلية. */
+   يقرأ Weekly OPD Schedule: الصف 2 تواريخ الأسبوع، الأعمدة F..T = 5 أيام × 3 فترات، A رقم الغرفة (مدمج أحياناً)، B العيادة.
+   الإجازة من تبويب Doctors' Leaves for Clinic Closure فقط (الصفوف اللي «هل تم إقفال الجدول بالنظام» = تم)،
+   مطابقة بالرقم الوظيفي: Staff Names (Schedule Name → Full Name + Employee No). لون الخلية وملاحظتها لا يُعتمد عليهما. */
 function buildSchedule_() {
   DRIVE_SYNC_LAST_SOURCE = 'clinic_schedule';
   const ss = SpreadsheetApp.openById(DRIVE_SYNC.SCHEDULE_ID);
@@ -234,75 +233,58 @@ function buildSchedule_() {
     return sh;
   };
   const clean = v => String(v == null ? '' : v).trim();
-  const ws = byGid(DRIVE_SYNC.SCHEDULE_GID);
-  const range = ws.getDataRange();
-  const V = range.getDisplayValues(), BG = range.getBackgrounds(), NT = range.getNotes();
+  const emp = v => clean(v).replace(/\D/g, '').replace(/^0+/, '');
+  const V = byGid(DRIVE_SYNC.SCHEDULE_GID).getDataRange().getDisplayValues();
   if (clean((V[0] || [])[5]) !== 'Sunday' || clean((V[0] || [])[17]) !== 'Thursday')
     throw new Error('أعمدة الجدول الأسبوعي تغيّرت: أيام الأسبوع ليست في الأعمدة F..T');
   const WEEK = (V[1] || []).map(clean).filter(x => /^\d{4}\/\d{2}\/\d{2}$/.test(x)).map(x => x.replace(/\//g, '-'));
   if (WEEK.length !== 5) throw new Error('تواريخ الأسبوع في الصف 2 من الجدول الأسبوعي غير مكتملة');
 
-  // Staff Names: Schedule Name → Full Name
+  // Staff Names: Schedule Name (+Clinic) → {الاسم الكامل، الرقم الوظيفي}
   const N = byGid(DRIVE_SYNC.STAFF_GID).getDataRange().getDisplayValues().map(r => r.map(clean));
   const nh = N.findIndex(r => r.includes('Schedule Name') && r.includes('Full Name') && r.includes('Clinic'));
   if (nh < 0) throw new Error('أعمدة Staff Names تغيّرت: Schedule Name أو Full Name غير موجود');
-  const si = N[nh].indexOf('Schedule Name'), fi = N[nh].indexOf('Full Name'), ci = N[nh].indexOf('Clinic'), ni = N[nh].indexOf('#');
+  const H = N[nh], si = H.indexOf('Schedule Name'), fi = H.indexOf('Full Name'), ci = H.indexOf('Clinic'), ni = H.indexOf('#');
+  const ei = H.indexOf('Employee No');
+  if (ei < 0) throw new Error('عمود Employee No غير موجود في Staff Names — شغّل fillEmployeeNumbers() مرة واحدة');
   const fam = c => String(c || '').toLowerCase().split(/[\s/]+/)[0];
   const exact = {}, family = {}, byName = {};
+  const put = (obj, k, v) => { if (!(k in obj)) obj[k] = v; else if (obj[k] && obj[k].full !== v.full) obj[k] = null; };
   for (const r of N.slice(nh + 1)) {
     if (ni >= 0 && !/^\d+$/.test(r[ni] || '')) continue;
     const sn = (r[si] || '').toLowerCase(), full = r[fi] || '';
     if (!sn || !full) continue;
-    exact[sn + '|' + (r[ci] || '').toLowerCase()] = full;
-    const fk = sn + '|' + fam(r[ci]);
-    if (!(fk in family)) family[fk] = full; else if (family[fk] !== full) family[fk] = null;
-    if (!(sn in byName)) byName[sn] = full; else if (byName[sn] !== full) byName[sn] = null;
+    const v = { full, emp: emp(r[ei]) };
+    exact[sn + '|' + (r[ci] || '').toLowerCase()] = v;
+    put(family, sn + '|' + fam(r[ci]), v);
+    put(byName, sn, v);
   }
-  const fullNameOf = (name, clinic) => {
+  const doctorOf = (name, clinic) => {
     const k = name.toLowerCase();
-    return exact[k + '|' + clinic.toLowerCase()] || family[k + '|' + fam(clinic)] || byName[k] || '';
+    return exact[k + '|' + clinic.toLowerCase()] || family[k + '|' + fam(clinic)] || byName[k] || null;
   };
 
-  // تبويب الإجازات: اسم الطبيب، بداية الإجازة، نهاية الإجازة، التخصص
+  // الإجازات المقفلة بالنظام فقط
   const L = byGid(DRIVE_SYNC.LEAVES_GID).getDataRange().getDisplayValues().map(r => r.map(clean));
-  const lh = L.findIndex(r => r.includes('اسم الطبيب') && r.includes('بداية الإجازة') && r.includes('نهاية الإجازة'));
-  if (lh < 0) throw new Error('أعمدة تبويب الإجازات تغيّرت: اسم الطبيب / بداية الإجازة / نهاية الإجازة');
-  const lName = L[lh].indexOf('اسم الطبيب'), lFrom = L[lh].indexOf('بداية الإجازة'),
-        lTo = L[lh].indexOf('نهاية الإجازة'), lSpec = L[lh].indexOf('التخصص');
+  const lh = L.findIndex(r => r.includes('بداية الإجازة') && r.includes('نهاية الإجازة') && r.includes('رقم الموظف'));
+  if (lh < 0) throw new Error('أعمدة تبويب الإجازات تغيّرت: بداية الإجازة / نهاية الإجازة / رقم الموظف');
+  const lFrom = L[lh].indexOf('بداية الإجازة'), lTo = L[lh].indexOf('نهاية الإجازة'),
+        lEmp = L[lh].indexOf('رقم الموظف'), lDone = L[lh].indexOf('هل تم إقفال الجدول بالنظام');
+  if (lDone < 0) throw new Error('عمود «هل تم إقفال الجدول بالنظام» غير موجود في تبويب الإجازات');
   const toIso = t => {
-    const m = String(t || '').match(/(\d{1,4})[\/\-.](\d{1,2})[\/\-.](\d{1,4})/);
-    if (!m) return '';
-    let y, mo, d;
-    if (m[1].length === 4) { y = m[1]; mo = m[2]; d = m[3]; } else { d = m[1]; mo = m[2]; y = m[3]; }
-    if (y.length === 2) y = '20' + y;
-    if (+mo < 1 || +mo > 12 || +d < 1 || +d > 31) return '';
-    return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    const m = String(t || '').match(/(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
+    return m ? m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0') : '';
   };
-  const dmy = iso => iso ? iso.slice(8, 10) + '-' + iso.slice(5, 7) + '-' + iso.slice(0, 4) : '';
-  const COMMON = { dr: 1, mohammed: 1, mohamed: 1, muhammad: 1, mohammad: 1, ahmed: 1, ahmad: 1, ali: 1, abdullah: 1, abdulla: 1, al: 1, abd: 1 };
-  const tokens = t => String(t || '').toLowerCase().replace(/[^a-z؀-ۿ\s]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !COMMON[w]);
-  const leaves = [];
+  const dmy = iso => iso.slice(8, 10) + '-' + iso.slice(5, 7) + '-' + iso.slice(0, 4);
+  const leavesByEmp = {};
   for (const r of L.slice(lh + 1)) {
-    const from = toIso(r[lFrom]), to = toIso(r[lTo]);
-    if (!r[lName] || !from || !to) continue;
-    leaves.push({ tok: tokens(r[lName]), from, to, spec: (r[lSpec] || '').toUpperCase() });
+    if (r[lDone] !== 'تم') continue;
+    const e = emp(r[lEmp]), from = toIso(r[lFrom]), to = toIso(r[lTo]);
+    if (!e || !from || !to) continue;
+    (leavesByEmp[e] = leavesByEmp[e] || []).push({ from, to });
   }
-  const leaveRow = (name, full, clinic, date) => {
-    const mine = new Set(tokens(name + ' ' + full));
-    const pre = fam(clinic).toUpperCase().slice(0, 4);
-    let best = null, bestScore = 0;
-    for (const l of leaves) {
-      if (l.from > date || l.to < date) continue;
-      const hits = l.tok.filter(w => mine.has(w)).length;
-      const score = hits * 2 + (pre && l.spec.indexOf(pre) >= 0 ? 1 : 0);
-      if (hits && (hits >= 2 || score >= 3) && score > bestScore) { best = l; bestScore = score; }
-    }
-    return best;
-  };
 
-  const red = {};
-  DRIVE_SYNC.LEAVE_COLORS.forEach(c => { red[c] = true; });
-  const SCH_DATA = [];
+  const SCH_DATA = [], noEmp = {};
   let room = '';
   for (let r = 4; r < V.length; r++) {
     const row = V[r].map(clean);
@@ -314,19 +296,18 @@ function buildSchedule_() {
       const name = row[c];
       if (!name || /^available$/i.test(name)) continue;
       const day = Math.floor((c - 5) / 3), period = (c - 5) % 3, date = WEEK[day];
-      const x = { name, clinic, room, day, period, date, leave: !!red[String(BG[r][c] || '').toLowerCase()] };
-      const full = fullNameOf(name, clinic);
-      if (full) x.fullName = full;
-      if (x.leave) {
-        // حسب دليل الشيت: ملاحظة الخلية الحمراء فيها تاريخ نهاية الإجازة. سجل الإجازات يكمّل البداية (والنهاية إن غابت الملاحظة).
-        const noteEnd = toIso(NT[r][c]);
-        const l = leaveRow(name, full, clinic, date);
-        if (l) x.leaveStart = dmy(l.from);
-        if (noteEnd) x.leaveEnd = dmy(noteEnd); else if (l) x.leaveEnd = dmy(l.to);
-      }
+      const x = { name, clinic, room, day, period, date, leave: false };
+      const d = doctorOf(name, clinic);
+      if (d) x.fullName = d.full;
+      if (d && d.emp) {
+        const l = (leavesByEmp[d.emp] || []).find(v => v.from <= date && v.to >= date);
+        if (l) { x.leave = true; x.leaveStart = dmy(l.from); x.leaveEnd = dmy(l.to); }
+      } else noEmp[name + ' (' + clinic + ')'] = true;
       SCH_DATA.push(x);
     }
   }
+  const missing = Object.keys(noEmp);
+  if (missing.length) Logger.log('بدون رقم وظيفي في Staff Names (لا تظهر إجازاتهم): ' + missing.join('، '));
   if (SCH_DATA.length < 50) throw new Error('الجدول الأسبوعي شبه فاضي (' + SCH_DATA.length + ' فترة) — لم يُنشر حفاظاً على الجدول السابق');
   return { WEEK, SCH_DATA };
 }
@@ -385,4 +366,41 @@ function syncDrive() {
   try { syncSchedule(); } catch (_) { scheduleFailed = true; }
   if (kpiFailed || scheduleFailed)
     throw new Error('فشلت المزامنة' + (kpiFailed ? ' (المؤشرات)' : '') + (scheduleFailed ? ' (جدول العيادات)' : '') + '؛ راجع إشعار البريد وسجل التنفيذ.');
+}
+
+
+/* ===== تشغيل مرة واحدة: إضافة عمود «Employee No» في Staff Names =====
+   الأرقام من «دليل الأطباء والموظفين» (مطابقة بالاسم والتخصص، 2026-11-18).
+   يكتب فقط في الخلايا الفاضية، ولا يغيّر أي عمود آخر. الطبيب الجديد: اكتب رقمه في نفس العمود. */
+const EMPNO_SEED = [["Anesthesia", "BAHAA MOHAMMED MAHMOUD NAJI", "6308572"], ["Cardiology", "MOHAMMED ABDALHAMED MOHAMMED AHMED", "51578206"], ["Cardiology", "AYMAN MOHAMED MOHAMED ELKILANI", "51690531"], ["Cardiology", "MOHAMMED MUQBIL SHUJAA ALHARBI", "1482397"], ["Cardiology", "MOSTAFA IBRAHIM IBRAHIM SAAD", "51644185"], ["Cardiology", "SHIMAA MOHAMMED ABDELDAIM KHATAM", "6537832"], ["Cardiology", "SYED SHUJAUDDIN SYED JALALUDDIN", "6310586"], ["Cardiology", "SULAIMAN SHULAYWIH SANAT ALHARBI", "134840"], ["Chest", "ASAD JAVAID Humayun Jawaid", "51658725"], ["Chest", "ABEER FAROUK AZHARI HASSAN", "6337472"], ["Chest", "RAMADAN SHAWKY ABDELAZIZ ALAWADY", "51646903"], ["Dermatology", "FATMA MOHAMMEDAHMAD MOHAMMED ALHASSAN", "51563459"], ["Dermatology", "HASSAN MOHAMED ALI", "51646967"], ["Dermatology", "MOHAMMED RMAIH M ALRMAIH", "6328983"], ["Dermatology", "NAGI MOHAMED ELHADI GINAWI", "6520171"], ["Dermatology", "NAIRA MOHAMED ABDELAZIZ KASEM", "51646959"], ["Dermatology", "RASHA MOHAMED ALI ABOUZITHAR", "51659712"], ["Dev. & Beh. Disorder", "JAMAL ABDULMAJID SALEM", "6531915"], ["ENT", "MOHAMED NURELDIN MOHAMED MOHAMED FARAH", "51629004"], ["ENT", "HASSAN MAJID BHATTI MAJID NAWAZ BHATTI", "51627589"], ["ENT", "AMJAD MOHAMAD ADEL ALIA", "92138"], ["ENT", "HAMADA MAHMOUD ALHUSSIN", "6533414"], ["ENT", "LOAY KASEM ABDELMOATY MACLID", "6534344"], ["ENT", "MOHAMMAD QAMAR NASIR NASIR AZIZ", "51659693"], ["Gastroenterology", "AMR MOHAMMED HASHEM", "51648963"], ["Gastroenterology", "MOHAMED FEKRY MOHAMED MORSHED", "2570435"], ["Gastroenterology", "MOHAMMED HAMDY GALAL HASSAN", "6336929"], ["Gastroenterology", "MAJED THAAR KHALID ALHARBI", "6536008"], ["Gastroenterology", "YAHYA MUSTAFA CHEHADEH ALCHUMARI", "6317997"], ["Infectious disease", "AHLAM HAMDAN MATROUK ALGUHANI", "6534684"], ["Medical", "AHMED KAMEL ABDELHAMEID WAHBA", "51693579"], ["Medical", "NOUR AHMED ELSHARIF ABDELGADIR", "4853634"], ["Medical", "OSMAN AMIN ALI ELHENDI", "107372"], ["Medical", "QURAT UL AIN MUHAMMAD ARIF", "51637962"], ["Medical", "TAGWA ANWER BASHEIR DERAR", "6337522"], ["Minor Surgery", "AHMAD ISSA ISSA", "6328241"], ["Nephrology", "AMAL MOHAMED SALAHELDIN ANAN", "6535214"], ["Nephrology", "GHADA MOHAMED AHMED ABDALLA", "51660214"], ["Nephrology", "MOHAMED SABRY AMER HABASHY", "51640057"], ["Nephrology", "MOSTAFA ABDELFATTAH SAYED OMAR", "6337755"], ["Neurology", "DINA KHALID ASHMAWI ASHMAWI", "4854612"], ["Neurosurgery", "MUHAMMAD ASIF RAZA GHULAM SARWAR", "51595459"], ["Neurosurgery", "Faizab Ahmed Abbasi", "51708110"], ["Neurosurgery", "TAHA AHMED ALI MOHAMED", "99785"], ["Newborn", "MAHMOUD ABDELRAHEEM MAHMOUD SAYED", "6537474"], ["OB/Gyn", "AMR ABDELHALIM SHARAWY MOSTAFA", "6337625"], ["OB/Gyn", "BASLA SAMER ALOMAR", "6319933"], ["OB/Gyn", "KANEEZ FATIMA MUHAMMAD NAQASH", "76565"], ["OB/Gyn", "OLUMIDE MOJISOLA AYANKUNLE", "6338327"], ["OB/Gyn", "SADIA RAZAQ ALI GAUHAR", "51622750"], ["OB/Gyn", "SAIFEDIN ABDALLAH MOHAMED LAMADIN", "105217"], ["Ophthalmology", "AHMED KHAIRY ELSAYED ETMAN", "51696441"], ["Ophthalmology", "ABDULLAHI IDRIS HOOD IDRIS", "51699112"], ["Ophthalmology", "ABDULLAH AMER A ALASQAH", "42353"], ["Ophthalmology", "AMJAD ALI OMAR SYED RASHID ALI SYED", "6311180"], ["Ophthalmology", "HAJAR SULAIMAN ALI ALMURAYS", "6533733"], ["Ophthalmology", "MOAAZ ABDELLATIF ABDELHADY MOHAMEDELNAGGAR", "51584357"], ["Ophthalmology", "RAYAN SULIMAN A ALKHALIFAH", "6332303"], ["Ophthalmology", "THIGA AHMED ELBASHIR AHMED", "6520170"], ["Optometry", "ALI HUSAIN S ALMALKI", "51519616"], ["Optometry", "ABDULRAHMAN JAZAA OBAID ALHARBI", "51542682"], ["Optometry", "ADEL ABDULLAH MENWER ALHARBI", "6321325"], ["Optometry", "AZIZ ABDULAZIZ HASSAN ALZAHRANI", "0128875"], ["Optometry", "BADER BASHEER MAYUF ALMUTAIRI", "6325919"], ["Optometry", "YOUSEF SALEH SALEM ALHARBI", "4720664"], ["Optometry", "MOHAMMED MUNEER HAMEED ALHARBI", "51539904"], ["Orthopedic", "MOHAMED ELSAYED ABDELWANIS MOHAMED", "6338344"], ["Orthopedic", "ALAA ZENHOM MAHMOUD HASSAN", "6337473"], ["Orthopedic", "HAMDO AL HASSAN", "6527211"], ["Orthopedic", "KAMRAN SAEED SAEED AHMAD", "51635948"], ["Orthopedic", "AHMED MOHAMED MAHMOUD OUN", "6308972"], ["Orthopedic", "ZARNIGAR RIZVI HASSAN RAZA RIZVI", "6320439"], ["Orthopedic", "TAMER ALI AHMED MUSLEH", "6337534"], ["Orthopedic", "WAQAS RAZA MUHAMMAD JEHANZEB", "51644148"], ["Pediatric", "FATIMAH MOHAMMAD IBRAHIM ALOLAYAN", "6537618"], ["Pediatric", "EMAN ABDELKAREEM ABDELRAHMAN ALLAM", "7257317"], ["Pediatric", "ASIM AMJAD HUSSAIN", "51703151"], ["Pediatric", "JAMAL ABDULMAJID SALEM", "6531915"], ["Pediatric", "NEHAL FATHALLA AHMED ELSHOBAKY", "51647055"], ["Pediatric", "SAMI ULLAH NAQIB ULLAH NAQIB ULLAH", "51697288"], ["Pediatric Surgery", "MUHAMMAD SHARIF AHMAD DIN", "51656405"], ["Pediatric Surgery", "FAYAZ UR RAHMAN FAZAL SUBHAN", "51708606"], ["Pediatric Surgery", "MOHAMMED AHMED MOHAMMED FAWZY SALLAM", "51676840"], ["Pediatric Surgery", "NASEEM KHAN GHULAM KHAN", "51654181"], ["Plastic Surgery", "MOHAMED SAAD ABDELHAKIM SADAKA", "51521843"], ["Plastic Surgery", "AHMED TALHA ISMAIL ELBARKY", "6535575"], ["Psychiatric", "ADNAN KHALIFAH S ALKHALIFAH", "112035"], ["Psychiatric", "AHMAD SALEH A ALGHOFAILY", "51591112"], ["Psychiatric", "FATMA HASSANEIN ADAM MAHGOUB", "6320390"], ["Psychiatric", "REHAM ABDELHAMEED ABDELHAMEED ABDELKAREEM", "6337677"], ["Psychotherapy", "ASHAK SAAD B ALHARBI", "6315521"], ["Psychotherapy", "MANAHEL ABDULRAHMAN A ALTWAIJRY", "6337969"], ["Psychotherapy", "NAIF JELOOD A ALHARBI", "115644"], ["Rheumatology", "ABDULLAH HAMAD DHAIFALLAH ALMUTAIRI", "134836"], ["Rheumatology", "EMAN ABDELKARIM RASHAD MOHAMED", "51645721"], ["Rheumatology", "HISHAM ABDULRAHMAN M ALTASSAN", "6332643"], ["Rheumatology", "OMAR ABDULRAHMAN SALEH ALTASAN", "110822"], ["Surgery", "ABDALSATAR ALSHRAFI", "6536793"], ["Surgery", "ABDULHAKIM MOHAMMADMAZHAR ALMASRI", "6309629"], ["Surgery", "ATTA ULLAH JAMAL JAMAL DIN", "6330904"], ["Surgery", "BASSAM MOHAMMED HINDI", "6306253"], ["Surgery", "MUHAMMAD ALI SAFDAR MIAN", "51704333"], ["Surgery", "TANZEEL UZ ZAMAN HAKIM BASHIR AHMED", "51583611"], ["Surgery", "YAZID k GACEM", "51691962"], ["Surgery", "MOHAMED YOUSEF AHMED MOHAMED", "51584666"], ["Urology", "ABDALLA KHALAF MESHREF", "115472"], ["Urology", "ASHRAF ATTIA HUSSEIN ABD EL TAWAB", "6321605"], ["Urology", "AYMAN ALI ABDELGHAFOUR ZAYED", "6533172"], ["Urology", "KAMRAM ABID ABID HUSSAIN", "51708148"], ["Urology", "KHAWAR ALI SARFRAZ AHMED", "51702407"], ["Urology", "RAMADAN RAGAB RAGAB HIBA", "51645325"], ["Urology", "RIYAD ABDAL RASOL ALWICHYAN", "6534569"]];
+
+function fillEmployeeNumbers() {
+  const ss = SpreadsheetApp.openById(DRIVE_SYNC.SCHEDULE_ID);
+  const sh = ss.getSheets().find(x => x.getSheetId() === DRIVE_SYNC.STAFF_GID);
+  if (!sh) throw new Error('تبويب Staff Names غير موجود');
+  const values = sh.getDataRange().getDisplayValues();
+  const hr = values.findIndex(r => r.includes('Full Name') && r.includes('Clinic'));
+  if (hr < 0) throw new Error('صف العناوين في Staff Names غير موجود');
+  const H = values[hr];
+  let ei = H.indexOf('Employee No');
+  if (ei < 0) {
+    ei = H.length;
+    while (ei > 0 && !String(H[ei - 1]).trim()) ei--;
+    sh.getRange(hr + 1, ei + 1).setValue('Employee No');
+  }
+  const fi = H.indexOf('Full Name'), ci = H.indexOf('Clinic');
+  const key = (c, n) => String(c).trim().toLowerCase() + '|' + String(n).trim().replace(/\s+/g, ' ').toLowerCase();
+  const map = {};
+  EMPNO_SEED.forEach(([c, n, e]) => { map[key(c, n)] = e; });
+  let written = 0, unmatched = [];
+  for (let r = hr + 1; r < values.length; r++) {
+    const full = values[r][fi], clinic = values[r][ci];
+    if (!full || !clinic) continue;
+    const cur = String(values[r][ei] || '').trim();
+    if (cur) continue;
+    const e = map[key(clinic, full)];
+    if (e) { sh.getRange(r + 1, ei + 1).setNumberFormat('@').setValue(e); written++; }
+    else unmatched.push(full + ' (' + clinic + ')');
+  }
+  Logger.log('تمت كتابة ' + written + ' رقم وظيفي. بدون رقم (أضفه يدوياً): ' + (unmatched.join('، ') || 'لا يوجد'));
 }
