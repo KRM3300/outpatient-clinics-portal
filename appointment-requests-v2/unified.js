@@ -120,10 +120,13 @@
       $(nav).classList.toggle("alt",target!==id);
     }
   }
+  function showState(name){
+    for(const id of ["auth","onboard","waiting","app"])$(id).classList.toggle("hidden",id!==name);
+  }
   async function load(){
     const auth=await api.auth.getUser();
     user=auth.data?.user||null;
-    if(!user){$("app").classList.add("hidden");$("auth").classList.remove("hidden");return;}
+    if(!user){member=null;showState("auth");return;}
     const [m,p,c]=await Promise.all([
       api.from("opd_appt_members").select("*").eq("user_id",user.id).maybeSingle(),
       api.from("opd_user_perms").select("perm").eq("user_id",user.id),
@@ -131,13 +134,16 @@
     ]);
     if(m.error||p.error){feedback("authMessage","تعذر قراءة العضوية أو الصلاحيات؛ راجع الإدارة.");return;}
     member=m.data;
-    if(!member||member.status!=="approved"){
-      feedback("authMessage","حسابك غير معتمد بعد. أكمل طلب الاعتماد من بوابة المواعيد الحالية.");return;
+    if(!member){showState("onboard");return;}
+    if(member.status!=="approved"){
+      showState("waiting");
+      feedback("waitMessage",member.full_name+" — الحالة: "+member.status);
+      return;
     }
     perms=new Set((p.data||[]).map(v=>v.perm));
     if(!c.error)for(const s of c.data||[])settings[s.kind]=s.enabled;
     $("identity").textContent=member.full_name+" — "+(member.department||"");
-    $("auth").classList.add("hidden");$("app").classList.remove("hidden");
+    showState("app");
     $("navSettings").classList.toggle("hidden",!admin());
     $("navStats").classList.toggle("hidden",!handler());
     $("navQueue").classList.remove("hidden");
@@ -157,7 +163,28 @@
     if(r.error)return feedback("authMessage",r.error.message);
     await load();
   };
-  $("logout").onclick=async()=>{await api.auth.signOut();user=null;member=null;perms=new Set();await load();};
+  async function logout(){
+    await api.auth.signOut();user=null;member=null;perms=new Set();await load();
+  }
+  for(const id of ["logout","joinLogout","waitLogout"])$(id).onclick=logout;
+  $("checkApproval").onclick=load;
+  $("joinForm").onsubmit=async e=>{
+    e.preventDefault();
+    const full=$("joinName").value.trim(),emp=$("joinNumber").value.trim(),
+      job=$("joinJob").value,dept=$("joinDepartment").value.trim(),phone=$("joinPhone").value.trim();
+    if(full.split(/\\s+/).length<4)return feedback("joinMessage","أدخل اسمك الرباعي.");
+    if(!/^\\d{4,12}$/.test(emp))return feedback("joinMessage","أدخل رقمًا وظيفيًا صحيحًا.");
+    if(!job||dept.length<2)return feedback("joinMessage","اختر الفئة وحدد القسم أو المنشأة.");
+    if(phone&&!/^\\+?\\d{9,15}$/.test(phone))return feedback("joinMessage","أدخل رقم جوال صحيحًا.");
+    $("joinSave").disabled=true;
+    const r=await api.from("opd_appt_members").insert({
+      user_id:user.id,full_name:full,employee_no:emp,job_title:job,
+      department:dept,phone:phone||null,role:"pending",status:"pending"
+    });
+    $("joinSave").disabled=false;
+    if(r.error)return feedback("joinMessage",r.error.message);
+    await load();
+  };
   $("kind").onchange=updateKind;
   $("facility").onchange=()=>{
     const other=currentKind()==="phc_triage"&&$("facility").value==="__other__";
@@ -393,5 +420,5 @@
   const date=new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Riyadh"});
   $("statsTo").value=date;$("statsFrom").value=date.slice(0,8)+"01";
   load();
-  api.auth.onAuthStateChange((event,session)=>{if(!session){user=null;$("app").classList.add("hidden");$("auth").classList.remove("hidden");}});
+  api.auth.onAuthStateChange((event,session)=>{if(!session){user=null;member=null;showState("auth");}});
 })();
