@@ -263,6 +263,16 @@ begin
     from base
   )
   select jsonb_build_object(
+    'previous_total',(
+      (select count(*)::int from public.opd_appt_requests r
+       where (r.created_at at time zone 'Asia/Riyadh')::date
+         between (p_from-(p_to-p_from+1)) and (p_from-1))
+      +
+      (select count(*)::int from public.opd_booking_history h
+       where h.request_date between (p_from-(p_to-p_from+1)) and (p_from-1)
+         and not exists (select 1 from public.opd_appt_requests r
+            where r.external_source=h.source and r.external_row=h.source_row))
+    ),
     'totals',(select to_jsonb(t) from totals t),
     'by_route',coalesce((select jsonb_agg(to_jsonb(x) order by x.total desc) from
       (select coalesce(kind,'غير محدد') as name,count(*)::int as total from base group by 1) x),'[]'::jsonb),
