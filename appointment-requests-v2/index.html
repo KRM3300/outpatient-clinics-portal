@@ -41,7 +41,7 @@ textarea{min-height:76px}.hint{font-size:.83rem;color:#536873}.error{color:#a51d
 <form id="bookingForm">
 <div class="grid">
 <label>نوع الخدمة<select id="kind" required></select></label>
-<label>الجهة المرسلة<select id="facility" required></select></label>
+<label>الجهة المرسلة<select id="facility" required></select></label><label id="facilityOtherWrap" class="hidden">اسم المركز الصحي<input id="facilityOther" maxlength="120" placeholder="اكتب اسم المركز الصحي"></label>
 <label>العيادة المطلوبة<select id="clinic" required></select></label>
 <label>اسم المراجع الرباعي<input name="patient_name" required maxlength="120" minlength="7" autocomplete="off"></label>
 <label>رقم الهوية<input name="patient_identifier" required maxlength="30" autocomplete="off"></label>
@@ -69,9 +69,10 @@ textarea{min-height:76px}.hint{font-size:.83rem;color:#536873}.error{color:#a51d
 </section>
 <section id="stats" class="panel hidden"><h2>مؤشرات طلبات الحجز</h2>
 <div class="filters"><label>من<input type="date" id="statsFrom"></label><label>إلى<input type="date" id="statsTo"></label><button id="runStats" class="alt">عرض التقرير</button></div>
+<div class="actions" style="margin-top:12px"><button id="statsPdf" class="alt">تحميل PDF</button><button id="statsExcel" class="alt">تحميل Excel</button></div><p id="exportMessage" class="hint" role="status"></p>
 <div id="statCards" class="row" style="margin-top:15px"></div>
 <div id="statBreakdown"></div><p class="hint">تعرض هذه الصفحة بيانات تجميعية فقط. التقارير الشاملة والتحميل PDF/Excel ضمن مرحلة المؤشرات، ولا تُصدّر بيانات المرضى.</p></section>
 <section id="settings" class="panel hidden"><h2>التحكم بالخدمات المؤقتة</h2>
 <p class="hint">تفعيل الطوارئ أو الفرز يظهر مسار الطلب للمستخدمين المخولين. الإيقاف يمنع الطلبات الجديدة فقط، ولا يحذف الطلبات المفتوحة أو إحصاءاتها.</p><div id="settingRows"></div><p id="settingsMessage" role="status"></p></section>
 </section>
-</main><script src="./unified.js"></script></body></html>
+</main><script src="../assets/opd-aggregate-export.js"></script><script src="./unified.js"></script></body></html>
