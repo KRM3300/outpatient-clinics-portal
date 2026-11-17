@@ -158,6 +158,37 @@ as $function$
   );
 $function$;
 
+-- Ensure updates through the *existing* emergency/follow-up page also record
+-- an accurate closing timestamp during the staged-to-live transition.
+create or replace function public.opd_booking_stamp_closure()
+returns trigger language plpgsql set search_path=''
+as $function$
+begin
+  if new.status is distinct from old.status
+     and new.status in ('booked','unable','rejected','cancelled')
+     and old.status in ('pending','processing')
+     and new.closed_at is null then
+    new.closed_at=now();
+  end if;
+  return new;
+end
+$function$;
+drop trigger if exists opd_booking_stamp_closure_trigger on public.opd_appt_requests;
+create trigger opd_booking_stamp_closure_trigger
+before update of status on public.opd_appt_requests
+for each row execute function public.opd_booking_stamp_closure();
+
+-- Backfill only when an actual closure event exists in the original audit log.
+update public.opd_appt_requests r
+set closed_at = (
+  select min(a.created_at) from public.opd_appt_audit a
+  where a.request_id=r.id and a.action in ('booked','unable','rejected','cancelled')
+)
+where r.status in ('booked','unable','rejected','cancelled')
+  and r.closed_at is null
+  and exists(select 1 from public.opd_appt_audit a
+    where a.request_id=r.id and a.action in ('booked','unable','rejected','cancelled'));
+
 -- Explicit closure captures actual booked date or documented rejection reason.
 create or replace function public.opd_booking_close(
  p_id uuid, p_outcome text, p_booked_date date default null,
