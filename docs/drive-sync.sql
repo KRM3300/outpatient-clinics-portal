@@ -295,7 +295,7 @@ BEGIN
         RAISE EXCEPTION 'Invalid VIDA roster row';
       END IF;
     END LOOP;
-    DELETE FROM public.opd_vida_doctors;
+    DELETE FROM public.opd_vida_doctors WHERE true; -- pg_safeupdate requires WHERE
     INSERT INTO public.opd_vida_doctors(clinic,full_name,updated_at)
     SELECT DISTINCT btrim(x->>'clinic'),btrim(x->>'full_name'),now()
     FROM jsonb_array_elements(p_payload->'doctors') AS x;
