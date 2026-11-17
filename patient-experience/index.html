@@ -929,14 +929,18 @@
               const b = node("button", lang === "ar" ? "حفظ المعالجة" : "Save update");
               b.type = "button";
               b.onclick = async () => {
-                if (status.value === "closed" && !resolution.value.trim())
-                  return msg(lang === "ar" ? "يجب توثيق سبب الإغلاق" : "Closure reason required");
+                /* «مفتوح» أو «مغلق» = إقفال البلاغ؛ قيد المعالجة/مصعّد/محوّل = يُحفظ ويبقى ظاهراً */
+                const next = status.value === "open" ? "closed" : status.value;
+                if (next === "closed" && !resolution.value.trim())
+                  return msg(lang === "ar" ? "اكتب الإجراء المتخذ" : "Write the action taken");
+                b.disabled = true;
                 const { error } = await api
                   .from("opd_pe_cases")
-                  .update({ status: status.value, resolution: resolution.value, updated_at: new Date().toISOString() })
+                  .update({ status: next, resolution: resolution.value, updated_at: new Date().toISOString() })
                   .eq("id", c.id);
+                b.disabled = false;
                 if (error) return err(error);
-                msg(lang === "ar" ? "تم تحديث الحالة" : "Status updated");
+                msg(next === "closed" ? (lang === "ar" ? "تم إقفال البلاغ" : "Case closed") : lang === "ar" ? "تم تحديث الحالة" : "Status updated");
                 await records();
               };
               box.append(status, resolution, b);
