@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>طلبات الحجز الموحّدة | العيادات الخارجية</title>
+<link rel="stylesheet" href="../assets/portal.css?v=5">
+<style>
+:root{font-family:"IBM Plex Sans Arabic",Tahoma,sans-serif}body{margin:0;background:#f4f7f8;color:#14333e}
+main{max-width:1180px;margin:auto;padding:20px}h1{margin:4px 0 12px;font-size:1.65rem}
+header{background:#063f47;color:#fff;padding:16px 25px}header small{color:#d9e8eb}
+.panel{background:white;border:1px solid #d9e4e8;border-radius:14px;padding:19px;margin:14px 0}
+.hidden{display:none!important}.nav,.subnav,.filters,.row,.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.subnav{margin:12px 0}
+button,.tab{font:inherit;padding:9px 15px;border:0;border-radius:8px;background:#126978;color:white;cursor:pointer}
+button.alt,.tab{color:#16434b;background:#edf4f5;border:1px solid #d2e2e5}.tab.active{background:#126978;color:white}
+button:disabled{opacity:.5;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:12px}label{display:flex;flex-direction:column;gap:6px;font-size:.9rem;font-weight:650}
+input,select,textarea{font:inherit;width:100%;box-sizing:border-box;background:#fff;border:1px solid #b6c9ce;border-radius:8px;padding:10px;color:#122d35}
+textarea{min-height:76px}.hint{font-size:.83rem;color:#536873}.error{color:#a51d2d}.success{color:#107551}
+.stat{border:1px solid #dbe5e8;background:#f8fbfc;border-radius:10px;padding:14px;min-width:160px;flex:1}
+.stat b{font-size:1.5rem;display:block}.request{padding:13px;border:1px solid #dbe5e8;border-radius:10px;margin:9px 0}
+.request .top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.muted{color:#526b73;font-size:.86rem}
+.chip{padding:4px 9px;border-radius:20px;background:#e8eef0;font-size:.83rem}.chip.late{background:#ffe4df;color:#952d20}
+.notice{background:#fff8e5;border-right:3px solid #c28a12;padding:10px 14px;border-radius:6px}
+@media(max-width:600px){main{padding:12px}.panel{padding:12px}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+<script src="../assets/clinics.js?v=1"></script>
+</head><body>
+<header><strong>العيادات الخارجية | خدمة طلبات الحجز الموحّدة</strong><br><small>Unified Booking Requests</small></header>
+<main>
+<p class="notice">الطلب ليس حجزًا مؤكدًا في VIDA. يعتمد الحجز بعد معالجة موظف المواعيد وتسجيل موعده الفعلي. لا ترفق أي مستندات.</p>
+<section id="auth" class="panel">
+<h1>دخول الموظف</h1><p class="hint">تسجيل شخصي بالبريد الإلكتروني ورمز التحقق. يلزم اعتماد الحساب والصلاحية مسبقًا.</p>
+<div class="grid"><label>البريد الإلكتروني<input id="email" type="email" autocomplete="email"></label><label>رمز التحقق<input id="otp" inputmode="numeric" autocomplete="one-time-code"></label></div>
+<div class="actions" style="margin-top:12px"><button id="sendOtp">إرسال الرمز</button><button id="verifyOtp" class="alt">تحقق ودخول</button></div>
+<p id="authMessage" role="status"></p>
+</section>
+<section id="app" class="hidden">
+<div class="row" style="justify-content:space-between;margin:12px 0"><strong id="identity"></strong><button id="logout" class="alt">خروج</button></div>
+<div class="nav"><button id="navNew">طلب جديد</button><button id="navQueue" class="alt">الطلبات</button><button id="navStats" class="alt">المؤشرات</button><button id="navSettings" class="alt hidden">التحكم بالخدمات</button></div>
+<section id="entry" class="panel">
+<h2>طلب حجز جديد</h2>
+<form id="bookingForm">
+<div class="grid">
+<label>نوع الخدمة<select id="kind" required></select></label>
+<label>الجهة المرسلة<select id="facility" required></select></label>
+<label>العيادة المطلوبة<select id="clinic" required></select></label>
+<label>اسم المراجع الرباعي<input name="patient_name" required maxlength="120" minlength="7" autocomplete="off"></label>
+<label>رقم الهوية<input name="patient_identifier" required maxlength="30" autocomplete="off"></label>
+<label>تاريخ الميلاد<input name="patient_dob" type="date" required></label>
+<label>رقم الجوال<input name="patient_mobile" required pattern="\\+?[0-9]{9,15}" maxlength="20" inputmode="tel"></label>
+<label id="motherWrap" class="hidden">اسم الأم (للمستشفيات التابعة)<input name="mother_name" maxlength="120"></label>
+<label id="requestDoctorWrap" class="hidden">اسم الطبيب المعالج<input name="referring_doctor" maxlength="120"></label>
+<label id="expectedDateWrap">تاريخ العيادة المطلوب (إن عُرف)<input name="clinic_date" type="date"></label>
+<label id="periodWrap">الفترة المقترحة<select name="period"><option value="">غير محددة</option><option value="morning">صباحية</option><option value="noon">ظهرية</option><option value="evening">مسائية</option></select></label>
+</div>
+<label style="margin-top:12px">التشخيص أو سبب الطلب<textarea name="diagnosis_reason" maxlength="1000" required></textarea></label>
+<label style="margin-top:12px">ملاحظات إضافية<textarea name="request_note" maxlength="1000"></textarea></label>
+<p class="hint">مقدّم الطلب يُسجّل تلقائيًا من حساب الدخول. لا يُسمح بالمرفقات.</p>
+<div class="actions"><button type="submit" id="submit">رفع الطلب</button></div>
+<p id="entryMessage" role="status"></p></form>
+</section>
+<section id="queue" class="panel hidden">
+<h2>طلبات الحجز</h2><div id="routeTabs" class="subnav"></div>
+<div class="filters">
+<label>الحالة<select id="status"><option value="all">الكل</option><option value="open">المفتوحة</option><option value="closed">المقفلة</option></select></label>
+<label>بحث<input id="q" placeholder="رقم الطلب، المراجع، الجهة، العيادة"></label>
+<button id="refresh" class="alt">تحديث</button>
+</div><p class="hint">المعيار التشغيلي 24 ساعة من وقت رفع الطلب. الإغلاق يتطلب موعدًا محجوزًا أو سبب رفض موثقًا.</p>
+<div id="requestList"></div><p id="queueMessage" role="status"></p>
+</section>
+<section id="stats" class="panel hidden"><h2>مؤشرات طلبات الحجز</h2>
+<div class="filters"><label>من<input type="date" id="statsFrom"></label><label>إلى<input type="date" id="statsTo"></label><button id="runStats" class="alt">عرض التقرير</button></div>
+<div id="statCards" class="row" style="margin-top:15px"></div>
+<div id="statBreakdown"></div><p class="hint">تعرض هذه الصفحة بيانات تجميعية فقط. التقارير الشاملة والتحميل PDF/Excel ضمن مرحلة المؤشرات، ولا تُصدّر بيانات المرضى.</p></section>
+<section id="settings" class="panel hidden"><h2>التحكم بالخدمات المؤقتة</h2>
+<p class="hint">تفعيل الطوارئ أو الفرز يظهر مسار الطلب للمستخدمين المخولين. الإيقاف يمنع الطلبات الجديدة فقط، ولا يحذف الطلبات المفتوحة أو إحصاءاتها.</p><div id="settingRows"></div></section>
+</section>
+</main><script src="./unified.js"></script></body></html>
