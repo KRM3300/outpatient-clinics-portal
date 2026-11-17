@@ -11,6 +11,14 @@
     low_back:"عيادة أسفل الظهر", breast_screening:"الكشف المبكر للثدي",
     emergency:"الطوارئ", phc_triage:"فرز المراكز الصحية"
   };
+  const descriptions={
+    followup:"حجز موعد متابعة من داخل العيادات، في حال تعثّر الحجز من العيادة.",
+    affiliate:"حجز متابعة لمرضى المستشفيات التابعة من قِبل أطبائنا الزائرين.",
+    low_back:"طلبات عيادة أسفل الظهر بالمركز الصحي إلى جراحة المخ والأعصاب.",
+    breast_screening:"طلبات الكشف المبكر لسرطان الثدي إلى الجراحة العامة.",
+    emergency:"مسار الطوارئ المؤقت وفق الصلاحيات الممنوحة.",
+    phc_triage:"المسار البديل للمراكز الصحية عند تعطل نظام موعد، ويُفعّله مدير العيادات فقط."
+  };
   const permission = {
     followup:"appt_fu_request", affiliate:"appt_affiliate_request",
     low_back:"appt_low_back_request", breast_screening:"appt_breast_request",
@@ -82,6 +90,7 @@
   }
   function updateKind(){
     const k=currentKind(),f=sourceFacility[k]||[];
+    $("routeDescription").textContent=descriptions[k]||"اختر مسار الخدمة.";
     setupSelect("facility",f.map(v=>[v,v==="__other__"?"مركز صحي آخر (حدد الاسم)":v]),"اختر الجهة");
     $("facilityOtherWrap").classList.add("hidden");
     $("facilityOther").required=false;
