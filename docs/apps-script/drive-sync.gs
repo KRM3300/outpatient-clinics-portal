@@ -126,7 +126,7 @@ function buildPayload_() {
   // Row 3 is currently the header; find column names rather than hard-code C/F.
   DRIVE_SYNC_LAST_SOURCE = 'vida_doctors';
   const staff = grid(DRIVE_SYNC.SCHEDULE_ID, DRIVE_SYNC.STAFF_GID);
-  const headAt = staff.findIndex(r => r.includes('Clinic') && r.includes('Full Name'));
+  const headAt = staff.findIndex(r => r.includes('#') && r.includes('Clinic') && r.includes('Full Name'));
   if (headAt < 0) throw new Error('أعمدة Staff Names تغيّرت: Clinic أو Full Name غير موجود');
   const h = staff[headAt], clinicIndex = h.indexOf('Clinic'),
         nameIndex = h.indexOf('Full Name'), numberIndex = h.indexOf('#');
