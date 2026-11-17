@@ -1,0 +1,76 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>معاينة تحميل مؤشرات العيادات الخارجية</title>
+<link rel="stylesheet" href="../assets/portal.css?v=5">
+<style>
+body{margin:0;background:#f4f8fa;color:#19383f;font-family:"IBM Plex Sans Arabic",Tahoma,Arial,sans-serif}
+header{background:#084953;color:white;padding:17px max(18px,calc((100% - 1160px)/2))}header strong{font-size:1.4rem}
+header p{color:#c9e1e3;font-size:.9rem;margin:5px 0}main{max-width:1160px;margin:auto;padding:18px}
+.cardx{background:white;border:1px solid #d8e5e8;border-radius:14px;padding:21px;margin:15px 0}
+nav{display:flex;gap:12px;flex-wrap:wrap}nav a{color:#0a6876;text-decoration:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:13px}label{display:grid;gap:5px;font-weight:650;font-size:.9rem}
+input,select{font:inherit;box-sizing:border-box;padding:10px;border:1px solid #b7cdd0;border-radius:8px;width:100%;background:white;color:#173942}
+button{font:inherit;background:#0b6975;color:white;border:0;border-radius:8px;padding:10px 15px;cursor:pointer}button.outline{background:#eef6f7;color:#105965}
+button:disabled{opacity:.5;cursor:wait}.flex{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.hidden{display:none!important}.error{color:#a12930}.success{color:#147d59}.muted{color:#61757b;font-size:.83rem}
+table{border-collapse:collapse;width:100%;font-size:.86rem;margin:10px 0 20px}th,td{padding:9px;border-bottom:1px solid #e0eaec;text-align:right}th{background:#e9f3f4}
+section h3{color:#0a6171}.badge{font-size:.81rem;background:#e3f1f2;padding:5px 10px;border-radius:20px}
+@media(max-width:600px){.cardx{padding:13px}main{padding:10px}header{padding:15px}}
+</style></head><body>
+<header><strong>العيادات الخارجية — معاينة التقارير المجمعة</strong><p>إعداد مدير العيادات الخارجية: خالد رميح الرميح</p></header>
+<main><nav><a href="../">بوابة العيادات</a><a href="../appointment-requests-v2/">طلبات الحجز الموحّدة</a></nav>
+<section id="auth" class="cardx"><h2>الدخول المعتمد</h2><p class="muted">سجّل بحساب المنصة المعتمد. تحميل المؤشرات لا يعرض أي بيانات شخصية للمرضى.</p>
+<div class="grid"><label>البريد<input id="email" type="email" autocomplete="email"></label><label>رمز التحقق<input id="otp" inputmode="numeric"></label></div>
+<div class="flex" style="margin-top:12px"><button id="send">إرسال الرمز</button><button id="verify" class="outline">دخول</button></div><p id="authMsg" role="status"></p></section>
+<section id="report" class="cardx hidden"><div class="flex" style="justify-content:space-between"><h2>تقرير المؤشرات</h2><button id="logout" class="outline">خروج</button></div>
+<div class="grid">
+<label>نوع التقرير<select id="section"><option value="kpi">الأداء والمؤشرات</option><option value="productivity">إنتاجية الموظفين</option><option value="patient_experience">تجربة المريض</option><option value="noncompliance">عدم الالتزام</option></select></label>
+<label>من<input id="from" type="date"></label><label>إلى<input id="to" type="date"></label></div>
+<div class="flex" style="margin-top:14px"><button id="load">عرض المؤشرات</button><button id="pdf" class="outline">تحميل PDF</button><button id="xlsx" class="outline">تحميل Excel</button></div>
+<p class="muted">كل ملف يحتوي أرقامًا مجمّعة فقط، مع ترويسة العيادات الخارجية واسم المُعد. تختلف البيانات المعروضة بحسب الصلاحية.</p>
+<p id="msg" role="status"></p><div id="content"></div></section>
+</main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+<script src="../assets/opd-aggregate-export.js"></script>
+<script>
+(function(){
+"use strict";
+const $=x=>document.getElementById(x);
+const api=window.supabase.createClient("https://omugonzzrulsdpnycact.supabase.co","sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs");
+const names={kpi:"الأداء والمؤشرات",productivity:"إنتاجية الموظفين",patient_experience:"تجربة المريض",noncompliance:"عدم الالتزام"};
+const f=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Riyadh",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
+const part=k=>f.find(x=>x.type===k)?.value;
+const today=part("year")+"-"+part("month")+"-"+part("day");
+$("to").value=today;$("from").value=today.slice(0,8)+"01";
+let last=null,key="",user=null;
+function message(t,success){$("msg").textContent=t;$("msg").className=success?"success":"error"}
+async function session(){const a=await api.auth.getUser();user=a.data?.user||null;$("auth").classList.toggle("hidden",!!user);$("report").classList.toggle("hidden",!user);}
+$("send").onclick=async()=>{const email=$("email").value.trim();if(!email)return $("authMsg").textContent="أدخل البريد";const r=await api.auth.signInWithOtp({email,options:{shouldCreateUser:true,emailRedirectTo:location.origin+location.pathname}});$("authMsg").textContent=r.error?r.error.message:"أُرسل الرمز إلى بريدك";};
+$("verify").onclick=async()=>{const r=await api.auth.verifyOtp({email:$("email").value.trim(),token:$("otp").value.trim(),type:"email"});if(r.error)return $("authMsg").textContent=r.error.message;await session();};
+$("logout").onclick=async()=>{await api.auth.signOut();user=null;await session();};
+function el(tag,value){const n=document.createElement(tag);if(value!==undefined)n.textContent=String(value);return n;}
+function render(sections){
+ const root=$("content");root.replaceChildren();
+ for(const s of sections){const section=el("section"),title=el("h3",s.title),badge=el("span",s.rows?.length||0);badge.className="badge";section.append(title,badge);
+  const table=el("table"),thead=el("thead"),hr=el("tr");
+  for(const h of s.headers||[])hr.append(el("th",h));thead.append(hr);table.append(thead);
+  const tbody=el("tbody");for(const row of (s.rows||[]).slice(0,35)){
+   const tr=el("tr");for(const value of row)tr.append(el("td",value));tbody.append(tr);
+  }
+  if((s.rows||[]).length>35){const tr=el("tr"),td=el("td","يعرض أول 35 صفًا، والملف المحمّل يتضمن جميع الصفوف.");td.colSpan=s.headers?.length||1;tr.append(td);tbody.append(tr);}
+  table.append(tbody);section.append(table);root.append(section);
+ }
+}
+async function load(){if(!user)throw Error("سجّل الدخول");if(!$("from").value||!$("to").value||$("to").value<$("from").value)throw Error("حدد فترة صحيحة");
+ const next=[$("section").value,$("from").value,$("to").value].join("|");if(next===key&&last)return last;
+ const r=await api.rpc("opd_export_dashboard",{p_section:$("section").value,p_from:$("from").value,p_to:$("to").value});
+ if(r.error)throw Error(r.error.message);last=r.data.sections;key=next;render(last);return last;
+}
+$("load").onclick=async()=>{message("يجري تحميل الإحصائية...",true);try{await load();message("تم تحديث التقرير",true)}catch(e){message(e.message)}};
+async function download(type){message("يجري تجهيز الملف...",true);for(const b of [$("load"),$("pdf"),$("xlsx")])b.disabled=true;
+ try{const s=await load(),name="تقرير "+names[$("section").value],period=$("from").value+" — "+$("to").value;
+   if(type==="pdf")window.OPDExport.downloadPDF(name,s,period);else window.OPDExport.downloadExcel(name,s,period);
+   message("تم تجهيز "+(type==="pdf"?"PDF":"Excel"),true);
+ }catch(e){message(e.message)}finally{for(const b of [$("load"),$("pdf"),$("xlsx")])b.disabled=false;}}
+$("pdf").onclick=()=>download("pdf");$("xlsx").onclick=()=>download("excel");
+session();
+})();
+</script></body></html>
