@@ -31,8 +31,13 @@
     "مركز صحي قصر بن عقيل","مركز صحي الخشيبي","مركز صحي الصليبي","مركز صحي الشبيكية",
     "مركز صحي الجرذاوية","مركز صحي ضليع رشيد","مركز صحي الغضياء والسلمات",
     "مركز صحي رفايع اللهيب","مركز صحي الهمجه","مركز صحي الدحلة",
-    "مركز صحي المطار","مركز صحي الركنة"
+    "مركز صحي المطار","مركز صحي الركنة","مركز صحي القاعية"
   ];
+  const OTHER="__other__";
+  const OTHER_LABEL="غير موجود في القائمة، أكتبه";
+  const MANUAL_LABEL={facility:"الجهة",clinic:"العيادة",doctor:"الطبيب"};
+  const doctorRoutes=["affiliate","low_back"];
+  const strictPatientRoutes=["affiliate","phc_triage"];
   // The two 16-clinic lists follow the existing Forms response field values;
   // do not introduce a 21st PHC until its source name is verified.
   const affiliateClinics=[
@@ -57,9 +62,9 @@
     ["Pediatric Surgery","جراحة الأطفال"],["Pediatric Diabetes Screening","فرز سكري الأطفال"]
   ];
   const allClinics=(window.OPD_UNIFIED_CLINICS||[]).map(s=>[s,s]);
-  const sourceFacility = {followup:["مستشفى الرس العام"],affiliate:affiliates,
+  const sourceFacility = {followup:["مستشفى الرس العام"],affiliate:[...affiliates,OTHER],
     low_back:["المركز الصحي"],breast_screening:["قسم الأشعة"],
-    emergency:["الطوارئ"],phc_triage:[...phcs,"__other__"]};
+    emergency:["الطوارئ"],phc_triage:[...phcs,OTHER]};
   const statuses={pending:"بانتظار الحجز",processing:"قيد المعالجة",
     booked:"تم الحجز",unable:"تعذر الحجز",rejected:"مرفوض",cancelled:"ملغي"};
   const rejectedReasons=["عدم توفر موعد","بيانات ناقصة","عدم انطباق ضوابط المسار",
@@ -92,17 +97,25 @@
   function updateKind(){
     const k=currentKind(),f=sourceFacility[k]||[];
     $("routeDescription").textContent=descriptions[k]||"اختر مسار الخدمة.";
-    setupSelect("facility",f.map(v=>[v,v==="__other__"?"مركز صحي آخر (حدد الاسم)":v]),"اختر الجهة");
+    setupSelect("facility",f.map(v=>[v,v===OTHER?OTHER_LABEL:v]),"اختر الجهة");
     $("facilityOtherWrap").classList.add("hidden");
     $("facilityOther").required=false;
     let clinics=(k==="affiliate" ? affiliateClinics :
       k==="phc_triage" ? phcClinics :
       k==="low_back" ? [["Neurosurgery","جراحة المخ والأعصاب"]] :
       k==="breast_screening" ? [["Surgery","الجراحة العامة"]] : allClinics);
+    if(["affiliate","phc_triage"].includes(k))clinics=[...clinics,[OTHER,OTHER_LABEL]];
     setupSelect("clinic",clinics,"اختر العيادة");
     if(f.length===1)$("facility").value=f[0];
     if(k==="low_back")$("clinic").value="Neurosurgery";
     if(k==="breast_screening")$("clinic").value="Surgery";
+    $("clinicOtherWrap").classList.add("hidden");$("clinicOther").required=false;
+    $("doctorWrap").classList.toggle("hidden",!doctorRoutes.includes(k));
+    drawDoctors();
+    const idInput=document.querySelector('[name="patient_identifier"]');
+    if(strictPatientRoutes.includes(k)){idInput.pattern="[12][0-9]{9}";idInput.maxLength=10;idInput.title="10 أرقام تبدأ بـ1 أو 2";}
+    else{idInput.removeAttribute("pattern");idInput.maxLength=30;idInput.removeAttribute("title");}
+    document.querySelector('[name="patient_dob"]').max=new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Riyadh"});
     $("motherWrap").classList.toggle("hidden",k!=="affiliate");
     const input=document.querySelector('[name="mother_name"]');
     input.required=k==="affiliate";
@@ -113,6 +126,18 @@
     document.querySelector('[name="referring_doctor"]').required=!!nonDoctor;
     $("expectedDateWrap").classList.toggle("hidden",!["followup","emergency"].includes(k));
     $("periodWrap").classList.toggle("hidden",!["followup","emergency"].includes(k));
+  }
+  function drawDoctors(){
+    const k=currentKind(),clinic=$("clinic").value,need=doctorRoutes.includes(k);
+    const list=clinic&&clinic!==OTHER?((window.OPD_VIDA_DOCTORS||{})[clinic]||[]):[];
+    setupSelect("doctorSel",[...list.map(n=>[n,n]),...(clinic?[[OTHER,OTHER_LABEL]]:[])],clinic?"اختر الطبيب":"اختر العيادة أولًا");
+    if(need&&clinic&&!list.length)$("doctorSel").value=OTHER;
+    $("doctorSel").required=need;
+    toggleDoctorOther();
+  }
+  function toggleDoctorOther(){
+    const on=doctorRoutes.includes(currentKind())&&$("doctorSel").value===OTHER;
+    $("doctorOtherWrap").classList.toggle("hidden",!on);$("doctorOther").required=on;
   }
   function panel(id){
     section=id;
@@ -146,6 +171,7 @@
     $("identity").textContent=member.full_name+" — "+(member.department||"");
     showState("app");
     $("navSettings").classList.toggle("hidden",!admin());
+    if(admin())manualAlerts();
     $("navStats").classList.toggle("hidden",!handler());
     $("navQueue").classList.remove("hidden");
     $("navNew").classList.toggle("hidden",!allowedKinds().length);
@@ -187,8 +213,14 @@
     await load();
   };
   $("kind").onchange=updateKind;
+  $("clinic").onchange=()=>{
+    const other=$("clinic").value===OTHER;
+    $("clinicOtherWrap").classList.toggle("hidden",!other);$("clinicOther").required=other;
+    drawDoctors();
+  };
+  $("doctorSel").onchange=toggleDoctorOther;
   $("facility").onchange=()=>{
-    const other=currentKind()==="phc_triage"&&$("facility").value==="__other__";
+    const other=$("facility").value===OTHER;
     $("facilityOtherWrap").classList.toggle("hidden",!other);
     $("facilityOther").required=other;
   };
@@ -196,38 +228,58 @@
     e.preventDefault();feedback("entryMessage","");
     const k=currentKind();
     if(!user||!allowedKinds().includes(k))return feedback("entryMessage","الخدمة غير مفعّلة لحسابك.");
-    const f=new FormData(e.currentTarget);
+    const formEl=e.currentTarget;
+    const f=new FormData(formEl);
     const pn=String(f.get("patient_name")||"").trim();
     if(pn.split(/\s+/).length<4)return feedback("entryMessage","يجب كتابة اسم المراجع الرباعي.");
     if(!/^\+?[0-9]{9,15}$/.test(String(f.get("patient_mobile")||"").trim()))
       return feedback("entryMessage","أدخل رقم جوال صحيحًا.");
     const d=["followup","emergency"].includes(k)?f.get("clinic_date"):null;
+    const today=new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Riyadh"});
+    const pid=String(f.get("patient_identifier")||"").trim(),dob=String(f.get("patient_dob")||"");
+    if(strictPatientRoutes.includes(k)){
+      if(!/^[12]\d{9}$/.test(pid))return feedback("entryMessage","رقم الهوية أو الإقامة يجب أن يكون 10 أرقام يبدأ بـ1 أو 2. لا يُقبل الطلب بدون هوية.");
+      if(!dob)return feedback("entryMessage","تاريخ الميلاد إلزامي.");
+    }
+    if(dob&&dob>today)return feedback("entryMessage","تاريخ الميلاد لا يمكن أن يكون في المستقبل.");
+    const manual=[];
+    let facilityValue=String($("facility").value||"");
+    if(facilityValue===OTHER){facilityValue=$("facilityOther").value.trim();manual.push("facility");}
+    let clinicValue=$("clinic").value;
+    if(clinicValue===OTHER){clinicValue=$("clinicOther").value.trim();manual.push("clinic");}
+    let doctorValue=null;
+    if(doctorRoutes.includes(k)){
+      doctorValue=$("doctorSel").value;
+      if(doctorValue===OTHER){doctorValue=$("doctorOther").value.trim();manual.push("doctor");}
+      if(!doctorValue)return feedback("entryMessage","اختر اسم الطبيب أو اكتبه كاملاً.");
+    }
     const form= {
       kind:k, requested_by:user.id, requester_name:member.full_name,
-      source_facility:$("facility").value==="__other__"?$("facilityOther").value.trim():String($("facility").value||""),
-      clinic_name:$("clinic").value,
-      patient_name:pn,patient_identifier:String(f.get("patient_identifier")||"").trim(),
+      source_facility:facilityValue,
+      clinic_name:clinicValue,
+      patient_name:pn,patient_identifier:pid,
       patient_dob:f.get("patient_dob")||null,patient_mobile:String(f.get("patient_mobile")||"").trim(),
       mother_name:k==="affiliate"?String(f.get("mother_name")||"").trim():null,
       diagnosis_reason:String(f.get("diagnosis_reason")||"").trim(),
       request_note:String(f.get("request_note")||"").trim()||null,
       referring_doctor:isPhysician()?
         member.full_name:String(f.get("referring_doctor")||"").trim(),
-      doctor_name:null,clinic_date:d||null,
+      doctor_name:doctorValue,clinic_date:d||null,
+      manual_fields:manual.length?manual:null,
       period:["followup","emergency"].includes(k)?f.get("period")||null:null,
       status:"pending"
     };
     if(!form.source_facility||!form.clinic_name||!form.diagnosis_reason||
        (k==="affiliate"&&!form.mother_name)||!form.referring_doctor)
       return feedback("entryMessage","أكمل الحقول المطلوبة للمسار.");
-    if(d && d < new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Riyadh"}))
+    if(d && d < today)
       return feedback("entryMessage","لا يمكن طلب تاريخ سابق.");
     $("submit").disabled=true;
     const r=await api.from("opd_appt_requests").insert(form);
     $("submit").disabled=false;
     if(r.error)return feedback("entryMessage",r.error.message);
-    e.currentTarget.reset();updateKind();
-    feedback("entryMessage","تم رفع الطلب، ولم يتم حجز موعد في VIDA بعد.",true);
+    formEl.reset();updateKind();
+    feedback("entryMessage","تم رفع الطلب، ولم يتم حجز موعد في VIDA بعد."+(manual.length?" وصل تنبيه للمدير بالاسم المكتوب يدويًا.":""),true);
   };
   const showTab=(k)=>{
     const b=el("button",k==="all"?"الكل":names[k],"tab"+(queueKind===k?" active":""));
@@ -298,7 +350,8 @@
       top.append(heading,el("span",(statuses[r.status]||r.status)+(late?" — متأخر":""),"chip"+(late?" late":"")));
       card.append(top);
       card.append(el("p","الجهة: "+(r.source_facility||"غير محددة")+
-        " | العيادة: "+r.clinic_name+" | الطبيب الطالب: "+(r.referring_doctor||r.requester_name||"—"),"muted"));
+        " | العيادة: "+r.clinic_name+(r.doctor_name?" | الطبيب: "+r.doctor_name:"")+" | الطبيب الطالب: "+(r.referring_doctor||r.requester_name||"—"),"muted"));
+      if(r.manual_fields?.length)card.append(el("p","إدخال يدوي: "+r.manual_fields.map(x=>MANUAL_LABEL[x]||x).join("، "),"hint"));
       card.append(el("p","وقت الطلب: "+new Date(r.created_at).toLocaleString("ar-SA")+
         " | المرجع: "+r.id.slice(0,8),"muted"));
       const extra=el("details");const summary=el("summary","تفاصيل المريض وسبب الطلب");extra.append(summary);
@@ -322,7 +375,7 @@
     if(queueBusy)return;queueBusy=true;
     if(reset){queueOffset=0;queueData=[];queueHasMore=true;}
     const query=api.from("opd_appt_requests")
-      .select("id,kind,patient_name,patient_identifier,patient_dob,patient_mobile,mother_name,diagnosis_reason,request_note,source_facility,clinic_name,referring_doctor,requester_name,status,created_at,closed_at,booked_date,rejection_reason")
+      .select("id,kind,doctor_name,manual_fields,patient_name,patient_identifier,patient_dob,patient_mobile,mother_name,diagnosis_reason,request_note,source_facility,clinic_name,referring_doctor,requester_name,status,created_at,closed_at,booked_date,rejection_reason")
       .order("created_at",{ascending:false}).range(queueOffset,queueOffset+199);
     const r=await query;queueBusy=false;
     if(r.error)return feedback("queueMessage",r.error.message);
@@ -367,7 +420,31 @@
     if(r.error)return $("statBreakdown").append(el("p","لم تُفعّل بعد خدمة إحصائيات الحجز الشاملة: "+r.error.message,"hint"));
     drawStats(r.data||{});
   }
+  async function manualAlerts(){
+    const r=await api.rpc("opd_booking_manual_alerts");
+    const box=$("manualBox"),root=$("manualAlerts");
+    if(r.error){box.classList.add("hidden");return 0;}
+    box.classList.remove("hidden");clear(root);
+    const rows=r.data||[];
+    $("navSettings").textContent="التحكم بالخدمات"+(rows.length?" ("+rows.length+")":"");
+    if(!rows.length)root.append(el("p","لا توجد تنبيهات.","hint"));
+    for(const a of rows){
+      const line=el("div",undefined,"request");
+      line.append(el("strong",(names[a.kind]||a.kind)+" — "+new Date(a.created_at).toLocaleString("ar-SA")));
+      for(const fld of a.manual_fields||[]){
+        const v=fld==="facility"?a.source_facility:fld==="clinic"?a.clinic_name:a.doctor_name;
+        line.append(el("p",MANUAL_LABEL[fld]+" مكتوب يدويًا: «"+(v||"")+"»"+(fld==="doctor"?" — العيادة: "+a.clinic_name:""),"muted"));
+      }
+      line.append(el("p","مقدّم الطلب: "+(a.requester_name||"—")+" | المرجع: "+String(a.id).slice(0,8),"muted"));
+      const b=el("button","تمت المراجعة","alt");
+      b.onclick=async()=>{b.disabled=true;const x=await api.rpc("opd_booking_manual_review",{p_id:a.id});
+        if(x.error){b.disabled=false;return feedback("settingsMessage",x.error.message);}await manualAlerts();};
+      line.append(b);root.append(line);
+    }
+    return rows.length;
+  }
   async function settingsPanel(){
+    manualAlerts();
     const r=await api.from("opd_booking_route_settings").select("kind,enabled").order("kind");
     const root=$("settingRows");clear(root);
     if(r.error){root.textContent=r.error.message;return;}

@@ -66,10 +66,11 @@ textarea{min-height:76px}.hint{font-size:.83rem;color:#536873}.error{color:#a51d
 <form id="bookingForm">
 <div class="grid">
 <label>نوع الخدمة<select id="kind" required></select></label>
-<label>الجهة المرسلة<select id="facility" required></select></label><label id="facilityOtherWrap" class="hidden">اسم المركز الصحي<input id="facilityOther" maxlength="120" placeholder="اكتب اسم المركز الصحي"></label>
-<label>العيادة المطلوبة<select id="clinic" required></select></label>
+<label>الجهة المرسلة<select id="facility" required></select></label><label id="facilityOtherWrap" class="hidden">اسم الجهة<input id="facilityOther" maxlength="120" placeholder="اكتب اسم الجهة كاملاً"></label>
+<label>العيادة المطلوبة<select id="clinic" required></select></label><label id="clinicOtherWrap" class="hidden">اسم العيادة<input id="clinicOther" maxlength="120" placeholder="اكتب اسم العيادة"></label>
+<label id="doctorWrap" class="hidden">الطبيب (الاسم كما في الفيدا)<select id="doctorSel"></select></label><label id="doctorOtherWrap" class="hidden">اسم الطبيب كاملاً<input id="doctorOther" maxlength="120" placeholder="الاسم الكامل كما في الفيدا"></label>
 <label>اسم المراجع الرباعي<input name="patient_name" required maxlength="120" minlength="7" autocomplete="off"></label>
-<label>رقم الهوية<input name="patient_identifier" required maxlength="30" autocomplete="off"></label>
+<label>رقم الهوية / الإقامة<input name="patient_identifier" required maxlength="30" autocomplete="off" inputmode="numeric"></label>
 <label>تاريخ الميلاد<input name="patient_dob" type="date" required></label>
 <label>رقم الجوال<input name="patient_mobile" required pattern="[+]?[0-9]{9,15}" maxlength="20" inputmode="tel"></label>
 <label id="motherWrap" class="hidden">اسم الأم (للمستشفيات التابعة)<input name="mother_name" maxlength="120"></label>
@@ -98,6 +99,7 @@ textarea{min-height:76px}.hint{font-size:.83rem;color:#536873}.error{color:#a51d
 <div id="statCards" class="row" style="margin-top:15px"></div>
 <div id="statBreakdown"></div><p class="hint">تعرض هذه الصفحة بيانات تجميعية فقط. التقارير الشاملة والتحميل PDF/Excel ضمن مرحلة المؤشرات، ولا تُصدّر بيانات المرضى.</p></section>
 <section id="settings" class="panel hidden"><h2>التحكم بالخدمات المؤقتة</h2>
-<p class="hint">تفعيل الطوارئ أو الفرز يظهر مسار الطلب للمستخدمين المخولين. الإيقاف يمنع الطلبات الجديدة فقط، ولا يحذف الطلبات المفتوحة أو إحصاءاتها.</p><div id="settingRows"></div><p id="settingsMessage" role="status"></p></section>
+<p class="hint">تفعيل الطوارئ أو الفرز يظهر مسار الطلب للمستخدمين المخولين. الإيقاف يمنع الطلبات الجديدة فقط، ولا يحذف الطلبات المفتوحة أو إحصاءاتها.</p><div id="settingRows"></div><p id="settingsMessage" role="status"></p>
+<div id="manualBox" class="hidden"><h2 style="margin-top:22px">تنبيهات الإدخال اليدوي</h2><p class="hint">طلبات كُتب فيها اسم جهة أو عيادة أو طبيب غير موجود في القوائم. راجعها وأضف الاسم الصحيح لتبويب Staff Names أو لقائمة الجهات، ثم اضغط «تمت المراجعة».</p><div id="manualAlerts"></div></div></section>
 </section>
-</main><script src="../assets/opd-aggregate-export.js"></script><script src="./unified.js"></script></body></html>
+</main><script src="../assets/opd-aggregate-export.js"></script><script src="../assets/vida-doctors.js?v=1"></script><script src="./unified.js?v=2"></script></body></html>

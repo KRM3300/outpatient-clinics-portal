@@ -1442,6 +1442,7 @@
               info.textContent = "التصفح كـ: معاينة للواجهة، وليس تغييرًا للصلاحيات";
               await services();
               if (!panel.classList.contains("hidden")) await staff();
+              bookingAlerts();
             } else {
               title.textContent = "حساب المستخدم";
               info.textContent = data.status === "approved" ? "تم تسجيل الدخول" : "حسابك بانتظار الاعتماد";
@@ -1453,6 +1454,22 @@
           } catch (e) {
             msg.textContent = "تعذر تحميل الحساب: " + e.message;
           }
+        }
+        /* تنبيه المدير: طلبات حجز فيها اسم جهة/عيادة/طبيب مكتوب يدويًا */
+        async function bookingAlerts() {
+          const tile = document.querySelector('a.go[href="./appointment-requests-v2/"]');
+          if (!tile) return;
+          const { data, error } = await api.rpc("opd_booking_manual_alerts");
+          let b = byId("booking-alert");
+          if (error || !data || !data.length) { if (b) b.remove(); return; }
+          if (!b) {
+            b = document.createElement("p");
+            b.id = "booking-alert";
+            b.className = "desc";
+            b.style.cssText = "color:#b42318;font-weight:700;margin:6px 0 0";
+            tile.before(b);
+          }
+          b.textContent = "تنبيه: " + data.length + " طلب فيه إدخال يدوي يحتاج مراجعتك";
         }
         check();
         api.auth.onAuthStateChange(() => {
