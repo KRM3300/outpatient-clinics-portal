@@ -183,4 +183,75 @@ alter table public.opd_booking_history enable row level security;
 revoke all on public.opd_booking_history from anon,authenticated;
 create index if not exists opd_booking_history_date_idx
   on public.opd_booking_history(request_date,route);
+
+-- Aggregated statistics RPC; returns no patient name, identifier, mobile, DOB or mother's name.
+-- Historical Google Forms records are included for counts only; they are excluded
+-- from time-to-close KPIs when actual closure timestamps do not exist.
+create or replace function public.opd_booking_dashboard(p_from date,p_to date)
+returns jsonb language plpgsql stable security definer set search_path=''
+as $function$
+declare result jsonb;
+begin
+  if auth.uid() is null or not public.opd_has_perm('appt_booking_handle') then
+    raise exception 'Not authorized';
+  end if;
+  if p_from is null or p_to is null or p_to<p_from or (p_to-p_from)>3650 then
+    raise exception 'Invalid reporting period';
+  end if;
+  with base as (
+    select r.kind,r.source_facility,r.clinic_name,
+      coalesce(nullif(r.referring_doctor,''),nullif(r.requester_name,''),'غير محدد') as doctor,
+      (r.created_at at time zone 'Asia/Riyadh')::date as request_day,
+      r.status,r.created_at,r.closed_at,r.booked_date,false as historic
+    from public.opd_appt_requests r
+    where (r.created_at at time zone 'Asia/Riyadh')::date between p_from and p_to
+    union all
+    select h.route,h.source_facility,h.clinic_name,
+      coalesce(nullif(h.doctor_name,''),'غير محدد'),
+      h.request_date,
+      case when h.outcome in ('تم','booked') then 'booked' else 'legacy_unfulfilled' end,
+      null::timestamptz,null::timestamptz,null::date,true
+    from public.opd_booking_history h
+    where h.request_date between p_from and p_to
+      and not exists (
+        select 1 from public.opd_appt_requests r
+        where r.external_source=h.source and r.external_row=h.source_row
+      )
+  ),
+  totals as (
+    select count(*)::int as total,
+      count(*) filter (where status='booked')::int as booked,
+      count(*) filter (where status='rejected')::int as rejected,
+      count(*) filter (where status in ('pending','processing'))::int as open,
+      count(*) filter (where not historic and status in ('pending','processing')
+        and created_at < now()-interval '24 hours')::int as overdue,
+      count(*) filter (where not historic and closed_at is not null)::int as eligible_24,
+      count(*) filter (where not historic and closed_at is not null
+        and closed_at <= created_at+interval '24 hours')::int as within_24,
+      round(avg(extract(epoch from closed_at-created_at)/3600)
+        filter (where status='booked' and not historic and closed_at is not null)::numeric,2) as mean_booking_hours,
+      round(avg(booked_date-request_day)
+        filter (where status='booked' and not historic and booked_date is not null)::numeric,2) as mean_wait_days,
+      count(*) filter (where historic)::int as historical
+    from base
+  )
+  select jsonb_build_object(
+    'totals',(select to_jsonb(t) from totals t),
+    'by_route',coalesce((select jsonb_agg(to_jsonb(x) order by x.total desc) from
+      (select coalesce(kind,'غير محدد') as name,count(*)::int as total from base group by 1) x),'[]'::jsonb),
+    'by_facility',coalesce((select jsonb_agg(to_jsonb(x) order by x.total desc) from
+      (select coalesce(source_facility,'غير محدد') as name,count(*)::int as total from base group by 1) x),'[]'::jsonb),
+    'by_clinic',coalesce((select jsonb_agg(to_jsonb(x) order by x.total desc) from
+      (select coalesce(clinic_name,'غير محدد') as name,count(*)::int as total from base group by 1) x),'[]'::jsonb),
+    'by_doctor',coalesce((select jsonb_agg(to_jsonb(x) order by x.total desc) from
+      (select coalesce(doctor,'غير محدد') as name,count(*)::int as total from base group by 1) x),'[]'::jsonb),
+    'by_month',coalesce((select jsonb_agg(to_jsonb(x) order by x.name asc) from
+      (select to_char(request_day,'YYYY-MM') as name,count(*)::int as total from base group by 1) x),'[]'::jsonb)
+  ) into result;
+  return result;
+end
+$function$;
+revoke all on function public.opd_booking_dashboard(date,date) from public,anon;
+grant execute on function public.opd_booking_dashboard(date,date) to authenticated;
+
 commit;
