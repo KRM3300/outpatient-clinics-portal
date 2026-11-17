@@ -46,7 +46,7 @@ textarea{min-height:76px}.hint{font-size:.83rem;color:#536873}.error{color:#a51d
 <label>اسم المراجع الرباعي<input name="patient_name" required maxlength="120" minlength="7" autocomplete="off"></label>
 <label>رقم الهوية<input name="patient_identifier" required maxlength="30" autocomplete="off"></label>
 <label>تاريخ الميلاد<input name="patient_dob" type="date" required></label>
-<label>رقم الجوال<input name="patient_mobile" required pattern="\\+?[0-9]{9,15}" maxlength="20" inputmode="tel"></label>
+<label>رقم الجوال<input name="patient_mobile" required pattern="[+]?[0-9]{9,15}" maxlength="20" inputmode="tel"></label>
 <label id="motherWrap" class="hidden">اسم الأم (للمستشفيات التابعة)<input name="mother_name" maxlength="120"></label>
 <label id="requestDoctorWrap" class="hidden">اسم الطبيب المعالج<input name="referring_doctor" maxlength="120"></label>
 <label id="expectedDateWrap">تاريخ العيادة المطلوب (إن عُرف)<input name="clinic_date" type="date"></label>
@@ -72,6 +72,6 @@ textarea{min-height:76px}.hint{font-size:.83rem;color:#536873}.error{color:#a51d
 <div id="statCards" class="row" style="margin-top:15px"></div>
 <div id="statBreakdown"></div><p class="hint">تعرض هذه الصفحة بيانات تجميعية فقط. التقارير الشاملة والتحميل PDF/Excel ضمن مرحلة المؤشرات، ولا تُصدّر بيانات المرضى.</p></section>
 <section id="settings" class="panel hidden"><h2>التحكم بالخدمات المؤقتة</h2>
-<p class="hint">تفعيل الطوارئ أو الفرز يظهر مسار الطلب للمستخدمين المخولين. الإيقاف يمنع الطلبات الجديدة فقط، ولا يحذف الطلبات المفتوحة أو إحصاءاتها.</p><div id="settingRows"></div></section>
+<p class="hint">تفعيل الطوارئ أو الفرز يظهر مسار الطلب للمستخدمين المخولين. الإيقاف يمنع الطلبات الجديدة فقط، ولا يحذف الطلبات المفتوحة أو إحصاءاتها.</p><div id="settingRows"></div><p id="settingsMessage" role="status"></p></section>
 </section>
 </main><script src="./unified.js"></script></body></html>
