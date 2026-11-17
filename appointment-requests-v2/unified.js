@@ -56,7 +56,7 @@
     booked:"تم الحجز",unable:"تعذر الحجز",rejected:"مرفوض",cancelled:"ملغي"};
   const rejectedReasons=["عدم توفر موعد","بيانات ناقصة","عدم انطباق ضوابط المسار",
     "طلب مكرر","توجيه لجهة أخرى","سبب آخر"];
-  let user=null,member=null,perms=new Set(),settings={emergency:true,phc_triage:false};
+  let user=null,member=null,perms=new Set(),settings={emergency:false,phc_triage:false};
   let queueData=[],queueKind="all",queueOffset=0,queueHasMore=true;
   let section="entry",queueBusy=false;
   const can = x => member?.role==="admin" || perms.has(x);
@@ -157,7 +157,7 @@
     if(pn.split(/\s+/).length<4)return feedback("entryMessage","يجب كتابة اسم المراجع الرباعي.");
     if(!/^\+?[0-9]{9,15}$/.test(String(f.get("patient_mobile")||"").trim()))
       return feedback("entryMessage","أدخل رقم جوال صحيحًا.");
-    const d=f.get("clinic_date");
+    const d=["followup","emergency"].includes(k)?f.get("clinic_date"):null;
     const form= {
       kind:k, requested_by:user.id, requester_name:member.full_name,
       source_facility:String($("facility").value||""),
@@ -192,7 +192,7 @@
   };
   function buildTabs(){
     const root=$("routeTabs");clear(root);root.append(showTab("all"));
-    for(const k of Object.keys(names))root.append(showTab(k));
+    for(const k of (handler()?Object.keys(names):allowedKinds()))root.append(showTab(k));
   }
   function hoursUntilNow(date){
     return (Date.now()-new Date(date).getTime())/3600000;
@@ -317,7 +317,7 @@
           .update({enabled:!row.enabled,updated_at:new Date().toISOString(),updated_by:user.id})
           .eq("kind",row.kind).select("kind,enabled").single();
         btn.disabled=false;
-        if(x.error){feedback("queueMessage",x.error.message);return;}
+        if(x.error){feedback("settingsMessage",x.error.message);return;}
         settings[row.kind]=x.data.enabled;
         drawForm();await settingsPanel();
       };
