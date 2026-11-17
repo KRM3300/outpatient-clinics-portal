@@ -25,8 +25,19 @@ CREATE TABLE IF NOT EXISTS public.opd_sync_runs (
 ALTER TABLE public.opd_sync_runs ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.opd_sync_runs FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.opd_sync_runs TO authenticated;
-CREATE POLICY opd_sync_runs_admin_read ON public.opd_sync_runs
-  FOR SELECT TO authenticated USING (public.opd_kpi_is_admin());
+DO $policy$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'opd_sync_runs'
+      AND policyname = 'opd_sync_runs_admin_read'
+  ) THEN
+    CREATE POLICY opd_sync_runs_admin_read ON public.opd_sync_runs
+      FOR SELECT TO authenticated USING (public.opd_kpi_is_admin());
+  END IF;
+END
+$policy$;
 
 CREATE TABLE IF NOT EXISTS public.opd_vida_doctors (
   clinic text NOT NULL,
@@ -37,8 +48,19 @@ CREATE TABLE IF NOT EXISTS public.opd_vida_doctors (
 ALTER TABLE public.opd_vida_doctors ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.opd_vida_doctors FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.opd_vida_doctors TO authenticated;
-CREATE POLICY opd_vida_doctors_authenticated_read ON public.opd_vida_doctors
-  FOR SELECT TO authenticated USING ((SELECT auth.uid()) IS NOT NULL);
+DO $policy$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'opd_vida_doctors'
+      AND policyname = 'opd_vida_doctors_authenticated_read'
+  ) THEN
+    CREATE POLICY opd_vida_doctors_authenticated_read ON public.opd_vida_doctors
+      FOR SELECT TO authenticated USING ((SELECT auth.uid()) IS NOT NULL);
+  END IF;
+END
+$policy$;
 
 -- The only write entrypoint for the Apps Script is this secret-authenticated RPC.
 -- It RETURNS {"ok":false} on bad credentials/errors, rather than RAISEing:
@@ -227,7 +249,7 @@ BEGIN
     END LOOP;
     v_metrics := v_metrics || jsonb_build_object('sessions',v_sch->'sessions');
     v_reports := v_reports || jsonb_build_array(jsonb_build_object(
-      'kind','schedule','title','إشغال غرف العيادات — أسبوع '||v_sch->>'week',
+      'kind','schedule','title','إشغال غرف العيادات — أسبوع '||(v_sch->>'week'),
       'period_from',v_week,'period_to',v_week+4,
       'summary',jsonb_build_object('kind','schedule','metrics',v_metrics,'items','[]'::jsonb)
     ));
