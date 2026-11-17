@@ -443,6 +443,11 @@
           </div>
           <div id="auth-myperms"></div>
           <div id="auth-admin" class="hidden">
+            <div class="toolbar" style="margin-bottom: 12px">
+              <h3 style="margin: 0">مصادر البيانات</h3>
+              <a class="btn-link" href="./data-sources/">فتح سجل المصادر</a>
+            </div>
+            <p id="drive-sync-alert" class="hidden" role="alert" style="color:#b42331;background:#fff0f1;border-right:4px solid #c32937;border-radius:8px;padding:9px 12px;font-weight:700;margin:0 0 14px"></p>
             <div class="toolbar" style="margin-bottom: 18px">
               <h3 style="margin: 0">إجازات وجدول الموظفين</h3>
               <a class="btn-link" href="./staff/">فتح الصفحة</a>
@@ -744,6 +749,8 @@
           "ما رفعه وأقفله كل موظف في تجربة المريض ومدة الإقفال، وتقارير عدم الالتزام، مع المقارنة بالفترة السابقة.":
             "Cases raised and closed by each employee with closing time, plus non-compliance reports, compared with the previous period.",
           "طبيب مركز صحي": "Primary health care physician",
+          "مصادر البيانات": "Data Sources",
+          "فتح سجل المصادر": "Open data sources",
           "طلبات الحجز الموحّدة": "Unified Booking Requests",
           "فتح طلبات الحجز": "Open booking requests",
           "متابعة العيادات، المستشفيات التابعة، أسفل الظهر، الكشف المبكر للثدي، الطوارئ، والفرز عند تعطل موعد.": "Follow-up, affiliate hospitals, lower-back clinic, breast screening, emergencies, and PHC triage when Mawid is unavailable.",
@@ -1384,6 +1391,35 @@
             }
           }
         }
+        async function checkDriveFreshness() {
+          const alert = byId("drive-sync-alert");
+          alert.classList.add("hidden");
+          alert.textContent = "";
+          if (!isAdmin) return;
+          try {
+            const { data, error } = await api.rpc("opd_sync_status");
+            if (error) throw error;
+            const latest = data?.drive_kpi?.last_success || null;
+            const age = latest ? Date.now() - Date.parse(latest) : Infinity;
+            const limit = 26 * 60 * 60 * 1000;
+            if (!latest || !Number.isFinite(age) || age > limit) {
+              const ar = latest
+                ? "تنبيه: آخر مزامنة ناجحة لمؤشرات Google Drive تجاوزت 26 ساعة. راجع صفحة مصادر البيانات."
+                : "تنبيه: لم تُسجل مزامنة ناجحة لمؤشرات Google Drive بعد. راجع صفحة مصادر البيانات.";
+              const en = latest
+                ? "Warning: Drive KPIs have not synced successfully for over 26 hours. Check Data Sources."
+                : "Warning: no successful Drive KPI sync has been recorded. Check Data Sources.";
+              alert.textContent = lang === "en" ? en : ar;
+              alert.classList.remove("hidden");
+            }
+          } catch (_error) {
+            // The owner has not yet installed docs/drive-sync.sql, or the RPC is unavailable.
+            alert.textContent = lang === "en"
+              ? "Drive sync health is not configured yet. Install drive-sync.sql and check Data Sources."
+              : "تنبيه: لم يُفعّل سجل مزامنة Drive بعد. شغّل ملف drive-sync.sql وراجع مصادر البيانات.";
+            alert.classList.remove("hidden");
+          }
+        }
         function applyServices() {
           for (const t of tiles) {
             const key = t.dataset.serviceKey;
@@ -1443,6 +1479,7 @@
               await services();
               if (!panel.classList.contains("hidden")) await staff();
               bookingAlerts();
+              await checkDriveFreshness();
             } else {
               title.textContent = "حساب المستخدم";
               info.textContent = data.status === "approved" ? "تم تسجيل الدخول" : "حسابك بانتظار الاعتماد";
