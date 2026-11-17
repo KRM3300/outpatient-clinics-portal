@@ -38,6 +38,25 @@ textarea{min-height:76px}.hint{font-size:.83rem;color:#536873}.error{color:#a51d
 <div class="actions" style="margin-top:12px"><button id="sendOtp">إرسال الرمز</button><button id="verifyOtp" class="alt">تحقق ودخول</button></div>
 <p id="authMessage" role="status"></p>
 </section>
+<section id="onboard" class="panel hidden">
+<h2>طلب اعتماد حساب جديد</h2><p class="hint">يسجل كل مستخدم بالبريد الإلكتروني ورمز التحقق ثم يرسل بياناته لمراجعة المدير. لا توجد كلمات مرور مشتركة.</p>
+<form id="joinForm">
+<div class="grid">
+<label>الاسم الرباعي<input id="joinName" maxlength="120" required></label>
+<label>الرقم الوظيفي<input id="joinNumber" inputmode="numeric" pattern="[0-9]{4,12}" maxlength="12" required></label>
+<label>الفئة الوظيفية<select id="joinJob" required>
+<option value="">اختر فئتك</option><option value="doctor">طبيب</option><option value="phc_doctor">طبيب مركز صحي</option>
+<option value="nurse">تمريض</option><option value="scheduler">موظف مواعيد</option><option value="reception">موظف عيادات</option>
+<option value="other">أخرى</option></select></label>
+<label>القسم / المنشأة<input id="joinDepartment" maxlength="120" required></label>
+<label>جوال العمل (اختياري)<input id="joinPhone" maxlength="20" inputmode="tel"></label>
+</div>
+<div class="actions" style="margin-top:12px"><button type="submit" id="joinSave">إرسال طلب الاعتماد</button><button type="button" id="joinLogout" class="alt">تغيير الحساب</button></div>
+<p id="joinMessage" role="status"></p>
+</form></section>
+<section id="waiting" class="panel hidden"><h2>بانتظار موافقة المدير</h2><p class="hint">تم استلام حسابك، ولن تظهر المسارات إلا بعد اعتمادك ومنحك الصلاحية المناسبة.</p>
+<div class="actions"><button id="checkApproval" type="button">التحقق من الاعتماد</button><button id="waitLogout" type="button" class="alt">تغيير الحساب</button></div>
+<p id="waitMessage" role="status"></p></section>
 <section id="app" class="hidden">
 <div class="row" style="justify-content:space-between;margin:12px 0"><strong id="identity"></strong><button id="logout" class="alt">خروج</button></div>
 <div class="nav"><button id="navNew">طلب جديد</button><button id="navQueue" class="alt">الطلبات</button><button id="navStats" class="alt">المؤشرات</button><button id="navSettings" class="alt hidden">التحكم بالخدمات</button></div>
