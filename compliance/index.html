@@ -38,6 +38,9 @@
       .chip { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 99px; background: var(--line); }
       .filters-note { margin: 8px 0; font-size: 13px; }
       .filters-note button { padding: 2px 10px; font-size: 12.5px; margin-inline-start: 6px; }
+          dialog#editDlg { border: 1px solid var(--line-strong); border-radius: var(--radius-lg); padding: 18px; width: min(720px, calc(100vw - 32px)); }
+      dialog#editDlg::backdrop { background: rgba(15, 30, 45, 0.35); }
+      .rowact { display: flex; gap: 6px; }
     </style>
   </head>
   <body>
@@ -179,6 +182,31 @@
           <div id="grants" style="margin-top: 10px"></div>
         </section>
       </div>
+      <dialog id="editDlg" aria-labelledby="eTitle">
+        <form id="editForm" method="dialog">
+          <h3 id="eTitle" style="margin-top: 0">تعديل التقرير</h3>
+          <div class="grid">
+            <div><label for="e-emp">اسم الموظف محل الملاحظة *</label><input id="e-emp" required minlength="2" maxlength="150" /></div>
+            <div><label for="e-nature">طبيعة عمل الموظف *</label><select id="e-nature" required></select></div>
+            <div>
+              <label for="e-spec">العيادة / القسم</label><select id="e-spec"></select>
+              <input id="e-spec-other" class="hidden" maxlength="120" placeholder="اكتب اسم القسم" aria-label="اسم القسم" style="margin-top: 6px" />
+            </div>
+            <div><label for="e-type">نوع الملاحظة *</label><select id="e-type" required></select></div>
+            <div id="e-other-box" class="hidden"><label for="e-other">نوع آخر — حدّده *</label><input id="e-other" maxlength="120" /></div>
+            <div><label for="e-file">رقم ملف المراجع</label><input id="e-file" maxlength="30" dir="ltr" inputmode="numeric" /></div>
+            <div><label for="e-when">وقت الملاحظة *</label><input id="e-when" type="datetime-local" dir="ltr" required /></div>
+          </div>
+          <label for="e-notes">ملاحظات</label>
+          <textarea id="e-notes" rows="3" maxlength="2000"></textarea>
+          <p class="muted" id="e-by"></p>
+          <p id="e-msg" role="status" style="color: var(--danger); min-height: 1.2em; margin: 4px 0"></p>
+          <div class="toolbar">
+            <button type="submit" id="e-save">حفظ التعديل</button>
+            <button type="button" class="alt" id="e-cancel">إلغاء</button>
+          </div>
+        </form>
+      </dialog>
     </main>
 
     <footer class="site-footer">
@@ -226,6 +254,73 @@
         }
         fill($("f-type"), TYPES.concat(["أخرى"]), "اختر");
         $("f-type").onchange = () => hide("f-other-box", $("f-type").value === "أخرى");
+
+        /* تعديل تقرير (المدير فقط) */
+        fill($("e-nature"), NATURE, "اختر");
+        fill($("e-type"), TYPES.concat(["أخرى"]), "اختر");
+        {
+          const sel = $("e-spec");
+          sel.add(new Option("—", ""));
+          for (const [label, list] of [["العيادات الخارجية", CLINICS], ["أقسام المستشفى", DEPTS]]) {
+            const g = document.createElement("optgroup");
+            g.label = label;
+            for (const x of list) g.append(new Option(x, x));
+            sel.append(g);
+          }
+          sel.add(new Option("أخرى (اكتب يدوياً)", SPEC_OTHER));
+          sel.onchange = () => hide("e-spec-other", sel.value === SPEC_OTHER);
+        }
+        $("e-type").onchange = () => hide("e-other-box", $("e-type").value === "أخرى");
+        $("e-cancel").onclick = () => $("editDlg").close();
+        const pad = (n) => String(n).padStart(2, "0");
+        const toLocalInput = (iso) => { const d = new Date(iso); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+        let editing = null;
+        function openEdit(r) {
+          editing = r;
+          $("e-emp").value = r.employee_name || "";
+          if (r.work_nature && ![...$("e-nature").options].some((o) => o.value === r.work_nature)) $("e-nature").add(new Option(r.work_nature, r.work_nature));
+          $("e-nature").value = r.work_nature || "";
+          const known = r.specialty && (CLINICS.includes(r.specialty) || DEPTS.includes(r.specialty));
+          $("e-spec").value = !r.specialty ? "" : known ? r.specialty : SPEC_OTHER;
+          $("e-spec-other").value = r.specialty && !known ? r.specialty : "";
+          hide("e-spec-other", !!r.specialty && !known);
+          const t = r.observation_type || "";
+          const isKnown = TYPES.includes(t);
+          $("e-type").value = isKnown ? t : t ? "أخرى" : "";
+          $("e-other").value = isKnown ? "" : t.replace(/^أخرى:\s*/, "");
+          hide("e-other-box", !isKnown && !!t);
+          $("e-file").value = r.patient_file || "";
+          $("e-when").value = toLocalInput(r.occurred_at);
+          $("e-notes").value = r.notes || "";
+          $("e-by").textContent = "المُعدّ: " + (r.reporter_name || "—") + (r.reporter_empno ? " (" + r.reporter_empno + ")" : "") + " — لا يتغير بالتعديل.";
+          $("e-msg").textContent = "";
+          $("editDlg").showModal();
+        }
+        $("editForm").onsubmit = async (e) => {
+          e.preventDefault();
+          if (!editing) return;
+          const otherType = $("e-type").value === "أخرى";
+          if (otherType && !$("e-other").value.trim()) return ($("e-msg").textContent = "حدّد نوع الملاحظة");
+          if (!$("e-nature").value) return ($("e-msg").textContent = "اختر طبيعة العمل");
+          if (!$("e-when").value) return ($("e-msg").textContent = "حدّد وقت الملاحظة");
+          const upd = {
+            employee_name: $("e-emp").value.trim(),
+            work_nature: $("e-nature").value,
+            specialty: ($("e-spec").value === SPEC_OTHER ? $("e-spec-other").value.trim() : $("e-spec").value) || null,
+            observation_type: otherType ? "أخرى: " + $("e-other").value.trim() : $("e-type").value,
+            patient_file: $("e-file").value.trim() || null,
+            occurred_at: new Date($("e-when").value).toISOString(),
+            notes: $("e-notes").value.trim() || null,
+          };
+          $("e-save").disabled = true;
+          const { data, error } = await api.from("opd_nc_reports").update(upd).eq("id", editing.id).select("id");
+          $("e-save").disabled = false;
+          if (error) return ($("e-msg").textContent = error.message);
+          if (!data || !data.length) return ($("e-msg").textContent = "لم يُحفظ التعديل: لا توجد صلاحية تعديل.");
+          $("editDlg").close();
+          msg("تم تعديل تقرير " + upd.employee_name + ".");
+          await records();
+        };
 
         /* الدخول برمز التحقق */
         $("send").onclick = async () => {
@@ -380,9 +475,10 @@
             const tr = node("tr");
             tr.append(node("td", fmt(local(r.occurred_at))), node("td", r.employee_name), node("td", r.work_nature), node("td", r.specialty || "—"), node("td", r.observation_type), node("td", r.notes || ""), node("td", r.patient_file || ""), node("td", r.reporter_name));
             if (isAdmin) {
-              const td = node("td"), b = node("button", "حذف", "alt"); b.type = "button";
+              const td = node("td"), wrap = node("div", undefined, "rowact"), ed = node("button", "تعديل", "alt"), b = node("button", "حذف", "alt"); b.type = ed.type = "button";
+              ed.onclick = () => openEdit(r);
               b.onclick = async () => { if (!confirm("حذف هذه الملاحظة نهائياً؟")) return; const { error } = await api.from("opd_nc_reports").delete().eq("id", r.id); if (error) return err(error); await records(); };
-              td.append(b); tr.append(td);
+              wrap.append(ed, b); td.append(wrap); tr.append(td);
             }
             t.append(tr);
           }
