@@ -285,6 +285,8 @@
     for(const [title,k] of [["إجمالي الطلبات","total"],["المحجوزة","booked"],
       ["خلال 24 ساعة","within_24"],["المتأخرة المفتوحة","overdue"],["المرفوضة","rejected"],["السجلات التاريخية","historical"]])
       root.append(statCard(title,String(vals[k]??"—")));
+    if(Number(data?.previous_total||0)>0)root.append(statCard("التغير عن الفترة السابقة",
+      (((Number(vals.total||0)-Number(data.previous_total))/Number(data.previous_total))*100).toFixed(1)+"%"));
     if(Number(vals.eligible_24||0)>0)root.append(statCard("الالتزام خلال 24 ساعة",
       (100*Number(vals.within_24||0)/Number(vals.eligible_24)).toFixed(1)+"%"));
     if(vals.mean_booking_hours!=null)root.append(statCard("متوسط إنجاز الحجز",vals.mean_booking_hours+" ساعة"));
