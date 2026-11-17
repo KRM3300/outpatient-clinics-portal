@@ -49,6 +49,17 @@ alter table public.opd_appt_requests
   add constraint opd_booking_reason_length
   check (diagnosis_reason is null or char_length(diagnosis_reason) <= 1000);
 
+-- Preserve compatibility for legacy emergency/follow-up records; enforce essential
+-- information for *new* routes at the database layer.
+alter table public.opd_appt_requests
+  add constraint opd_booking_new_route_required_data
+  check (kind in ('emergency','followup') or
+    (patient_dob is not null
+     and nullif(btrim(coalesce(patient_mobile,'')),'') is not null
+     and nullif(btrim(coalesce(diagnosis_reason,'')),'') is not null
+     and nullif(btrim(coalesce(source_facility,'')),'') is not null
+     and (kind<>'affiliate' or nullif(btrim(coalesce(mother_name,'')),'') is not null)));
+
 create unique index if not exists opd_booking_legacy_unique
   on public.opd_appt_requests(external_source,external_row)
   where external_source is not null and external_row is not null;
@@ -74,6 +85,22 @@ values ('emergency',true),('phc_triage',false)
 on conflict (kind) do nothing;
 
 alter table public.opd_booking_route_settings enable row level security;
+-- Route control audit fields are always derived from the authenticated operator.
+create or replace function public.opd_booking_settings_stamp()
+returns trigger language plpgsql set search_path=''
+as $function$
+begin
+  new.updated_by=auth.uid();
+  new.updated_at=now();
+  return new;
+end
+$function$;
+drop trigger if exists opd_booking_settings_stamp_trigger on public.opd_booking_route_settings;
+create trigger opd_booking_settings_stamp_trigger
+before update on public.opd_booking_route_settings
+for each row execute function public.opd_booking_settings_stamp();
+
+
 create policy "approved members read booking route settings"
   on public.opd_booking_route_settings for select to authenticated
   using (exists(select 1 from public.opd_appt_members m
@@ -245,6 +272,19 @@ begin
       (select coalesce(clinic_name,'غير محدد') as name,count(*)::int as total from base group by 1) x),'[]'::jsonb),
     'by_doctor',coalesce((select jsonb_agg(to_jsonb(x) order by x.total desc) from
       (select coalesce(doctor,'غير محدد') as name,count(*)::int as total from base group by 1) x),'[]'::jsonb),
+    'by_employee',coalesce((select jsonb_agg(to_jsonb(x) order by x.total desc) from
+      (select coalesce(m.full_name,'غير محدد') as name,count(*)::int as total
+       from public.opd_appt_requests r
+       left join public.opd_appt_members m on m.user_id=r.assigned_to
+       where r.status in ('booked','rejected','unable')
+         and (r.closed_at at time zone 'Asia/Riyadh')::date between p_from and p_to
+       group by 1) x),'[]'::jsonb),
+    'by_rejection_reason',coalesce((select jsonb_agg(to_jsonb(x) order by x.total desc) from
+      (select coalesce(nullif(r.rejection_reason,''),'سبب غير موثق') as name,count(*)::int as total
+       from public.opd_appt_requests r
+       where r.status in ('rejected','unable')
+         and (r.created_at at time zone 'Asia/Riyadh')::date between p_from and p_to
+       group by 1) x),'[]'::jsonb),
     'by_month',coalesce((select jsonb_agg(to_jsonb(x) order by x.name asc) from
       (select to_char(request_day,'YYYY-MM') as name,count(*)::int as total from base group by 1) x),'[]'::jsonb)
   ) into result;
