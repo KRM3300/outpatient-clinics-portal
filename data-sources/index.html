@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f3a57">
+<title>مصادر البيانات | العيادات الخارجية</title>
+<link rel="icon" href="../assets/favicon.png">
+<link rel="stylesheet" href="../assets/portal.css?v=4">
+<style>
+:root{font-family:"IBM Plex Sans Arabic",Tahoma,Arial,sans-serif}
+body{margin:0;background:var(--bg,#f4f7fa);color:var(--ink,#12343e)}
+header{background:#0b4357;color:white;padding:22px max(18px,calc((100% - 1250px)/2))}
+header h1{font-size:1.5rem;margin:0 0 6px}header p{margin:0;color:#d6e6eb;font-size:.9rem}
+main{max-width:1250px;margin:0 auto;padding:18px}
+nav{display:flex;gap:16px;margin:0 0 17px;flex-wrap:wrap}
+nav a{color:#0f6776;text-decoration:none;font-weight:650}
+.panel{background:var(--surface,#fff);border:1px solid var(--line,#d9e4e8);border-radius:15px;padding:21px;margin-bottom:15px}
+.panel h2{font-size:1.13rem;margin:0 0 12px}.muted{color:var(--ink-soft,#60777c);font-size:.86rem}
+.hidden{display:none!important}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:11px}
+label{display:grid;gap:5px;font-size:.87rem;font-weight:600}
+input{font:inherit;padding:10px;border:1px solid #b4cbd0;border-radius:8px;width:100%;box-sizing:border-box}
+button{font:inherit;border:0;border-radius:8px;padding:10px 16px;cursor:pointer;background:#0b6075;color:#fff}
+button.alt{background:#e7f0f3;color:#15495a}.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px;align-items:center}
+.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:930px}
+th,td{text-align:right;padding:12px 9px;border-bottom:1px solid #e1eaee;font-size:.88rem;vertical-align:top}
+th{background:#eaf3f5;color:#134455}td a{color:#126a83}td small{display:block;color:var(--ink-soft,#5d777e);margin-top:4px}
+.tag{display:inline-block;padding:4px 9px;font-size:.78rem;font-weight:700;border-radius:999px;background:#e7ecee;color:#50636c}
+.tag.good{background:#dff5e8;color:#16714a}.tag.bad{background:#ffebeb;color:#ae353d}
+.tag.paused{background:#f2f1e5;color:#826a2b}.tag.unknown{background:#e9eef0;color:#536b74}
+.alert{color:#b1222d;font-weight:700;padding:10px 12px;background:#fff0f1;border-right:4px solid #ba2c37;border-radius:7px;margin:12px 0}
+.log{padding:13px 5px;border-bottom:1px solid #e3e9eb}.log:last-child{border:0}
+footer{padding:25px 18px;text-align:center;border-top:1px solid #dce7eb;font-size:.85rem;color:#47636d}
+@media(max-width:650px){main{padding:10px}.panel{padding:14px}header{padding:18px}}
+</style>
+</head>
+<body>
+<header>
+<h1>مصادر البيانات ومتابعة المزامنة</h1>
+<p>العيادات الخارجية — لوحة مدير النظام | Data Sources & Sync Health</p>
+</header>
+<main>
+<nav><a href="../">الرئيسية</a><a href="../kpis/">الأداء والمؤشرات</a><a href="../appointment-requests-v2/">طلبات الحجز</a></nav>
+<section class="panel" id="auth">
+<h2>الدخول المعتمد</h2>
+<p class="muted">هذه الصفحة للمدير فقط. لا تعرض بيانات المرضى ولا أسرار المزامنة.</p>
+<div class="grid"><label>البريد الإلكتروني<input id="email" type="email" autocomplete="email"></label>
+<label>رمز التحقق<input id="otp" inputmode="numeric" autocomplete="one-time-code"></label></div>
+<div class="actions"><button id="sendOtp" type="button">إرسال الرمز</button><button id="verifyOtp" type="button" class="alt">دخول</button></div>
+<p id="authMsg" role="status"></p>
+</section>
+<section class="panel hidden" id="denied">
+<h2>صلاحية غير متاحة</h2><p>يلزم تسجيل الدخول بحساب مدير النظام المعتمد.</p>
+<button id="logoutDenied" type="button" class="alt">تبديل الحساب</button>
+</section>
+<div id="admin" class="hidden">
+<section class="panel">
+<div class="actions" style="justify-content:space-between;margin-top:0"><h2>حالة مصادر البيانات</h2>
+<div class="actions" style="margin-top:0"><button id="reload" type="button" class="alt">تحديث الحالات</button><button id="logout" type="button" class="alt">خروج</button></div></div>
+<p class="muted">تُحتسب حالة المزامنة اليومية من آخر نجاح وآخر خطأ. للمصادر الخارجية التي لا تسجل وقت تشغيل في المنصة، تظهر «غير متاح» بدلاً من افتراض نجاحها.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>المصدر</th><th>الطريقة</th><th>التكرار</th><th>ما يُحفظ</th><th>آخر تحديث / الحالة</th><th>مكان الكود</th></tr></thead>
+<tbody id="sources"></tbody>
+</table></div>
+<p id="statusMessage" role="status"></p>
+</section>
+<section class="panel">
+<h2>سجل التعديلات</h2>
+<div class="log"><strong>18 نوفمبر 2026</strong> — إضافة نموذج مزامنة Drive اليومي الآمن، وسجل محاولات المزامنة، وقائمة أطباء VIDA، ولوحة مصادر البيانات.</div>
+<div class="log"><strong>18 نوفمبر 2026</strong> — إضافة رابط لوحة المصادر وتنبيه تجاوز 26 ساعة في لوحة المدير، مع أولوية قراءة أسماء الأطباء من Supabase والرجوع للقائمة المحلية عند تعذرها.</div>
+<div class="log"><strong>حالة التفعيل</strong> — ملف SQL وسكربت Apps Script جاهزان للتركيب اليدوي، ولا يُعدّان مشغّلين حتى يُنفَّذ SQL وتُضبط خصائص السكربت ويُستدعى setup().</div>
+</section>
+</div>
+</main>
+<footer>Prepared by Khalid Rumayh Alrumayh, Information Systems Specialist</footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const api=window.supabase.createClient(
+ "https://omugonzzrulsdpnycact.supabase.co",
+ "sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs");
+let signed=null,active=false;
+const definitions=[
+ {id:"drive_kpi",name:"مؤشرات Google Drive",method:"Apps Script → Supabase",frequency:"يوميًا قرابة 5 صباحًا",saves:"الطلبات، رضا المرضى، إشغال العيادات؛ أرقام مجمّعة",code:"../docs/apps-script/drive-sync.gs",codeText:"drive-sync.gs",type:"sync",maxH:26},
+ {id:"vida_doctors",name:"قائمة أطباء VIDA",method:"نفس سكربت المزامنة",frequency:"يوميًا قرابة 5 صباحًا",saves:"اسم الطبيب الكامل والعيادة",code:"../docs/drive-sync.sql",codeText:"drive-sync.sql",type:"sync",maxH:26},
+ {id:"mawid",name:"تقارير موعد",method:"مهمة Claude المسائية",frequency:"مسائيًا",saves:"تقارير الإحالات ومؤشرات موعد",code:"../kpis/",codeText:"لوحة الأداء",type:"kpi_report",reportType:"referrals_daily",maxH:52},
+ {id:"adaa",name:"أداء الأسبوعي",method:"مهمة Claude — موقوفة",frequency:"موقوف",saves:"تقارير الأداء الأسبوعية السابقة",code:"../kpis/",codeText:"تقارير الأداء",type:"paused"},
+ {id:"employees",name:"إدخالات الموظفين",method:"منصات الموظفين",frequency:"عند كل إدخال",saves:"تجربة المريض، عدم الالتزام، إجازات الموظفين، طلبات الحجز",code:"../",codeText:"بوابة العيادات",type:"employee"},
+ {id:"doctor_leaves",name:"إجازات الأطباء",method:"Claude → Google Sheet",frequency:"وفق مهمة Claude",saves:"إجازات الأطباء في OPD Schedule",code:"https://docs.google.com/spreadsheets/d/1htAUP32cClYWToDntdR1Pcdi_U7y0Bdy_Kz3r-wgt1Y/edit#gid=304595282",codeText:"شيت الإجازات",type:"external"},
+ {id:"smart_guide",name:"جدول الأطباء في الدليل",method:"ChatGPT → GitHub",frequency:"كل خميس 8 مساءً",saves:"جدول الأسبوع وأرقام العيادات والإجازات بالدليل",code:"https://github.com/KRM3300/opd-smart-guide/blob/main/index.html",codeText:"ملف الدليل",type:"github",maxH:192}
+];
+function stamp(value){if(!value)return"لا يوجد سجل";const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString("ar-SA",{timeZone:"Asia/Riyadh",year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"غير متاح";}
+function hours(value){const t=Date.parse(value||"");return Number.isFinite(t)?(Date.now()-t)/3600000:Infinity;}
+function node(name,text,cls){const n=document.createElement(name);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
+function flag(label,cls){return node("span",label,"tag "+cls);}
+function layout(){const root=$("sources");root.replaceChildren();for(const def of definitions){
+ const tr=node("tr"),link=node("a",def.codeText);link.href=def.code;
+ if(/^https?:\/\//.test(def.code)){link.target="_blank";link.rel="noopener noreferrer";}
+ const meta=node("td");const status=node("div","جارٍ التحقق...");status.id="status-"+def.id;meta.append(status);
+ for(const cell of [def.name,def.method,def.frequency,def.saves])tr.append(node("td",cell));
+ tr.append(meta);const source=node("td");source.append(link);tr.append(source);root.append(tr);
+}}
+function update(id,status,label,date,note){
+ const el=$("status-"+id);if(!el)return;el.replaceChildren(flag(label,status));
+ if(date)el.append(node("small","آخر تحديث: "+stamp(date)));
+ if(note)el.append(node("small",note));
+}
+async function latest(table,filter){
+ let query=api.from(table).select("created_at").order("created_at",{ascending:false}).limit(1);
+ if(filter)query=query.eq(filter[0],filter[1]);
+ const {data,error}=await query;
+ if(error)return null;return data?.[0]?.created_at||null;
+}
+async function load(){
+ $("statusMessage").textContent="";
+ layout();
+ try{
+  const res=await api.rpc("opd_sync_status");
+  if(res.error)throw res.error;
+  for(const id of ["drive_kpi","vida_doctors"]){
+   const state=res.data?.[id]||{};
+   const last=state.last_success,fail=state.last_error;
+   const failed=fail&&(!last||new Date(fail)>new Date(last));
+   const stale=!last||hours(last)>26;
+   const stateText=failed?"آخر تشغيل فشل":stale?"متأخر / لم يبدأ":"محدّث";
+   update(id,failed||stale?"bad":"good",stateText,state.last_run||last,
+     failed?String(state.last_error_message||"").slice(0,170):
+     last?"آخر نجاح: "+stamp(last):"لم تُشغّل المزامنة بعد");
+  }
+ }catch(e){
+  for(const id of ["drive_kpi","vida_doctors"])update(id,"bad","SQL غير مفعّل",null,"شغّل docs/drive-sync.sql يدويًا");
+  $("statusMessage").textContent="تعذر قراءة حالة المزامنة: "+String(e.message||e).slice(0,160);
+ }
+ const info=await Promise.allSettled([
+  latest("opd_kpi_reports",["report_type","referrals_daily"]),
+  latest("opd_kpi_reports",["report_type","adaa_weekly"]),
+  latest("opd_pe_cases"),
+  latest("opd_nc_reports"),
+  latest("opd_appt_requests")
+ ]);
+ const val=i=>info[i]?.status==="fulfilled"?info[i].value:null;
+ const maw=val(0);
+ update("mawid",maw&&hours(maw)<=52?"good":"bad",maw?"آخر تقرير مسجل":"لا تقرير",maw,
+   maw&&hours(maw)>52?"آخر إدخال تجاوز 52 ساعة":"يعكس سجل تقارير موعد، ولا يؤكد نجاح مهمة Claude");
+ update("adaa","paused","موقوف",val(1),"آخر تقرير محفوظ إن وجد");
+ const lastEmp=[val(2),val(3),val(4)].filter(Boolean).sort((a,b)=>new Date(b)-new Date(a))[0];
+ update("employees",lastEmp?"good":"unknown",lastEmp?"يوجد إدخال":"لا سجل متاح",lastEmp,
+    "إجازات الموظفين لا تتضمن طابع إنشاء موحّدًا قابلًا للتحقق هنا");
+ update("doctor_leaves","unknown","لا يوجد سجل آلي",null,"تُراجع حالة الشيت في مصدرها؛ لا يُفترض نجاح مهمة Claude");
+ try{
+  const response=await fetch("https://api.github.com/repos/KRM3300/opd-smart-guide/commits?path=index.html&per_page=1",
+  {headers:{Accept:"application/vnd.github+json"}});
+  if(!response.ok)throw new Error("Unavailable");
+  const commits=await response.json();const date=commits?.[0]?.commit?.committer?.date||null;
+  update("smart_guide",date&&hours(date)<=192?"good":"bad",date?"آخر تعديل للملف":"غير متاح",date,
+    "وقت تعديل index.html وليس بالضرورة تحديث الجدول حصريًا");
+ }catch(e){update("smart_guide","unknown","لا يمكن التحقق الآن",null,"راجع سجل GitHub مباشرة");}
+}
+async function check(){
+ const auth=await api.auth.getUser();signed=auth.data?.user||null;
+ $("auth").classList.toggle("hidden",!!signed);
+ $("denied").classList.add("hidden");$("admin").classList.add("hidden");
+ if(!signed)return;
+ const {data,error}=await api.rpc("opd_kpi_is_admin");
+ active=!error&&data===true;
+ if(!active){$("denied").classList.remove("hidden");return;}
+ $("admin").classList.remove("hidden");await load();
+}
+$("sendOtp").onclick=async()=>{
+ const email=$("email").value.trim();if(!email)return $("authMsg").textContent="أدخل البريد.";
+ const r=await api.auth.signInWithOtp({email,options:{shouldCreateUser:false}});
+ $("authMsg").textContent=r.error?r.error.message:"تم إرسال رمز التحقق إلى بريدك.";
+};
+$("verifyOtp").onclick=async()=>{
+ const r=await api.auth.verifyOtp({email:$("email").value.trim(),token:$("otp").value.trim(),type:"email"});
+ if(r.error)return $("authMsg").textContent=r.error.message;await check();
+};
+async function logout(){await api.auth.signOut();signed=null;active=false;await check();}
+$("logout").onclick=logout;$("logoutDenied").onclick=logout;$("reload").onclick=load;
+check();
+})();
+</script>
+</body>
+</html>
