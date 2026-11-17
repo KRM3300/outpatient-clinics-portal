@@ -447,9 +447,6 @@
               <h3 style="margin: 0">إجازات وجدول الموظفين</h3>
               <a class="btn-link" href="./staff/">فتح الصفحة</a>
             </div>
-            <h3>إدارة الخدمات</h3>
-            <p class="page-note">تظهر الخدمة للمستخدمين بعد اعتمادها.</p>
-            <div id="auth-services"></div>
             <div class="toolbar" style="margin-top: 20px">
               <h3 style="margin: 0">الصلاحيات والاعتماد</h3>
               <button id="auth-refresh" class="alt" type="button">تحديث</button>
@@ -1361,7 +1358,7 @@
           if (error) return;
           for (const d of data || []) serviceStatus[d.service_key] = d.status;
           applyServices();
-          if (isAdmin) {
+          if (isAdmin && byId("auth-services")) {
             const root = byId("auth-services");
             root.replaceChildren();
             for (const [key, status] of Object.entries(serviceStatus)) {
