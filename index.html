@@ -84,6 +84,9 @@
       .authpanel .line > button {
         margin: 0;
       }
+      .staff-role-group{margin:12px 0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+      .staff-role-group>summary{cursor:pointer;font-weight:700;padding:13px 16px;background:var(--panel, #f4f7f8);list-style:revert}
+      .staff-role-members{padding:0 14px 12px}
       #auth-staff .line,
       #auth-services .line {
         border-bottom: 1px solid var(--line);
@@ -348,6 +351,7 @@
           <select id="view-as">
             <option value="admin">مدير النظام</option>
             <option value="doctor">طبيب</option>
+                <option value="phc_doctor">طبيب مركز صحي</option>
             <option value="nurse">تمريض</option>
             <option value="scheduler">موظف مواعيد</option>
             <option value="agent">موظف تجربة المريض</option>
@@ -407,6 +411,7 @@
               ><select id="auth-job">
                 <option value="">اختر الوظيفة</option>
                 <option value="doctor">طبيب</option>
+                <option value="phc_doctor">طبيب مركز صحي</option>
                 <option value="nurse">تمريض</option>
                 <option value="reception">موظف عيادات (خدمة المراجعين)</option>
                 <option value="carelink">كير لينك</option>
@@ -710,6 +715,7 @@
         const roleNames = {
             pending: "بانتظار التحديد",
             doctor: "طبيب",
+            phc_doctor: "طبيب مركز صحي",
             nurse: "تمريض",
             scheduler: "موظف مواعيد",
             supervisor: "مشرف",
@@ -717,6 +723,7 @@
           },
           jobNames = {
             doctor: "طبيب",
+            phc_doctor: "طبيب مركز صحي",
             nurse: "تمريض",
             reception: "موظف عيادات (خدمة المراجعين)",
             carelink: "كير لينك",
@@ -775,6 +782,7 @@
           "إنتاجية الموظفين": "Staff Productivity",
           "ما رفعه وأقفله كل موظف في تجربة المريض ومدة الإقفال، وتقارير عدم الالتزام، مع المقارنة بالفترة السابقة.":
             "Cases raised and closed by each employee with closing time, plus non-compliance reports, compared with the previous period.",
+          "طبيب مركز صحي": "Primary health care physician",
           "طلبات الحجز الموحّدة": "Unified Booking Requests",
           "فتح طلبات الحجز": "Open booking requests",
           "متابعة العيادات، المستشفيات التابعة، أسفل الظهر، الكشف المبكر للثدي، الطوارئ، والفرز عند تعطل موعد.": "Follow-up, affiliate hospitals, lower-back clinic, breast screening, emergencies, and PHC triage when Mawid is unavailable.",
@@ -1138,6 +1146,12 @@
         const PERMS = [
           ["طلبات المواعيد", "appt_er_request", "طلب موعد طوارئ", "يرفع طلب موعد إضافي لمريض محوّل من الطوارئ"],
           ["طلبات المواعيد", "appt_fu_request", "طلب موعد متابعة", "يرفع طلب حجز موعد متابعة لمريض"],
+          ["طلبات المواعيد", "appt_affiliate_request", "طلب للمستشفيات التابعة", "لأطباء المستشفى الزائرين بالجهات التابعة"],
+          ["طلبات المواعيد", "appt_low_back_request", "تحويل عيادة أسفل الظهر", "موعد جراحة المخ والأعصاب من المسار المعتمد"],
+          ["طلبات المواعيد", "appt_breast_request", "الكشف المبكر للثدي", "طلب جراحة عامة من قسم أشعة الماموجرام"],
+          ["طلبات المواعيد", "appt_phc_triage_request", "حجز فرز من المراكز", "وقت تفعيل المسار البديل لتعطل موعد"],
+          ["طلبات المواعيد", "appt_booking_handle", "معالجة طلبات الحجز", "معالجة الطلبات من جميع المسارات", true],
+          ["طلبات المواعيد", "appt_booking_admin", "التحكم في مسارات الحجز", "تشغيل وإيقاف الطوارئ والفرز", true],
           ["طلبات المواعيد", "appt_fu_handle", "معالجة طلبات المتابعة", "يطّلع على طلبات المتابعة ويحجزها ويقفلها"],
           ["طلبات المواعيد", "appt_er_handle", "معالجة طلبات الطوارئ", "يطّلع على طلبات الطوارئ ويحجزها ويقفلها"],
           ["تجربة المريض", "pe_submit", "رفع بلاغ واطلاع", "يسجّل بلاغات المرضى ويتابع حالتها"],
@@ -1277,7 +1291,32 @@
             p.textContent = f === "pending" ? "لا توجد طلبات جديدة" : "لا يوجد موظفين";
             root.append(p);
           }
+          const grouping = (m) => {
+            if (m.role === "phc_doctor" || m.job_title === "phc_doctor") return "طبيب مركز صحي";
+            if (m.role === "doctor" || m.job_title === "doctor") return "طبيب";
+            if (m.role === "nurse" || m.job_title === "nurse") return "تمريض";
+            if (m.role === "scheduler" || ["reception","carelink"].includes(m.job_title)) return "موظف مواعيد";
+            if (m.role === "supervisor" || m.job_title === "supervisor") return "مشرف";
+            return jobNames[m.job_title] || roleNames[m.role] || "أخرى";
+          };
+          const groups = new Map();
           for (const m of rows) {
+            const group = grouping(m);
+            if (!groups.has(group)) groups.set(group, []);
+            groups.get(group).push(m);
+          }
+          const collator = new Intl.Collator("ar", { sensitivity: "base" });
+          for (const [category, people] of [...groups.entries()].sort((a,b)=>collator.compare(a[0],b[0]))) {
+            people.sort((a,b)=>collator.compare(a.full_name||"",b.full_name||""));
+            const details = document.createElement("details");
+            details.className = "staff-role-group";
+            details.open = f === "pending";
+            const summary = document.createElement("summary");
+            summary.textContent = category + " (" + people.length + ")";
+            const body = document.createElement("div");
+            body.className = "staff-role-members";
+            details.append(summary,body);
+            for (const m of people) {
             const line = document.createElement("div");
             line.className = "line";
             const label = document.createElement("small");
@@ -1305,7 +1344,7 @@
               p.className = "page-note";
               p.textContent = "مدير النظام: كل الصلاحيات";
               line.append(p);
-              root.append(line);
+              body.append(line);
               continue;
             }
             const pending = !!m.req_id || m.status === "pending";
@@ -1345,7 +1384,9 @@
                 if (!error) await staff();
               }, true);
             }
-            root.append(line);
+            body.append(line);
+            }
+            root.append(details);
           }
         }
         byId("auth-refresh").onclick = staff;
