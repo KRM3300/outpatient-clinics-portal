@@ -1,0 +1,122 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>معاينة إدارة المعتمدين | العيادات الخارجية</title>
+<link rel="stylesheet" href="../assets/portal.css?v=5">
+<style>
+body{margin:0;background:#f4f8fa;color:#153941;font-family:"IBM Plex Sans Arabic",Tahoma,Arial,sans-serif}header{background:#084953;color:#fff;padding:18px max(18px,calc((100% - 1150px)/2))}
+header h1{font-size:1.45rem;margin:0}header p{color:#c7e5e8;margin:4px 0;font-size:.9rem}main{max-width:1150px;padding:18px;margin:auto}
+nav{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:15px}nav a{color:#106876;text-decoration:none}
+.panel{border:1px solid #dae6e9;border-radius:14px;background:#fff;padding:18px;margin:13px 0}
+.hidden{display:none!important}.muted{color:#5d747b;font-size:.84rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+input,select{font:inherit;border:1px solid #bad0d3;border-radius:8px;padding:9px;box-sizing:border-box;max-width:100%}label{display:grid;gap:5px}
+button{font:inherit;border:0;background:#086b78;color:white;border-radius:8px;padding:10px 15px;cursor:pointer}
+button.alt{background:#e8f2f4;color:#174c56}.tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:12px 0}
+.group{border:1px solid #dce8eb;border-radius:12px;overflow:hidden;margin:12px 0}
+.group summary{background:#e7f2f3;padding:13px;font-weight:700;cursor:pointer}
+.people{padding:4px 15px}.person{border-bottom:1px solid #e9f0f2;padding:13px 0}
+.person:last-child{border:0}.person h3{font-size:1rem;margin:0 0 5px}.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.tag{font-size:.78rem;background:#f2f7f8;border:1px solid #dce7e9;padding:4px 8px;border-radius:20px}
+.checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px;margin:10px 0}
+.checks label{display:flex;align-items:center;gap:7px;background:#f8fbfc;border-radius:8px;padding:8px;font-size:.86rem}
+.error{color:#aa2b35}.success{color:#13805e}
+@media(max-width:600px){main{padding:10px}.panel{padding:11px}}
+</style></head><body>
+<header><h1>العيادات الخارجية — معاينة إدارة المعتمدين</h1><p>قائمة حسب الفئة، قابلة للطي، مرتبة أبجديًا مع البحث والصلاحيات</p></header>
+<main><nav><a href="../">بوابة العيادات</a><a href="../appointment-requests-v2/">طلبات الحجز</a><a href="../reports-preview/">التقارير</a></nav>
+<section id="login" class="panel"><h2>دخول المدير</h2><div class="grid"><label>البريد الإلكتروني<input id="email" type="email"></label><label>رمز التحقق<input id="code" inputmode="numeric"></label></div>
+<div class="tools"><button id="send">إرسال رمز الدخول</button><button id="verify" class="alt">تحقق</button></div><p id="loginMsg" role="status"></p></section>
+<section id="app" class="panel hidden"><div class="tools" style="justify-content:space-between"><h2>المعتمدون والصلاحيات</h2><button id="logout" class="alt">خروج</button></div>
+<p class="muted">لا تُعرض بيانات المرضى هنا. حفظ الصلاحيات يغيّر الصلاحيات الفعلية للحساب المعتمد في قاعدة البيانات.</p>
+<div class="tools"><label>الحالة <select id="filter"><option value="approved">المعتمدون</option><option value="pending">طلبات جديدة</option><option value="other">مرفوضون/موقوفون</option><option value="all">الكل</option></select></label>
+<label>بحث بالاسم أو الرقم الوظيفي <input id="search" type="search"></label><button id="refresh" class="alt">تحديث</button></div>
+<p id="summary" class="muted"></p><div id="groups"></div><p id="msg" role="status"></p></section>
+</main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const api=window.supabase.createClient("https://omugonzzrulsdpnycact.supabase.co","sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs");
+const categories=["طبيب","طبيب مركز صحي","تمريض","موظف مواعيد","مشرف","مدير النظام","أخرى"];
+const keys=[
+ ["appt_fu_request","متابعة العيادات"],["appt_affiliate_request","المستشفيات التابعة"],
+ ["appt_low_back_request","عيادة أسفل الظهر"],["appt_breast_request","الكشف المبكر للثدي"],
+ ["appt_er_request","الطوارئ"],["appt_phc_triage_request","الفرز للمراكز"],
+ ["appt_booking_handle","معالجة طلبات الحجز"],["appt_booking_admin","التحكم في تشغيل الخدمات"]
+];
+const bookingKeys=new Set(keys.map(x=>x[0]));
+const collator=new Intl.Collator("ar",{sensitivity:"base"});
+let user=null,rows=[];
+const el=(t,text)=>{const x=document.createElement(t);if(text!==undefined)x.textContent=text;return x;};
+const message=(t,error=false)=>{$("msg").textContent=t||"";$("msg").className=error?"error":"success"};
+function category(r){
+ if(r.role==="admin")return "مدير النظام";
+ if(r.role==="phc_doctor"||r.job_title==="phc_doctor")return "طبيب مركز صحي";
+ if(r.role==="doctor"||r.job_title==="doctor")return "طبيب";
+ if(r.role==="nurse"||r.job_title==="nurse")return "تمريض";
+ if(r.role==="scheduler"||["reception","carelink"].includes(r.job_title))return "موظف مواعيد";
+ if(r.role==="supervisor"||r.job_title==="supervisor")return "مشرف";
+ return "أخرى";
+}
+async function session(){
+ const auth=await api.auth.getUser();user=auth.data?.user||null;
+ $("login").classList.toggle("hidden",!!user);$("app").classList.toggle("hidden",!user);
+ if(user)await reload();
+}
+$("send").onclick=async()=>{const r=await api.auth.signInWithOtp({email:$("email").value.trim(),options:{shouldCreateUser:true,emailRedirectTo:location.origin+location.pathname}});$("loginMsg").textContent=r.error?r.error.message:"أُرسل الرمز إلى بريدك الإلكتروني."};
+$("verify").onclick=async()=>{const r=await api.auth.verifyOtp({email:$("email").value.trim(),token:$("code").value.trim(),type:"email"});if(r.error)return $("loginMsg").textContent=r.error.message;await session()};
+$("logout").onclick=async()=>{await api.auth.signOut();user=null;await session();};
+async function reload(){
+ const res=await api.rpc("opd_perm_admin_list");
+ if(res.error){$("groups").replaceChildren();message("تتطلب هذه الصفحة صلاحية المدير: "+res.error.message,true);return;}
+ rows=res.data||[];render();
+}
+function render(){
+ const list=$("groups");list.replaceChildren();let filter=$("filter").value,query=$("search").value.trim().toLocaleLowerCase("ar");
+ const selected=rows.filter(r=>{
+   const pending=r.role!=="admin"&&(r.req_id||r.status==="pending");
+   const statusOk=filter==="all"||(filter==="approved"&&r.status==="approved"&&!pending)||
+     (filter==="pending"&&pending)||(filter==="other"&&["suspended","rejected"].includes(r.status));
+   return statusOk&&(!query||[r.full_name,r.employee_no,r.email,r.department].join(" ").toLocaleLowerCase("ar").includes(query));
+ });
+ const grouped=new Map(categories.map(x=>[x,[]]));
+ for(const r of selected)grouped.get(category(r)).push(r);
+ $("summary").textContent="عدد المستخدمين المطابقين: "+selected.length;
+ for(const [cat,people] of grouped){
+   const details=el("details");details.className="group";details.open=filter==="pending"&&people.length>0;
+   details.append(el("summary",cat+" ("+people.length+")"));
+   const content=el("div");content.className="people";
+   people.sort((a,b)=>collator.compare(a.full_name||"",b.full_name||""));
+   for(const r of people){
+    const card=el("article");card.className="person";
+    card.append(el("h3",r.full_name||"مستخدم"));
+    const info=el("div");info.className="row";
+    for(const v of [r.department,r.employee_no,r.job_title,r.status])if(v){const item=el("span",v);item.className="tag";info.append(item)}
+    card.append(info);
+    if(r.role==="admin"){card.append(el("p","مدير النظام: جميع الصلاحيات"));content.append(card);continue;}
+    const selectedPerms=new Set(r.perms||[]),requested=new Set(r.req_perms||[]);
+    const grid=el("div");grid.className="checks";
+    for(const [key,label] of keys){
+     const wrapper=el("label"),input=el("input");input.type="checkbox";input.value=key;input.checked=selectedPerms.has(key)||requested.has(key);
+     wrapper.append(input,el("span",label));grid.append(wrapper);
+    }
+    card.append(grid);
+    const btn=el("button",r.status==="pending"?"اعتماد الصلاحيات":"حفظ صلاحيات المستخدم");
+    btn.onclick=async()=>{
+      btn.disabled=true;
+      const all=new Set((r.perms||[]).filter(p=>!bookingKeys.has(p)));
+      for(const c of grid.querySelectorAll("input:checked"))all.add(c.value);
+      const response=await api.rpc("opd_perm_save",{p_user:r.user_id,p_perms:[...all],p_decision:"approved"});
+      btn.disabled=false;
+      if(response.error)return message(response.error.message,true);
+      message("حُفظت الصلاحيات للمستخدم المعتمد.");await reload();
+    };
+    card.append(btn);content.append(card);
+   }
+   if(!people.length)content.append(el("p","لا يوجد مستخدمون في هذه الفئة."));
+   details.append(content);list.append(details);
+ }
+}
+$("filter").onchange=render;$("search").oninput=render;$("refresh").onclick=reload;
+session();
+})();
+</script></body></html>
