@@ -394,6 +394,7 @@
               تحقق ودخول
             </button>
           </div>
+          <p id="auth-code-hint" class="page-note hidden">لم يصلك الرمز؟ تحقق من مجلد البريد غير المرغوب (Junk). وإذا طلبت الرمز أكثر من مرة فاكتب آخر رمز وصلك فقط.</p>
         </div>
         <div id="auth-onboard" class="hidden">
           <h3>تسجيل مستخدم جديد</h3>
@@ -800,6 +801,7 @@
             "Enter your email to receive a verification code. New accounts require administrator approval.",
           "إرسال الرمز": "Send code",
           "تحقق ودخول": "Verify and sign in",
+          "لم يصلك الرمز؟ تحقق من مجلد البريد غير المرغوب (Junk). وإذا طلبت الرمز أكثر من مرة فاكتب آخر رمز وصلك فقط.": "Didn't get the code? Check your Junk folder. If you requested more than one code, use only the latest one.",
           "تسجيل مستخدم جديد": "New user registration",
           "إرسال طلب الاعتماد": "Submit approval request",
           "تسجيل الخروج": "Sign out",
@@ -1032,7 +1034,7 @@
             options: { shouldCreateUser: true, emailRedirectTo: location.origin + location.pathname },
           });
           msg.textContent = error ? error.message : "تم إرسال الرمز إلى بريدك";
-          if (!error) byId("auth-verify-box").classList.remove("hidden");
+          if (!error) { byId("auth-verify-box").classList.remove("hidden"); byId("auth-code-hint").classList.remove("hidden"); }
         };
         byId("auth-verify").onclick = async () => {
           const { error } = await api.auth.verifyOtp({
@@ -1099,7 +1101,7 @@
           byId("auth-onboard").classList.add("hidden");
           byId("auth-admin").classList.add("hidden");
           byId("auth-login").classList.remove("hidden");
-          byId("auth-verify-box").classList.add("hidden");
+          byId("auth-verify-box").classList.add("hidden"); byId("auth-code-hint").classList.add("hidden");
           byId("auth-email").value = "";
           byId("auth-code").value = "";
           byId("quick-logout").classList.add("hidden");
