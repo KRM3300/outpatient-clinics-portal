@@ -16,12 +16,12 @@ const DRIVE_SYNC = Object.freeze({
   BASE_URL: 'https://omugonzzrulsdpnycact.supabase.co/rest/v1/rpc/opd_drive_ingest',
   PUBLIC_KEY: 'sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs',
   REQUESTS_ID: '1vJW9HBI8l5gKM-Gr_3VNfoYyqP6xM0SJN1ePGG7rg4g',
-  REQUESTS_TAB: 'Form Responses 1',
+  REQUESTS_GID: 1671916228,
   SATISFACTION_ID: '1MJCOy564OXznPVqb8YfG02TXAWfLI7ZdOJZlSCIVpu8',
-  SATISFACTION_TAB: 'ردود النموذج 1',
+  SATISFACTION_GID: 566462599,
   SCHEDULE_ID: '1htAUP32cClYWToDntdR1Pcdi_U7y0Bdy_Kz3r-wgt1Y',
-  SCHEDULE_TAB: 'Weekly OPD Schedule',
-  STAFF_TAB: 'Staff Names',
+  SCHEDULE_GID: 0,
+  STAFF_GID: 2080242207,
   ZONE: 'Asia/Riyadh',
   OWNER_LABEL: 'العيادات الخارجية'
 });
@@ -46,11 +46,11 @@ function buildPayload_() {
   DRIVE_SYNC_LAST_SOURCE = 'drive_kpi';
   DRIVE_SYNC_LAST_FILE = '';
 
-  function grid(id, tab) {
-    DRIVE_SYNC_LAST_FILE = id + ' / ' + tab;
+  function grid(id, gid) {
+    DRIVE_SYNC_LAST_FILE = id + ' / gid=' + gid;
     const spreadsheet = SpreadsheetApp.openById(id);
-    const sheet = spreadsheet.getSheetByName(tab);
-    if (!sheet) throw new Error('تبويب مفقود: ' + DRIVE_SYNC_LAST_FILE);
+    const sheet = spreadsheet.getSheets().find(s => s.getSheetId() === gid);
+    if (!sheet) throw new Error('تبويب بالمعرّف gid غير موجود: ' + DRIVE_SYNC_LAST_FILE);
     const values = sheet.getDataRange().getDisplayValues();
     if (!values.length) throw new Error('المصدر فارغ: ' + DRIVE_SYNC_LAST_FILE);
     return values.map(row => row.map(value => String(value == null ? '' : value).trim()));
@@ -59,7 +59,7 @@ function buildPayload_() {
 
   // طلبات المواعيد — EXACTLY the aggregation in kpis/sheets-agg.js:
   // Timestamp in M/D/YYYY; column 2 = service, column 3 = absence reason.
-  const g = grid(DRIVE_SYNC.REQUESTS_ID, DRIVE_SYNC.REQUESTS_TAB);
+  const g = grid(DRIVE_SYNC.REQUESTS_ID, DRIVE_SYNC.REQUESTS_GID);
   if (!g.length || !/Timestamp|طابع/.test(g[0][0]) || g[0][1] !== 'نوع الخدمة')
     throw new Error('أعمدة ملف الطلبات تغيّرت');
   const req = {}, RS = [];
@@ -67,8 +67,10 @@ function buildPayload_() {
     const m = r[0].match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     if (!m) continue;
     const mo = m[3] + '-' + p2(m[1]), day = +m[2];
-    const M = (req[mo] ??= { mo, days: {}, r: {} });
-    const x = (M.days[day] ??= [day, 0, 0, 0]);
+    if (!req[mo]) req[mo] = { mo, days: {}, r: {} };
+    const M = req[mo];
+    if (!M.days[day]) M.days[day] = [day, 0, 0, 0];
+    const x = M.days[day];
     if (r[1] === 'تجديد الموعد') {
       x[1]++;
       const why = (r[2] || '').replace(/\s*\(.*$/, '').trim() || 'غير محدد';
@@ -79,7 +81,7 @@ function buildPayload_() {
   }
 
   // رضا المرضى — EXACTLY the five axes and scores in sheets-agg.js.
-  const s = grid(DRIVE_SYNC.SATISFACTION_ID, DRIVE_SYNC.SATISFACTION_TAB);
+  const s = grid(DRIVE_SYNC.SATISFACTION_ID, DRIVE_SYNC.SATISFACTION_GID);
   if (!s.length || !/طابع زمني/.test(s[0][0]))
     throw new Error('أعمدة ملف الرضا تغيّرت');
   const AX = ['reception', 'nursing', 'doctor', 'pharmacy', 'facility'],
@@ -89,7 +91,8 @@ function buildPayload_() {
     const m = r[0].match(/(\d{4})\/(\d{2})\/(\d{2})/);
     if (!m) continue;
     const mo = m[1] + '-' + m[2];
-    const t = (sat[mo] ??= { mo, n: 0 });
+    if (!sat[mo]) sat[mo] = { mo, n: 0 };
+    const t = sat[mo];
     t.n++;
     AX.forEach((a, i) => {
       const v = SC[(r[i + 1] || '').trim()];
@@ -101,7 +104,7 @@ function buildPayload_() {
   }
 
   // Weekly OPD Schedule — EXACTLY the slots and sessions from sheets-agg.js.
-  const w = grid(DRIVE_SYNC.SCHEDULE_ID, DRIVE_SYNC.SCHEDULE_TAB);
+  const w = grid(DRIVE_SYNC.SCHEDULE_ID, DRIVE_SYNC.SCHEDULE_GID);
   const row = re => w.find(r => re.test(r[0] || ''));
   const n = x => +String(x || '').replace(/٫/g, '.').replace(/[^\d.]/g, '') || 0;
   const used = row(/^Number of weekly clinics/i),
@@ -122,18 +125,20 @@ function buildPayload_() {
   // Staff Names, sheet gid=2080242207.
   // Row 3 is currently the header; find column names rather than hard-code C/F.
   DRIVE_SYNC_LAST_SOURCE = 'vida_doctors';
-  const staff = grid(DRIVE_SYNC.SCHEDULE_ID, DRIVE_SYNC.STAFF_TAB);
+  const staff = grid(DRIVE_SYNC.SCHEDULE_ID, DRIVE_SYNC.STAFF_GID);
   const headAt = staff.findIndex(r => r.includes('Clinic') && r.includes('Full Name'));
   if (headAt < 0) throw new Error('أعمدة Staff Names تغيّرت: Clinic أو Full Name غير موجود');
-  const h = staff[headAt], clinicIndex = h.indexOf('Clinic'), nameIndex = h.indexOf('Full Name');
-  if (clinicIndex < 0 || nameIndex < 0) throw new Error('تعذر تحديد أعمدة قائمة أطباء VIDA');
+  const h = staff[headAt], clinicIndex = h.indexOf('Clinic'),
+        nameIndex = h.indexOf('Full Name'), numberIndex = h.indexOf('#');
+  if (clinicIndex < 0 || nameIndex < 0 || numberIndex < 0)
+    throw new Error('تعذر تحديد أعمدة # وClinic وFull Name في قائمة أطباء VIDA');
   const doctors = [], found = new Set();
   for (const r of staff.slice(headAt + 1)) {
+    const serial = String(r[numberIndex] || '').trim();
     const clinic = (r[clinicIndex] || '').trim(), full_name = (r[nameIndex] || '').trim();
-    if (!clinic && !full_name) continue;
-    if (!clinic || !full_name) throw new Error('اسم طبيب أو عيادة ناقص في Staff Names');
-    if (clinic.length > 120 || full_name.length > 180)
-      throw new Error('اسم طويل بشكل غير متوقع في Staff Names');
+    // Ignore merged headers, spacer rows, and incomplete rows in Staff Names.
+    if (!/^\d+$/.test(serial) || !clinic || !full_name) continue;
+    if (clinic.length > 120 || full_name.length > 180) continue;
     const key = clinic.toLocaleLowerCase('en') + '\u0000' + full_name.toLocaleLowerCase('en');
     if (!found.has(key)) { found.add(key); doctors.push({ clinic, full_name }); }
   }
