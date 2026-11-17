@@ -254,4 +254,42 @@ $function$;
 revoke all on function public.opd_booking_dashboard(date,date) from public,anon;
 grant execute on function public.opd_booking_dashboard(date,date) to authenticated;
 
+
+-- Promote approved PHC doctors to a distinct role after admin approval.
+create or replace function public.opd_booking_assign_member_role()
+returns trigger language plpgsql set search_path=''
+as $function$
+begin
+  if new.job_title='phc_doctor' and new.status='approved' and new.role='pending' then
+    new.role='phc_doctor';
+  end if;
+  return new;
+end
+$function$;
+drop trigger if exists opd_booking_assign_member_role_trigger on public.opd_appt_members;
+create trigger opd_booking_assign_member_role_trigger
+before insert or update of status,job_title on public.opd_appt_members
+for each row execute function public.opd_booking_assign_member_role();
+
+-- Keep the existing authorized admin management behavior, extending it for PHC doctors.
+create or replace function public.opd_appt_manage_member(
+ p_user uuid,p_role text,p_status text
+) returns void language plpgsql security definer set search_path=''
+as $function$
+begin
+  if auth.uid() is null or not exists(
+    select 1 from public.opd_appt_members where user_id=auth.uid()
+    and role='admin' and status='approved') then
+    raise exception 'Not authorized';
+  end if;
+  if p_role not in ('doctor','phc_doctor','nurse','scheduler','supervisor','admin','pending')
+     or p_status not in ('pending','approved','rejected','suspended') then
+    raise exception 'Invalid role/status';
+  end if;
+  if p_user=auth.uid() then raise exception 'Self approval/change is not allowed'; end if;
+  update public.opd_appt_members set role=p_role,status=p_status where user_id=p_user;
+  if not found then raise exception 'Member not found'; end if;
+end
+$function$;
+
 commit;
