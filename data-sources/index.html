@@ -68,7 +68,8 @@ footer{padding:25px 18px;text-align:center;border-top:1px solid #dce7eb;font-siz
 <h2>سجل التعديلات</h2>
 <div class="log"><strong>18 نوفمبر 2026</strong> — إضافة نموذج مزامنة Drive اليومي الآمن، وسجل محاولات المزامنة، وقائمة أطباء VIDA، ولوحة مصادر البيانات.</div>
 <div class="log"><strong>18 نوفمبر 2026</strong> — إضافة رابط لوحة المصادر وتنبيه تجاوز 26 ساعة في لوحة المدير، مع أولوية قراءة أسماء الأطباء من Supabase والرجوع للقائمة المحلية عند تعذرها.</div>
-<div class="log"><strong>حالة التفعيل</strong> — ملف SQL وسكربت Apps Script جاهزان للتركيب اليدوي، ولا يُعدّان مشغّلين حتى يُنفَّذ SQL وتُضبط خصائص السكربت ويُستدعى setup().</div>
+<div class="log"><strong>18 نوفمبر 2026</strong> — تفعيل المزامنة اليومية (OPD Drive Sync) وإيقاف قراءة شيتات Drive من مهمة موعد المسائية.</div>
+<div class="log"><strong>18 نوفمبر 2026</strong> — نقل تحديث جدول الأطباء من مهمة ChatGPT الأسبوعية إلى السكربت اليومي؛ الدليل وصفحة الجدول يقرآن من Supabase مع بقاء الجدول المضمّن احتياطاً، وتواريخ الإجازة من سجل الإجازات.</div>
 </section>
 </div>
 </main>
@@ -89,7 +90,7 @@ const definitions=[
  {id:"adaa",name:"أداء الأسبوعي",method:"مهمة Claude — موقوفة",frequency:"موقوف",saves:"تقارير الأداء الأسبوعية السابقة",code:"../kpis/",codeText:"تقارير الأداء",type:"paused"},
  {id:"employees",name:"إدخالات الموظفين",method:"منصات الموظفين",frequency:"عند كل إدخال",saves:"تجربة المريض، عدم الالتزام، إجازات الموظفين، طلبات الحجز",code:"../",codeText:"بوابة العيادات",type:"employee"},
  {id:"doctor_leaves",name:"إجازات الأطباء",method:"Claude → Google Sheet",frequency:"وفق مهمة Claude",saves:"إجازات الأطباء في OPD Schedule",code:"https://docs.google.com/spreadsheets/d/1htAUP32cClYWToDntdR1Pcdi_U7y0Bdy_Kz3r-wgt1Y/edit#gid=304595282",codeText:"شيت الإجازات",type:"external"},
- {id:"smart_guide",name:"جدول الأطباء في الدليل",method:"ChatGPT → GitHub",frequency:"كل خميس 8 مساءً",saves:"جدول الأسبوع وأرقام العيادات والإجازات بالدليل",code:"https://github.com/KRM3300/opd-smart-guide/blob/main/index.html",codeText:"ملف الدليل",type:"github",maxH:192}
+ {id:"clinic_schedule",name:"جدول الأطباء في الدليل وصفحة الجدول",method:"Apps Script → Supabase (OPD Schedule + سجل الإجازات + Staff Names)",frequency:"يوميًا قرابة 5 صباحًا",saves:"جدول الأسبوع، الغرف، الإجازات بتاريخ البداية والنهاية، الاسم الكامل",code:"../docs/clinic-schedule-sync.sql",codeText:"clinic-schedule-sync.sql"}
 ];
 function stamp(value){if(!value)return"لا يوجد سجل";const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString("ar-SA",{timeZone:"Asia/Riyadh",year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"غير متاح";}
 function hours(value){const t=Date.parse(value||"");return Number.isFinite(t)?(Date.now()-t)/3600000:Infinity;}
@@ -119,7 +120,7 @@ async function load(){
  try{
   const res=await api.rpc("opd_sync_status");
   if(res.error)throw res.error;
-  for(const id of ["drive_kpi","vida_doctors"]){
+  for(const id of ["drive_kpi","vida_doctors","clinic_schedule"]){
    const state=res.data?.[id]||{};
    const last=state.last_success,fail=state.last_error;
    const failed=fail&&(!last||new Date(fail)>new Date(last));
@@ -130,7 +131,7 @@ async function load(){
      last?"آخر نجاح: "+stamp(last):"لم تُشغّل المزامنة بعد");
   }
  }catch(e){
-  for(const id of ["drive_kpi","vida_doctors"])update(id,"bad","SQL غير مفعّل",null,"شغّل docs/drive-sync.sql يدويًا");
+  for(const id of ["drive_kpi","vida_doctors","clinic_schedule"])update(id,"bad","SQL غير مفعّل",null,"شغّل docs/drive-sync.sql يدويًا");
   $("statusMessage").textContent="تعذر قراءة حالة المزامنة: "+String(e.message||e).slice(0,160);
  }
  const info=await Promise.allSettled([
@@ -149,14 +150,6 @@ async function load(){
  update("employees",lastEmp?"good":"unknown",lastEmp?"يوجد إدخال":"لا سجل متاح",lastEmp,
     "إجازات الموظفين لا تتضمن طابع إنشاء موحّدًا قابلًا للتحقق هنا");
  update("doctor_leaves","unknown","لا يوجد سجل آلي",null,"تُراجع حالة الشيت في مصدرها؛ لا يُفترض نجاح مهمة Claude");
- try{
-  const response=await fetch("https://api.github.com/repos/KRM3300/opd-smart-guide/commits?path=index.html&per_page=1",
-  {headers:{Accept:"application/vnd.github+json"}});
-  if(!response.ok)throw new Error("Unavailable");
-  const commits=await response.json();const date=commits?.[0]?.commit?.committer?.date||null;
-  update("smart_guide",date&&hours(date)<=192?"good":"bad",date?"آخر تعديل للملف":"غير متاح",date,
-    "وقت تعديل index.html وليس بالضرورة تحديث الجدول حصريًا");
- }catch(e){update("smart_guide","unknown","لا يمكن التحقق الآن",null,"راجع سجل GitHub مباشرة");}
 }
 async function check(){
  const auth=await api.auth.getUser();signed=auth.data?.user||null;

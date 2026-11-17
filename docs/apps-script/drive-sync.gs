@@ -22,6 +22,9 @@ const DRIVE_SYNC = Object.freeze({
   SCHEDULE_ID: '1htAUP32cClYWToDntdR1Pcdi_U7y0Bdy_Kz3r-wgt1Y',
   SCHEDULE_GID: 0,
   STAFF_GID: 2080242207,
+  LEAVES_GID: 304595282,
+  SCHEDULE_URL: 'https://omugonzzrulsdpnycact.supabase.co/rest/v1/rpc/opd_schedule_ingest',
+  LEAVE_COLORS: ['#dd7e6b', '#e06666', '#ea9999', '#ff0000', '#cc0000', '#f4cccc'],
   ZONE: 'Asia/Riyadh',
   OWNER_LABEL: 'العيادات الخارجية'
 });
@@ -157,8 +160,8 @@ function buildPayload_() {
   };
 }
 
-function rpc_(secret, payload) {
-  const response = UrlFetchApp.fetch(DRIVE_SYNC.BASE_URL, {
+function rpc_(secret, payload, url) {
+  const response = UrlFetchApp.fetch(url || DRIVE_SYNC.BASE_URL, {
     method: 'post',
     contentType: 'application/json',
     headers: {
@@ -184,7 +187,8 @@ function reportError_(secret, source, details) {
   // Best effort only. If internet/Supabase are down the failed log cannot be sent.
   try {
     rpc_(secret, { type: 'error_report', source,
-      message: String(details || 'تعذر المزامنة').slice(0,240) });
+      message: String(details || 'تعذر المزامنة').slice(0,240) },
+      source === 'clinic_schedule' ? DRIVE_SYNC.SCHEDULE_URL : DRIVE_SYNC.BASE_URL);
   } catch (_) { /* Still email the owner */ }
 }
 
@@ -207,7 +211,8 @@ function emailError_(source, filename, details) {
     to: recipient,
     subject: 'تنبيه: فشل مزامنة بيانات العيادات الخارجية',
     body: 'السلام عليكم،\n\nفشلت المزامنة اليومية للعيادات الخارجية.\n' +
-      'المصدر: ' + (source === 'vida_doctors' ? 'قائمة أطباء VIDA' : 'مؤشرات Google Drive') + '\n' +
+      'المصدر: ' + (source === 'vida_doctors' ? 'قائمة أطباء VIDA' :
+        source === 'clinic_schedule' ? 'جدول أطباء العيادات (دليل الموظف)' : 'مؤشرات Google Drive') + '\n' +
       'الملف / التبويب: ' + where + '\n' +
       'الخطأ: ' + what + '\n' +
       'الإجراء المطلوب: ' + action + '\n\n' +
@@ -215,10 +220,146 @@ function emailError_(source, filename, details) {
   });
 }
 
+/* ===== جدول أطباء العيادات (بديل مهمة الخميس) =====
+   يقرأ Weekly OPD Schedule كما هو: الصف 2 تواريخ الأسبوع، الأعمدة F..T = 5 أيام × 3 فترات،
+   العمود A رقم الغرفة (مدمج أحياناً لأكثر من صف)، B العيادة. الخلية الحمراء = إجازة.
+   الاسم الكامل من Staff Names (Schedule Name → Full Name)، وتواريخ الإجازة من تبويب الإجازات ثم ملاحظة الخلية. */
+function buildSchedule_() {
+  DRIVE_SYNC_LAST_SOURCE = 'clinic_schedule';
+  const ss = SpreadsheetApp.openById(DRIVE_SYNC.SCHEDULE_ID);
+  const byGid = gid => {
+    DRIVE_SYNC_LAST_FILE = DRIVE_SYNC.SCHEDULE_ID + ' / gid=' + gid;
+    const sh = ss.getSheets().find(x => x.getSheetId() === gid);
+    if (!sh) throw new Error('تبويب بالمعرّف gid غير موجود: ' + DRIVE_SYNC_LAST_FILE);
+    return sh;
+  };
+  const clean = v => String(v == null ? '' : v).trim();
+  const ws = byGid(DRIVE_SYNC.SCHEDULE_GID);
+  const range = ws.getDataRange();
+  const V = range.getDisplayValues(), BG = range.getBackgrounds(), NT = range.getNotes();
+  if (clean((V[0] || [])[5]) !== 'Sunday' || clean((V[0] || [])[17]) !== 'Thursday')
+    throw new Error('أعمدة الجدول الأسبوعي تغيّرت: أيام الأسبوع ليست في الأعمدة F..T');
+  const WEEK = (V[1] || []).map(clean).filter(x => /^\d{4}\/\d{2}\/\d{2}$/.test(x)).map(x => x.replace(/\//g, '-'));
+  if (WEEK.length !== 5) throw new Error('تواريخ الأسبوع في الصف 2 من الجدول الأسبوعي غير مكتملة');
+
+  // Staff Names: Schedule Name → Full Name
+  const N = byGid(DRIVE_SYNC.STAFF_GID).getDataRange().getDisplayValues().map(r => r.map(clean));
+  const nh = N.findIndex(r => r.includes('Schedule Name') && r.includes('Full Name') && r.includes('Clinic'));
+  if (nh < 0) throw new Error('أعمدة Staff Names تغيّرت: Schedule Name أو Full Name غير موجود');
+  const si = N[nh].indexOf('Schedule Name'), fi = N[nh].indexOf('Full Name'), ci = N[nh].indexOf('Clinic'), ni = N[nh].indexOf('#');
+  const fam = c => String(c || '').toLowerCase().split(/[\s/]+/)[0];
+  const exact = {}, family = {}, byName = {};
+  for (const r of N.slice(nh + 1)) {
+    if (ni >= 0 && !/^\d+$/.test(r[ni] || '')) continue;
+    const sn = (r[si] || '').toLowerCase(), full = r[fi] || '';
+    if (!sn || !full) continue;
+    exact[sn + '|' + (r[ci] || '').toLowerCase()] = full;
+    const fk = sn + '|' + fam(r[ci]);
+    if (!(fk in family)) family[fk] = full; else if (family[fk] !== full) family[fk] = null;
+    if (!(sn in byName)) byName[sn] = full; else if (byName[sn] !== full) byName[sn] = null;
+  }
+  const fullNameOf = (name, clinic) => {
+    const k = name.toLowerCase();
+    return exact[k + '|' + clinic.toLowerCase()] || family[k + '|' + fam(clinic)] || byName[k] || '';
+  };
+
+  // تبويب الإجازات: اسم الطبيب، بداية الإجازة، نهاية الإجازة، التخصص
+  const L = byGid(DRIVE_SYNC.LEAVES_GID).getDataRange().getDisplayValues().map(r => r.map(clean));
+  const lh = L.findIndex(r => r.includes('اسم الطبيب') && r.includes('بداية الإجازة') && r.includes('نهاية الإجازة'));
+  if (lh < 0) throw new Error('أعمدة تبويب الإجازات تغيّرت: اسم الطبيب / بداية الإجازة / نهاية الإجازة');
+  const lName = L[lh].indexOf('اسم الطبيب'), lFrom = L[lh].indexOf('بداية الإجازة'),
+        lTo = L[lh].indexOf('نهاية الإجازة'), lSpec = L[lh].indexOf('التخصص');
+  const toIso = t => {
+    const m = String(t || '').match(/(\d{1,4})[\/\-.](\d{1,2})[\/\-.](\d{1,4})/);
+    if (!m) return '';
+    let y, mo, d;
+    if (m[1].length === 4) { y = m[1]; mo = m[2]; d = m[3]; } else { d = m[1]; mo = m[2]; y = m[3]; }
+    if (y.length === 2) y = '20' + y;
+    if (+mo < 1 || +mo > 12 || +d < 1 || +d > 31) return '';
+    return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  };
+  const dmy = iso => iso ? iso.slice(8, 10) + '-' + iso.slice(5, 7) + '-' + iso.slice(0, 4) : '';
+  const COMMON = { dr: 1, mohammed: 1, mohamed: 1, muhammad: 1, mohammad: 1, ahmed: 1, ahmad: 1, ali: 1, abdullah: 1, abdulla: 1, al: 1, abd: 1 };
+  const tokens = t => String(t || '').toLowerCase().replace(/[^a-z؀-ۿ\s]/g, ' ').split(/\s+/).filter(w => w.length > 1 && !COMMON[w]);
+  const leaves = [];
+  for (const r of L.slice(lh + 1)) {
+    const from = toIso(r[lFrom]), to = toIso(r[lTo]);
+    if (!r[lName] || !from || !to) continue;
+    leaves.push({ tok: tokens(r[lName]), from, to, spec: (r[lSpec] || '').toUpperCase() });
+  }
+  const leaveRow = (name, full, clinic, date) => {
+    const mine = new Set(tokens(name + ' ' + full));
+    const pre = fam(clinic).toUpperCase().slice(0, 4);
+    let best = null, bestScore = 0;
+    for (const l of leaves) {
+      if (l.from > date || l.to < date) continue;
+      const hits = l.tok.filter(w => mine.has(w)).length;
+      const score = hits * 2 + (pre && l.spec.indexOf(pre) >= 0 ? 1 : 0);
+      if (hits && (hits >= 2 || score >= 3) && score > bestScore) { best = l; bestScore = score; }
+    }
+    return best;
+  };
+
+  const red = {};
+  DRIVE_SYNC.LEAVE_COLORS.forEach(c => { red[c] = true; });
+  const SCH_DATA = [];
+  let room = '';
+  for (let r = 4; r < V.length; r++) {
+    const row = V[r].map(clean);
+    if (/^Number of weekly/i.test(row[0] || '')) break;
+    if (row[0]) room = row[0];
+    const clinic = row[1];
+    if (!clinic || !/^\d+$/.test(room)) continue;
+    for (let c = 5; c <= 19; c++) {
+      const name = row[c];
+      if (!name || /^available$/i.test(name)) continue;
+      const day = Math.floor((c - 5) / 3), period = (c - 5) % 3, date = WEEK[day];
+      const x = { name, clinic, room, day, period, date, leave: !!red[String(BG[r][c] || '').toLowerCase()] };
+      const full = fullNameOf(name, clinic);
+      if (full) x.fullName = full;
+      if (x.leave) {
+        // حسب دليل الشيت: ملاحظة الخلية الحمراء فيها تاريخ نهاية الإجازة. سجل الإجازات يكمّل البداية (والنهاية إن غابت الملاحظة).
+        const noteEnd = toIso(NT[r][c]);
+        const l = leaveRow(name, full, clinic, date);
+        if (l) x.leaveStart = dmy(l.from);
+        if (noteEnd) x.leaveEnd = dmy(noteEnd); else if (l) x.leaveEnd = dmy(l.to);
+      }
+      SCH_DATA.push(x);
+    }
+  }
+  if (SCH_DATA.length < 50) throw new Error('الجدول الأسبوعي شبه فاضي (' + SCH_DATA.length + ' فترة) — لم يُنشر حفاظاً على الجدول السابق');
+  return { WEEK, SCH_DATA };
+}
+
+function syncFailure_(secret, source, err) {
+  const errorText = String(err && err.message || err);
+  if (secret) reportError_(secret, source, errorText);
+  try { emailError_(source, DRIVE_SYNC_LAST_FILE, errorText); }
+  catch (emailErr) { Logger.log('تعذر إرسال البريد؛ تحقق من صلاحيات MailApp.'); }
+  Logger.log('فشل (' + source + '): ' + errorText.slice(0, 200));
+}
+
+/** يحدّث جدول الأطباء فقط — للتجربة اليدوية. */
+function syncSchedule() {
+  const secret = PropertiesService.getScriptProperties().getProperty('SYNC_SECRET');
+  try {
+    if (!secret || secret.length < 24) throw new Error('مفتاح SYNC_SECRET غير مهيأ في Script Properties.');
+    const res = rpc_(secret, buildSchedule_(), DRIVE_SYNC.SCHEDULE_URL);
+    if (!res || res.ok !== true)
+      throw new Error('فشل تحديث جدول العيادات: ' + String(res && (res.message || res.error) || 'غير معروف'));
+    Logger.log('تم تحديث جدول العيادات: ' + JSON.stringify({ week: res.week, slots: res.slots, leaves: res.leaves }));
+    return res;
+  } catch (err) {
+    syncFailure_(secret, 'clinic_schedule', err);
+    throw new Error('فشل تحديث جدول العيادات؛ راجع إشعار البريد وسجل التنفيذ.');
+  }
+}
+
 function syncDrive() {
   const secret = PropertiesService.getScriptProperties().getProperty('SYNC_SECRET');
   DRIVE_SYNC_LAST_SOURCE = 'drive_kpi';
   DRIVE_SYNC_LAST_FILE = '';
+  let kpiFailed = false;
   try {
     if (!secret || secret.length < 24)
       throw new Error('مفتاح SYNC_SECRET غير مهيأ في Script Properties.');
@@ -229,7 +370,6 @@ function syncDrive() {
     Logger.log('تمت المزامنة: ' + JSON.stringify({
       reports: res.reports, updated_reports: res.updated_reports, doctors: res.doctors
     }));
-    return res;
   } catch (err) {
     const errorText = String(err && err.message || err);
     // Keep logs and emails operational; never include the secret, payload or raw rows.
@@ -238,6 +378,11 @@ function syncDrive() {
     try { emailError_(label, DRIVE_SYNC_LAST_FILE, errorText); }
     catch (emailErr) { Logger.log('تعذر إرسال البريد؛ تحقق من صلاحيات MailApp.'); }
     Logger.log('فشلت مزامنة العيادات: ' + errorText.slice(0,200));
-    throw new Error('فشلت المزامنة؛ راجع إشعار البريد وسجل التنفيذ.');
+    kpiFailed = true;
   }
+  // جدول الأطباء مستقل: فشله لا يوقف المؤشرات، وفشل المؤشرات لا يوقفه.
+  let scheduleFailed = false;
+  try { syncSchedule(); } catch (_) { scheduleFailed = true; }
+  if (kpiFailed || scheduleFailed)
+    throw new Error('فشلت المزامنة' + (kpiFailed ? ' (المؤشرات)' : '') + (scheduleFailed ? ' (جدول العيادات)' : '') + '؛ راجع إشعار البريد وسجل التنفيذ.');
 }
