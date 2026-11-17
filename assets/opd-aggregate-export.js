@@ -119,7 +119,11 @@ function pdf(title,sections,period){
  const finish=()=>{
   const {ctx}=obj;ctx.fillStyle="#edf4f5";ctx.fillRect(0,H-100,W,100);
   ctx.fillStyle="#244650";ctx.font="22px Tahoma,Arial,sans-serif";ctx.textAlign="right";ctx.fillText(FOOT,RIGHT,H-51);
-  pages.push(obj.canvas);obj=pageCanvas();y=245;header();
+  const binary=atob(obj.canvas.toDataURL("image/jpeg",0.84).split(",")[1]);
+  const jpg=new Uint8Array(binary.length);
+  for(let k=0;k<binary.length;k++)jpg[k]=binary.charCodeAt(k);
+  pages.push({jpg,width:obj.canvas.width,height:obj.canvas.height});
+  obj=pageCanvas();y=245;header();
  };
  header();
  const fit=(s,max)=>{let v=String(s??"");const {ctx}=obj;while(v.length>2&&ctx.measureText(v).width>max)v=v.slice(0,-2);return v.length<String(s??"").length?v+"…":v;};
@@ -156,8 +160,7 @@ function pdf(title,sections,period){
  objects.set(1,ascii("<< /Type /Catalog /Pages 2 0 R >>"));
  for(let i=0;i<pages.length;i++){
   const pageId=3+i*3,contentId=pageId+1,imageId=pageId+2;ids.push(pageId);
-  const binary=atob(pages[i].toDataURL("image/jpeg",0.87).split(",")[1]),jpg=new Uint8Array(binary.length);
-  for(let k=0;k<binary.length;k++)jpg[k]=binary.charCodeAt(k);
+  const jpg=pages[i].jpg;
   const media="<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /Im0 "+imageId+" 0 R >> >> /Contents "+contentId+" 0 R >>";
   const draw=ascii("q 595.28 0 0 841.89 0 0 cm /Im0 Do Q");
   objects.set(pageId,ascii(media));
