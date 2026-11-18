@@ -257,3 +257,20 @@ function portalStats_(req) {
   if (json.length < 95000) cache.put(key, json, PORTAL_API.STATS_SEC);
   return res;
 }
+
+/* تشغيل لمرة واحدة من المحرر: يولّد المفتاح السري ويحفظه هنا، ويسجّله في Supabase
+   (يقبل Supabase التسجيل مرة واحدة فقط؛ لإعادة التوليد احذف السطر من opd_eservices_link أولاً). */
+function setupPortalApi() {
+  const props = PropertiesService.getScriptProperties();
+  let secret = props.getProperty('PORTAL_SECRET');
+  if (!secret) {
+    secret = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '');
+    props.setProperty('PORTAL_SECRET', secret);
+  }
+  const res = UrlFetchApp.fetch('https://omugonzzrulsdpnycact.supabase.co/rest/v1/rpc/opd_eservices_register', {
+    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    headers: { apikey: 'sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs' },
+    payload: JSON.stringify({ p_secret: secret })
+  });
+  console.log('register: ' + res.getResponseCode() + ' ' + res.getContentText());
+}

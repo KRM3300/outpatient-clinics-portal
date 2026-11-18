@@ -1,7 +1,7 @@
 // دالة Supabase الوسيطة «eservices»: صفحة الخدمات الإلكترونية في المنصة ← سكربت شيت OPD Services Responses
 // المتصفح يكلّم Supabase فقط، وSupabase يكلّم سكربت قوقل من خوادمه (شبكة المستشفى تحجب قوقل).
 // تتحقق من صلاحية eservices للمستخدم، ثم تمرر الطلب للسكربت بمفتاح سري.
-// الأسرار (Edge Functions → Secrets): ESERVICES_SCRIPT_URL و ESERVICES_SECRET
+// رابط السكربت والمفتاح السري في جدول opd_eservices_link (يُقرأ بمفتاح الخدمة المدمج في Supabase)
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const cors = {
@@ -31,8 +31,10 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { body = {}; }
   if (!ACTIONS.includes(String(body.action))) return json({ ok: false, error: "unknown_action" }, 400);
 
-  const url = Deno.env.get("ESERVICES_SCRIPT_URL"), secret = Deno.env.get("ESERVICES_SECRET");
-  if (!url || !secret) return json({ ok: false, error: "الربط غير مكتمل: أسرار الدالة غير مضافة" }, 500);
+  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+  const link = await admin.from("opd_eservices_link").select("script_url, secret").eq("id", 1).maybeSingle();
+  const url = link.data?.script_url, secret = link.data?.secret;
+  if (!url || !secret) return json({ ok: false, error: "الربط مع سكربت الشيت غير مكتمل" }, 500);
 
   try {
     const r = await fetch(url, {
