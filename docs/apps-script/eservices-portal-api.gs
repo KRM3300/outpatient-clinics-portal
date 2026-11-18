@@ -72,7 +72,7 @@ function portalList_() {
   const now = Date.now();
   const delayMs = OPD.HIDE_DELAY_HOURS * 36e5;
   const res = { at: new Date().toISOString(), statuses: OPD.STATUS_LIST,
-                msgStatuses: OPD.MESSAGE_STATUS_LIST, services: {}, messages: [] };
+                msgStatuses: OPD.MESSAGE_STATUS_LIST, services: {}, noteOptions: {}, messages: [] };
 
   PORTAL_API.SERVICE_SHEETS.forEach(name => {
     const sh = ss.getSheetByName(name);
@@ -104,6 +104,7 @@ function portalList_() {
       });
     }
     res.services[name] = rows;
+    res.noteOptions[name] = sh ? portalNoteOptions_(sh) : [];
   });
 
   const msg = ss.getSheetByName(OPD.SHEET_MESSAGES);
@@ -150,6 +151,26 @@ function portalRunEdit_(range, value) {
   }
 }
 
+/* قائمة «ملاحظات موظف الاستقبال» من إعدادات الشيت نفسه (التحقق من صحة البيانات) — بدون كتابة الصيغ في الكود */
+const PORTAL_APPT_PREFIX = 'موعدكم يوم ';
+function portalNoteOptions_(sh) {
+  try {
+    const col = findColTrim_(getHeaders_(sh), 'ملاحظات موظف الاستقبال');
+    if (!col) return [];
+    let dv = sh.getRange(2, col).getDataValidation();
+    if (!dv && sh.getLastRow() > 2) dv = sh.getRange(sh.getLastRow(), col).getDataValidation();
+    if (!dv) return [];
+    const type = dv.getCriteriaType(), vals = dv.getCriteriaValues();
+    let list = [];
+    if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) list = vals[0] || [];
+    else if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE) list = vals[0].getValues().reduce((a, r) => a.concat(r), []);
+    return list.map(v => String(v).trim()).filter(Boolean);
+  } catch (err) {
+    console.log('noteOptions ' + sh.getName() + ': ' + err);
+    return [];
+  }
+}
+
 function portalClean_(v, max) {
   return String(v === null || v === undefined ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max || 500);
 }
@@ -190,6 +211,14 @@ function portalUpdate_(req) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sh = ss.getSheetByName(name);
+    // الملاحظة من القائمة فقط (نفس قائمة الشيت)، والاستعلام يقبل أيضاً صيغة الموعد الموحدة
+    const options = sh ? portalNoteOptions_(sh) : [];
+    const isInquiry = name === OPD.SHEET_INQUIRY;
+    const apptOk = isInquiry && note.indexOf(PORTAL_APPT_PREFIX) === 0 && note.length <= 80;
+    const writeNote = options.length > 0 || isInquiry;
+    const noteCol = sh ? findColTrim_(getHeaders_(sh), 'ملاحظات موظف الاستقبال') : 0;
+    const current = noteCol && row <= sh.getLastRow() ? portalClean_(sh.getRange(row, noteCol).getValue(), 500) : '';
+    if (note && writeNote && options.indexOf(note) === -1 && !apptOk && note !== current) throw new Error('اختر الملاحظة من القائمة');
     if (!sh || row > sh.getLastRow()) throw new Error('الطلب غير موجود');
     const h = getHeaders_(sh);
     const rawCol = getHeaderCol_(h, OPD.TECH_RAW_ROW);
@@ -200,7 +229,7 @@ function portalUpdate_(req) {
     const eC = getHeaderCol_(h, 'اسم الموظف');
     const nC = getHeaderCol_(h, 'ملاحظات موظف الاستقبال');
     if (eC) sh.getRange(row, eC).setValue(employee);
-    if (nC) sh.getRange(row, nC).setValue(note);
+    if (nC && writeNote) sh.getRange(row, nC).setValue(note);
     if (sC) sh.getRange(row, sC).setValue(status);
     SpreadsheetApp.flush();
     portalRunEdit_(sh.getRange(row, sC || 1), status);

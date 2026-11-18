@@ -24,7 +24,7 @@
       .item.done { background: #f2f8f4; }
       .item.fail { background: #fff5ee; }
       .act { display: grid; grid-template-columns: 150px 1fr auto; gap: 8px; align-items: center; margin-top: 6px; }
-      .act select, .act input { margin: 0; }
+      .act select, .act input { margin: 0; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
       .act button { padding: 8px 16px; }
       .wa { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; background: #1f8a4c; color: #fff; text-decoration: none; font-weight: 600; }
       .wa:hover { background: #17703c; }
@@ -371,6 +371,57 @@
           v.append(node("p", "يظهر الطلب المنتهي 24 ساعة بعد إقفاله ثم يختفي، مثل الشيت. الطلبات القديمة في «بحث».", "muted"));
         }
 
+        /* الملاحظة من قائمة الشيت فقط (بدون كتابة). الاستعلام: خيار «يوجد موعد» يفتح تاريخ ووقت بصيغة موحدة */
+        const APPT_PREFIX = "موعدكم يوم ";
+        const APPT_OPTION = "__appt__";
+        const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+        function apptText(d, t) {
+          const [y, m, dd] = d.split("-").map(Number);
+          const day = DAYS[new Date(y, m - 1, dd).getDay()];
+          let [hh, mm] = t.split(":").map(Number);
+          const ap = hh >= 12 ? "م" : "ص";
+          hh = hh % 12 || 12;
+          return APPT_PREFIX + day + " " + String(dd).padStart(2, "0") + "/" + String(m).padStart(2, "0") + "/" + y + " الساعة " + hh + ":" + String(mm).padStart(2, "0") + " " + ap;
+        }
+        function noteField(sheet, current) {
+          const opts = (data.noteOptions && data.noteOptions[sheet]) || [];
+          const inquiry = sheet === "الاستعلام عن موعد";
+          if (!opts.length && !inquiry) {
+            const span = node("span", current ? "الملاحظة: " + current : "", "muted");
+            return { el: span, value: () => current, error: () => "" };
+          }
+          const sel = node("select");
+          sel.setAttribute("aria-label", "ملاحظة للمريض");
+          sel.append(new Option("اختر ملاحظة للمريض", ""), ...opts.map((o) => new Option(o, o)));
+          let extra = null, d = null, t = null;
+          if (inquiry) {
+            sel.append(new Option("يوجد موعد: حدّد التاريخ والوقت", APPT_OPTION));
+            extra = node("div", null, "bar");
+            d = node("input"); d.type = "date"; d.dir = "ltr"; d.setAttribute("aria-label", "تاريخ الموعد");
+            t = node("input"); t.type = "time"; t.dir = "ltr"; t.setAttribute("aria-label", "وقت الموعد");
+            const preview = node("span", "", "muted");
+            const upd = () => (preview.textContent = d.value && t.value ? apptText(d.value, t.value) : "");
+            d.oninput = t.oninput = () => { upd(); dirty = true; };
+            const ld = node("label", "تاريخ الموعد "), lt = node("label", "الوقت ");
+            ld.append(d); lt.append(t);
+            extra.append(ld, lt, preview);
+            extra.classList.add("hidden");
+            sel.addEventListener("change", () => extra.classList.toggle("hidden", sel.value !== APPT_OPTION));
+          }
+          if (current && !opts.includes(current)) {
+            const o = new Option(current.length > 90 ? current.slice(0, 90) + "…" : current, current);
+            o.title = current;
+            sel.append(o);
+          }
+          sel.value = current || "";
+          return {
+            el: sel,
+            extra,
+            value: () => (sel.value === APPT_OPTION ? (d.value && t.value ? apptText(d.value, t.value) : "") : sel.value),
+            error: () => (sel.value === APPT_OPTION && !(d.value && t.value) ? "حدّد تاريخ ووقت الموعد." : ""),
+          };
+        }
+
         function serviceItem(sheet, r) {
           const pend = isPending(sheet, r.status, r.staffNote), h = hoursSince(r.ts);
           const it = node("div", null, "item " + (pend ? (h > RED_H ? "age-red" : h >= GREEN_H ? "age-mid" : "age-ok") : r.status === "تم" ? "done" : "fail"));
@@ -385,22 +436,26 @@
           const st = node("select");
           st.append(new Option("الحالة", ""), ...data.statuses.map((s) => new Option(s, s)));
           st.value = r.status;
-          const nt = node("input"); nt.placeholder = "ملاحظات موظف خدمة المراجعين (تُرسل للمريض في الرسالة)"; nt.value = r.staffNote || ""; nt.maxLength = 500;
+          const nt = noteField(sheet, r.staffNote || "");
           const sv = node("button", "حفظ"); sv.type = "button";
-          [st, nt].forEach((x) => (x.oninput = () => (dirty = true)));
+          st.oninput = () => (dirty = true);
+          nt.el.addEventListener("input", () => (dirty = true));
+          nt.el.addEventListener("change", () => (dirty = true));
           sv.onclick = async () => {
-            if (MSG_SOURCES.includes(sheet) && st.value === "لم يتم" && !nt.value.trim()) return msg("اكتب ملاحظة للمريض: «لم يتم» مع ملاحظة ينتقل لسجل الرسائل.");
+            if (nt.error()) return msg(nt.error());
+            if (MSG_SOURCES.includes(sheet) && st.value === "لم يتم" && !nt.value()) return msg("اختر ملاحظة للمريض: «لم يتم» مع ملاحظة ينتقل لسجل الرسائل.");
             sv.disabled = true; msg("جاري الحفظ…");
             try {
-              await call({ action: "update", sheet, row: r.row, raw: r.raw, status: st.value, staffNote: nt.value });
+              await call({ action: "update", sheet, row: r.row, raw: r.raw, status: st.value, staffNote: nt.value() });
               dirty = false;
-              const toMsg = MSG_SOURCES.includes(sheet) && nt.value.trim() && (st.value === "لم يتم" || (sheet === "الاستعلام عن موعد" && st.value === "تم"));
+              const toMsg = MSG_SOURCES.includes(sheet) && nt.value() && (st.value === "لم يتم" || (sheet === "الاستعلام عن موعد" && st.value === "تم"));
               msg(toMsg ? "تم الحفظ، وانتقل الطلب لسجل الرسائل." : "تم الحفظ.");
               await refresh(false); draw();
             } catch (e) { msg(e.message); sv.disabled = false; }
           };
-          act.append(st, nt, sv);
+          act.append(st, nt.el, sv);
           it.append(act);
+          if (nt.extra) it.append(nt.extra);
           if (r.employee) it.append(node("div", "آخر تعديل: " + r.employee + (r.changed ? " · " + fmt(r.changed) : ""), "muted"));
           return it;
         }
