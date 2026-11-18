@@ -43,6 +43,7 @@
       .empty { color: var(--ink-soft); padding: 10px 0; }
       .linkbtn { background: none; border: 0; color: var(--action); padding: 0; text-decoration: underline; cursor: pointer; font: inherit; }
       .np-btn { width: 100%; }
+      .np-warn { margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: var(--warn-bg); color: var(--warn-ink); font-size: 14px; line-height: 1.8; }
       .np-panel { display: grid; gap: 6px; margin-top: 8px; padding: 8px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-alt); max-height: 380px; overflow: auto; }
       .np-opt { display: block; width: 100%; justify-content: flex-start; text-align: right; white-space: normal; line-height: 1.75; background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-weight: 400; font-size: 14px; }
       .np-opt:hover { border-color: var(--action); }
@@ -572,6 +573,8 @@
             };
             act.append(send, st, sv);
             it.append(act);
+            /* «لم يتم» أو «لا يوجد واتساب» تبقى ظاهرة (مثل الشيت) لين يُتواصل مع المريض وتتغير إلى «تم» */
+            if (m.status && m.status !== "تم") it.append(node("div", "⚠️ الرسالة ما وصلت للمريض: اتصل عليه هاتفياً، ثم غيّر الحالة إلى «تم» واحفظ. تبقى هنا وفي التنبيهات لين تُقفل.", "np-warn"));
             v.append(it);
           });
         }
