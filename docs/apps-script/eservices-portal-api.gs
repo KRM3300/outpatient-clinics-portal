@@ -72,7 +72,8 @@ function portalList_() {
   const now = Date.now();
   const delayMs = OPD.HIDE_DELAY_HOURS * 36e5;
   const res = { at: new Date().toISOString(), statuses: OPD.STATUS_LIST,
-                msgStatuses: OPD.MESSAGE_STATUS_LIST, services: {}, noteOptions: {}, messages: [] };
+                msgStatuses: OPD.MESSAGE_STATUS_LIST, services: {}, noteOptions: {}, clinics: [], messages: [] };
+  const clinicSet = {};
 
   PORTAL_API.SERVICE_SHEETS.forEach(name => {
     const sh = ss.getSheetByName(name);
@@ -92,6 +93,7 @@ function portalList_() {
       t.data.forEach((r, i) => {
         const rowNo = t.start + i;
         if (!col.ts || !hasValue_(r[col.ts - 1])) return;
+        if (col.clinic) { const cl = String(r[col.clinic - 1] || '').trim(); if (cl && cl.length <= 60) clinicSet[cl] = 1; }
         if (hid ? !!hid[rowNo - 1] : (col.changed && isExpired_(r[col.changed - 1], now, delayMs))) return;
         const g = k => (col[k] ? portalVal_(r[col[k] - 1]) : '');
         rows.push({
@@ -136,6 +138,7 @@ function portalList_() {
     });
   }
 
+  res.clinics = Object.keys(clinicSet).sort((a, b) => a.localeCompare(b, 'ar'));
   const packed = portalZip_(JSON.stringify(res));
   if (packed.length < 95000) cache.put(PORTAL_API.CACHE_LIST, packed, PORTAL_API.CACHE_SEC);
   return res;
@@ -152,7 +155,16 @@ function portalRunEdit_(range, value) {
 }
 
 /* قائمة «ملاحظات موظف الاستقبال» من إعدادات الشيت نفسه (التحقق من صحة البيانات) — بدون كتابة الصيغ في الكود */
-const PORTAL_APPT_PREFIX = 'موعدكم يوم ';
+const PORTAL_APPT_PREFIX = 'موعدكم في عيادة ';
+const PORTAL_NO_APPT = 'لا يوجد موعد';
+/* صيغة الاستعلام الموحدة: «موعدكم في عيادة X يوم <الأحد..الخميس> dd/mm/yyyy الساعة h:mm ص|م» من 7:30 ص إلى 7:30 م */
+function portalApptOk_(note) {
+  const m = String(note).match(/^موعدكم في عيادة (.{2,60}) يوم (الأحد|الاثنين|الثلاثاء|الأربعاء|الخميس) (\d{2})\/(\d{2})\/(\d{4}) الساعة (\d{1,2}):(\d{2}) (ص|م)$/);
+  if (!m) return false;
+  let h = Number(m[6]) % 12; if (m[8] === 'م') h += 12;
+  const mins = h * 60 + Number(m[7]);
+  return mins >= 450 && mins <= 1170;
+}
 function portalNoteOptions_(sh) {
   try {
     const col = findColTrim_(getHeaders_(sh), 'ملاحظات موظف الاستقبال');
@@ -214,7 +226,7 @@ function portalUpdate_(req) {
     // الملاحظة من القائمة فقط (نفس قائمة الشيت)، والاستعلام يقبل أيضاً صيغة الموعد الموحدة
     const options = sh ? portalNoteOptions_(sh) : [];
     const isInquiry = name === OPD.SHEET_INQUIRY;
-    const apptOk = isInquiry && note.indexOf(PORTAL_APPT_PREFIX) === 0 && note.length <= 80;
+    const apptOk = isInquiry && (note === PORTAL_NO_APPT || portalApptOk_(note));
     const writeNote = options.length > 0 || isInquiry;
     const noteCol = sh ? findColTrim_(getHeaders_(sh), 'ملاحظات موظف الاستقبال') : 0;
     const current = noteCol && row <= sh.getLastRow() ? portalClean_(sh.getRange(row, noteCol).getValue(), 500) : '';

@@ -371,17 +371,31 @@
           v.append(node("p", "يظهر الطلب المنتهي 24 ساعة بعد إقفاله ثم يختفي، مثل الشيت. الطلبات القديمة في «بحث».", "muted"));
         }
 
-        /* الملاحظة من قائمة الشيت فقط (بدون كتابة). الاستعلام: خيار «يوجد موعد» يفتح تاريخ ووقت بصيغة موحدة */
-        const APPT_PREFIX = "موعدكم يوم ";
-        const APPT_OPTION = "__appt__";
+        /* الملاحظة من قائمة الشيت فقط (بدون كتابة).
+           الاستعلام: «يوجد موعد» (العيادة + التاريخ من الأحد للخميس + الوقت من 7:30 ص إلى 7:30 م) أو «لا يوجد موعد» */
+        const NO_APPT = "لا يوجد موعد";
+        const APPT_OPTION = "__appt__", OTHER = "__other__";
         const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
-        function apptText(d, t) {
+        const todayISO = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" });
+        function apptText(clinic, d, t) {
           const [y, m, dd] = d.split("-").map(Number);
           const day = DAYS[new Date(y, m - 1, dd).getDay()];
           let [hh, mm] = t.split(":").map(Number);
           const ap = hh >= 12 ? "م" : "ص";
           hh = hh % 12 || 12;
-          return APPT_PREFIX + day + " " + String(dd).padStart(2, "0") + "/" + String(m).padStart(2, "0") + "/" + y + " الساعة " + hh + ":" + String(mm).padStart(2, "0") + " " + ap;
+          return "موعدكم في عيادة " + clinic + " يوم " + day + " " + String(dd).padStart(2, "0") + "/" + String(m).padStart(2, "0") + "/" + y + " الساعة " + hh + ":" + String(mm).padStart(2, "0") + " " + ap;
+        }
+        function apptError(clinic, d, t) {
+          if (!clinic) return "اختر العيادة أو اكتب اسمها.";
+          if (!d) return "حدّد تاريخ الموعد.";
+          const [y, m, dd] = d.split("-").map(Number);
+          const wd = new Date(y, m - 1, dd).getDay();
+          if (wd === 5 || wd === 6) return "التاريخ لازم يكون من الأحد إلى الخميس.";
+          if (d < todayISO()) return "تاريخ الموعد قبل اليوم.";
+          if (!t) return "حدّد وقت الموعد.";
+          const [hh, mi] = t.split(":").map(Number), mins = hh * 60 + mi;
+          if (mins < 450 || mins > 1170) return "الوقت لازم يكون من 7:30 ص إلى 7:30 م.";
+          return "";
         }
         function noteField(sheet, current) {
           const opts = (data.noteOptions && data.noteOptions[sheet]) || [];
@@ -391,24 +405,36 @@
             return { el: span, value: () => current, error: () => "" };
           }
           const sel = node("select");
-          sel.setAttribute("aria-label", "ملاحظة للمريض");
-          sel.append(new Option("اختر ملاحظة للمريض", ""), ...opts.map((o) => new Option(o, o)));
-          let extra = null, d = null, t = null;
+          sel.setAttribute("aria-label", inquiry ? "الرد على الاستعلام" : "ملاحظة للمريض");
+          sel.append(new Option(inquiry ? "اختر الرد" : "اختر ملاحظة للمريض", ""));
+          if (inquiry) sel.append(new Option("يوجد موعد: العيادة والتاريخ والوقت", APPT_OPTION), new Option(NO_APPT, NO_APPT));
+          sel.append(...opts.filter((o) => o !== NO_APPT).map((o) => new Option(o, o)));
+          let extra = null, clinic = null, other = null, d = null, t = null;
           if (inquiry) {
-            sel.append(new Option("يوجد موعد: حدّد التاريخ والوقت", APPT_OPTION));
             extra = node("div", null, "bar");
-            d = node("input"); d.type = "date"; d.dir = "ltr"; d.setAttribute("aria-label", "تاريخ الموعد");
-            t = node("input"); t.type = "time"; t.dir = "ltr"; t.setAttribute("aria-label", "وقت الموعد");
+            clinic = node("select"); clinic.setAttribute("aria-label", "عيادة الموعد");
+            clinic.append(new Option("العيادة", ""), ...(data.clinics || []).map((c) => new Option(c, c)), new Option("غير موجودة، أكتبها", OTHER));
+            other = node("input"); other.placeholder = "اسم العيادة"; other.maxLength = 60; other.classList.add("hidden");
+            d = node("input"); d.type = "date"; d.dir = "ltr"; d.min = todayISO(); d.setAttribute("aria-label", "تاريخ الموعد");
+            t = node("input"); t.type = "time"; t.dir = "ltr"; t.min = "07:30"; t.max = "19:30"; t.setAttribute("aria-label", "وقت الموعد");
             const preview = node("span", "", "muted");
-            const upd = () => (preview.textContent = d.value && t.value ? apptText(d.value, t.value) : "");
-            d.oninput = t.oninput = () => { upd(); dirty = true; };
-            const ld = node("label", "تاريخ الموعد "), lt = node("label", "الوقت ");
-            ld.append(d); lt.append(t);
-            extra.append(ld, lt, preview);
+            const clinicName = () => (clinic.value === OTHER ? other.value.replace(/\s+/g, " ").trim() : clinic.value);
+            const upd = () => {
+              const e = apptError(clinicName(), d.value, t.value);
+              preview.textContent = e ? (d.value || t.value ? e : "") : apptText(clinicName(), d.value, t.value);
+              preview.style.color = e ? "var(--danger)" : "";
+              dirty = true;
+            };
+            clinic.onchange = () => { other.classList.toggle("hidden", clinic.value !== OTHER); upd(); };
+            other.oninput = d.oninput = t.oninput = upd;
+            const lc = node("label", "العيادة "), ld = node("label", "التاريخ "), lt = node("label", "الوقت ");
+            lc.append(clinic); ld.append(d); lt.append(t);
+            extra.append(lc, other, ld, lt, preview);
             extra.classList.add("hidden");
             sel.addEventListener("change", () => extra.classList.toggle("hidden", sel.value !== APPT_OPTION));
+            extra.clinicName = clinicName;
           }
-          if (current && !opts.includes(current)) {
+          if (current && current !== NO_APPT && !opts.includes(current)) {
             const o = new Option(current.length > 90 ? current.slice(0, 90) + "…" : current, current);
             o.title = current;
             sel.append(o);
@@ -417,8 +443,8 @@
           return {
             el: sel,
             extra,
-            value: () => (sel.value === APPT_OPTION ? (d.value && t.value ? apptText(d.value, t.value) : "") : sel.value),
-            error: () => (sel.value === APPT_OPTION && !(d.value && t.value) ? "حدّد تاريخ ووقت الموعد." : ""),
+            value: () => (sel.value === APPT_OPTION ? (apptError(extra.clinicName(), d.value, t.value) ? "" : apptText(extra.clinicName(), d.value, t.value)) : sel.value),
+            error: () => (sel.value === APPT_OPTION ? apptError(extra.clinicName(), d.value, t.value) : ""),
           };
         }
 
