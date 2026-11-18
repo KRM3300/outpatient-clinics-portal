@@ -42,6 +42,13 @@
       h3 { margin: 18px 0 6px; font-size: 16px; }
       .empty { color: var(--ink-soft); padding: 10px 0; }
       .linkbtn { background: none; border: 0; color: var(--action); padding: 0; text-decoration: underline; cursor: pointer; font: inherit; }
+      .np-btn { width: 100%; }
+      .np-panel { display: grid; gap: 6px; margin-top: 8px; padding: 8px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-alt); max-height: 380px; overflow: auto; }
+      .np-opt { display: block; width: 100%; justify-content: flex-start; text-align: right; white-space: normal; line-height: 1.75; background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-weight: 400; font-size: 14px; }
+      .np-opt:hover { border-color: var(--action); }
+      .np-opt[aria-selected="true"] { border-color: var(--action); background: #e8f3fa; font-weight: 600; }
+      .np-opt.np-none { color: var(--ink-soft); }
+      .np-chosen { margin-top: 6px; padding: 8px 12px; background: var(--ok-bg); color: var(--ok-ink); border-radius: 8px; font-size: 14px; line-height: 1.8; }
       @media (max-width: 680px) { .act { grid-template-columns: 1fr; } }
     </style>
   </head>
@@ -397,6 +404,48 @@
           if (mins < 450 || mins > 1170) return "الوقت لازم يكون من 7:30 ص إلى 7:30 م.";
           return "";
         }
+        /* اختيار الملاحظة: كل صيغة تظهر كاملة على أكثر من سطر (القائمة المنسدلة تقص النص الطويل) */
+        function notePicker(opts, current) {
+          let value = current || "";
+          const btn = node("button", "", "alt np-btn");
+          btn.type = "button";
+          btn.setAttribute("aria-expanded", "false");
+          const extra = node("div");
+          const chosen = node("div", "", "np-chosen");
+          const panel = node("div", null, "np-panel hidden");
+          panel.setAttribute("role", "listbox");
+          const list = [["", "بدون ملاحظة"], ...opts.map((o) => [o, o])];
+          if (current && !opts.includes(current)) list.push([current, current]);
+          const paint = () => {
+            btn.textContent = value ? "تغيير الملاحظة" : "اختر ملاحظة للمريض";
+            chosen.textContent = value;
+            chosen.classList.toggle("hidden", !value);
+            panel.querySelectorAll(".np-opt").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.v === value)));
+          };
+          for (const [v, label] of list) {
+            const b = node("button", label, "np-opt" + (v ? "" : " np-none"));
+            b.type = "button";
+            b.dataset.v = v;
+            b.setAttribute("role", "option");
+            b.onclick = () => {
+              value = v;
+              panel.classList.add("hidden");
+              btn.setAttribute("aria-expanded", "false");
+              paint();
+              btn.dispatchEvent(new Event("change", { bubbles: true }));
+              btn.focus();
+            };
+            panel.append(b);
+          }
+          btn.onclick = () => {
+            const open = panel.classList.toggle("hidden") === false;
+            btn.setAttribute("aria-expanded", String(open));
+          };
+          extra.append(panel, chosen);
+          paint();
+          return { el: btn, extra, value: () => value, error: () => "" };
+        }
+
         function noteField(sheet, current) {
           const opts = (data.noteOptions && data.noteOptions[sheet]) || [];
           const inquiry = sheet === "الاستعلام عن موعد";
@@ -404,6 +453,7 @@
             const span = node("span", current ? "الملاحظة: " + current : "", "muted");
             return { el: span, value: () => current, error: () => "" };
           }
+          if (!inquiry) return notePicker(opts, current);
           const sel = node("select");
           sel.setAttribute("aria-label", inquiry ? "الرد على الاستعلام" : "ملاحظة للمريض");
           sel.append(new Option(inquiry ? "اختر الرد" : "اختر ملاحظة للمريض", ""));
