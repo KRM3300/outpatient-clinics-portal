@@ -406,8 +406,8 @@
                 commit -= 0.1 * e;
                 n.exits += e;
               }
-              if (r.items.some((x) => COMM.includes(x))) comm -= 0.3;
-              if (r.items.some((x) => LEAD.includes(x))) lead -= 0.3;
+              if (r.items.some((x) => COMM.includes(x) || x === "أخرى: التواصل")) comm -= 0.3;
+              if (r.items.some((x) => LEAD.includes(x) || x === "أخرى: القيادة")) lead -= 0.3;
             }
           }
           commit += 0.2 * punct.size;
