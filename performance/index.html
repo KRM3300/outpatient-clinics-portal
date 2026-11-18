@@ -166,12 +166,11 @@
           <details style="margin-top: 14px">
             <summary>طريقة الاحتساب</summary>
             <div class="rules">
-              <div><b>الالتزام الوظيفي:</b> +0.2 لكل شهر فيه تقرير إيجابي «يلتزم بمواعيد العمل»، −0.05 لكل تأخر، −0.1 لكل خروج (بدون إذن، بدون توقيع انصراف، قبل نهاية الشفت). الشهر الذي فيه إجازة معتمدة 15 يوماً فأكثر لا يُحتسب.</div>
-              <div><b>التطوير:</b> +0.25 لكل مبادرة أو إجراء أو شرح أو محاضرة قدّمها (معتمدة)، ولكل تقرير إيجابي «يساعد الآخرين على تطوير أنفسهم».</div>
-              <div><b>التعلم المستمر:</b> +0.25 لكل محاضرة حضرها أو دورة (معتمدة)، ولكل تقرير إيجابي «يسعى إلى التعلم». الساعات فوق 21: +0.25 لكل 5 ساعات أو جزء منها. الدورة بدون ساعات: اليوم = ساعتان.</div>
-              <div><b>التواصل:</b> −0.3 لكل تقرير سلبي في التواصل.</div>
-              <div><b>القيادة (للمشرفين):</b> −0.3 لكل تقرير سلبي في القيادة.</div>
-              <div>تقارير ديسمبر تدخل في السنة التالية. باقي البنود تظهر كنقاط قوة وضعف بدون نقاط.</div>
+              <div><b>القاعدة الموحدة:</b> كل جدارة أصلها 4، والحد الأعلى 5 والأدنى 1. <b>كل خيار</b> في التقرير الداخلي، بما فيه ما يُكتب في «أخرى»، يُحسب ±0.25 على جدارته: + في التقرير الإيجابي و− في السلبي.</div>
+              <div><b>الجدارات السبع:</b> حس المسؤولية، التعاون، التواصل، تحقق النتائج، الالتزام الوظيفي (منه التأخر والخروج)، التطوير، التعلم المستمر. <b>المعدل</b> = متوسطها.</div>
+              <div><b>القيادة:</b> للمشرفين فقط، وتظهر منفصلة خارج المعدل.</div>
+              <div><b>المبادرات والتعلم المعتمدة:</b> +0.25 للتطوير (مبادرة، إجراء، شرح، محاضرة قدّمها) أو للتعلم (محاضرة حضرها، دورة). الساعات فوق 21: +0.25 لكل 5 ساعات أو جزء منها، والدورة بدون ساعات: اليوم = ساعتان.</div>
+              <div>الشهر الذي فيه إجازة معتمدة 15 يوماً فأكثر لا يُحتسب في الالتزام الوظيفي. تقارير ديسمبر تدخل في السنة التالية.</div>
             </div>
           </details>
         </section>
@@ -224,7 +223,19 @@
           ["القيادة (للمشرفين ورؤساء الأقسام)", ["مرن وقادر على تنفيذ أعمال هامة في ظروف فيها مخاطرة وعدم يقين", "يدعم ويشجع فريقه على تحقيق أهدافه حتى في الظروف الصعبة", "يفكر بمنطقية وإبداع دون التأثر بتحيزاته الشخصية", "يفوض الصلاحيات ويتابع النتائج", "يوفر ويدعم فرص تطوير المرؤوسين"]],
         ];
         const COMM = GROUPS[2][1], LEAD = GROUPS[6][1];
-        const OTHER_KEY = ["حس المسؤولية", "التعاون", "التواصل", "تحقق النتائج", "الالتزام الوظيفي", "التطوير والتعلم", "القيادة"];
+        /* كل خيار في التقرير (بما فيه «أخرى») = ±0.25 على جدارته. الأصل 4، الحد 1–5. المعدل = متوسط الجدارات السبع بدون القيادة. */
+        const STEP = 0.25;
+        const COMP = [["resp", "حس المسؤولية"], ["coop", "التعاون"], ["comm", "التواصل"], ["result", "تحقق النتائج"], ["commit", "الالتزام الوظيفي"], ["dev", "التطوير"], ["learn", "التعلم المستمر"]];
+        const GROUP_COMP = ["resp", "coop", "comm", "result", "commit", null, "lead"];
+        const OTHER_KEYS = [["حس المسؤولية"], ["التعاون"], ["التواصل"], ["تحقق النتائج"], ["الالتزام الوظيفي"], ["التطوير", "التعلم"], ["القيادة"]];
+        const compOf = (item) => {
+          if (item === HELP || item === "أخرى: التطوير" || item === "أخرى: التطوير والتعلم") return "dev";
+          if (item === LEARN || item === "أخرى: التعلم") return "learn";
+          for (let gi = 0; gi < GROUPS.length; gi++) {
+            if (GROUPS[gi][1].includes(item) || OTHER_KEYS[gi].some((k) => item === "أخرى: " + k)) return GROUP_COMP[gi];
+          }
+          return null;
+        };
         const CTYPE = { initiative: "مبادرة تحسين", procedure: "كتابة إجراء", explanation: "شرح مبسط", lecture_given: "محاضرة قدّمها", lecture_attended: "محاضرة حضرها", course: "دورة تدريبية" };
         const DEV_TYPES = ["initiative", "procedure", "explanation", "lecture_given"], LEARN_TYPES = ["lecture_attended", "course"];
         const STATUS = { pending: "بانتظار الاعتماد", approved: "معتمد", rejected: "غير معتمد" };
@@ -295,14 +306,16 @@
               l.append(c, node("span", it));
               fs.append(l);
             }
-            // «أخرى»: ملاحظة مكتوبة تحت نفس الجدارة
-            const other = node("input");
-            other.className = "other";
-            other.dataset.key = OTHER_KEY[gi];
-            other.maxLength = 300;
-            other.placeholder = "أخرى (اكتب الملاحظة تحت هذه الجدارة)";
-            other.style.marginTop = "4px";
-            fs.append(other);
+            // «أخرى»: ملاحظة مكتوبة تحت نفس الجدارة (تُحسب مثل أي خيار)
+            for (const key of OTHER_KEYS[gi]) {
+              const other = node("input");
+              other.className = "other";
+              other.dataset.key = key;
+              other.maxLength = 300;
+              other.placeholder = "أخرى" + (OTHER_KEYS[gi].length > 1 ? " — " + key : "") + " (اكتب الملاحظة)";
+              other.style.marginTop = "4px";
+              fs.append(other);
+            }
             root.append(fs);
           });
         }
@@ -398,45 +411,40 @@
           const ex = excludedMonths(s.id);
           const reps = data.reports.filter((r) => r.staff_id === s.id);
           const contribs = data.contribs.filter((c) => c.status === "approved" && c.participants.includes(s.id) && c.event_date >= data.from && c.event_date <= data.to);
-          let commit = 4, dev = 4, learn = 4, comm = 4, lead = 4;
-          const punct = new Set(), strengths = {}, weaknesses = {};
-          const n = { late: 0, exits: 0, pos: 0, neg: 0 };
+          const raw = { lead: 4 };
+          COMP.forEach(([k]) => (raw[k] = 4));
+          const strengths = {}, weaknesses = {};
+          const n = { late: 0, exits: 0, pos: 0, neg: 0, items: 0 };
           for (const r of reps) {
-            const month = r.report_date.slice(0, 7), counted = !ex.has(month);
-            const bag = r.kind === "positive" ? strengths : weaknesses;
-            r.items.forEach((it) => (bag[it] = (bag[it] || 0) + 1));
-            if (r.kind === "positive") {
-              n.pos++;
-              if (counted && r.items.includes(PUNCT)) punct.add(month);
-              if (r.items.includes(HELP)) dev += 0.25;
-              if (r.items.includes(LEARN)) learn += 0.25;
-            } else {
-              n.neg++;
-              if (counted) {
-                if (r.items.includes(LATE)) { commit -= 0.05; n.late++; }
-                const e = r.items.filter((x) => EXITS.includes(x)).length;
-                commit -= 0.1 * e;
-                n.exits += e;
-              }
-              if (r.items.some((x) => COMM.includes(x) || x === "أخرى: التواصل")) comm -= 0.3;
-              if (r.items.some((x) => LEAD.includes(x) || x === "أخرى: القيادة")) lead -= 0.3;
+            const counted = !ex.has(r.report_date.slice(0, 7));
+            const sign = r.kind === "positive" ? 1 : -1;
+            const bag = sign > 0 ? strengths : weaknesses;
+            sign > 0 ? n.pos++ : n.neg++;
+            for (const it of r.items) {
+              bag[it] = (bag[it] || 0) + 1;
+              const k = compOf(it);
+              if (!k) continue;
+              if (k === "commit" && !counted) continue; // شهر إجازة 15 يوماً فأكثر لا يُحتسب في الالتزام
+              raw[k] += sign * STEP;
+              n.items++;
+              if (sign < 0 && it === LATE) n.late++;
+              if (sign < 0 && EXITS.includes(it)) n.exits++;
             }
           }
-          commit += 0.2 * punct.size;
           let hours = 0;
           for (const c of contribs) {
-            if (DEV_TYPES.includes(c.ctype)) dev += 0.25;
+            if (DEV_TYPES.includes(c.ctype)) raw.dev += STEP;
             if (LEARN_TYPES.includes(c.ctype)) {
-              learn += 0.25;
+              raw.learn += STEP;
               hours += c.hours != null ? +c.hours : c.days != null ? 2 * c.days : 0;
             }
           }
-          if (hours > 21) learn += 0.25 * Math.ceil((hours - 21) / 5);
-          const sc = { commit: clamp(commit), dev: clamp(dev), learn: clamp(learn), comm: clamp(comm) };
-          if (s.supervisor) sc.lead = clamp(lead);
-          const vals = Object.values(sc);
-          sc.avg = Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100;
-          return { sc, n, hours, punct: punct.size, strengths, weaknesses, contribs, reps, excluded: [...ex] };
+          if (hours > 21) raw.learn += STEP * Math.ceil((hours - 21) / 5);
+          const sc = {};
+          COMP.forEach(([k]) => (sc[k] = clamp(raw[k])));
+          if (s.supervisor) sc.lead = clamp(raw.lead);
+          sc.avg = Math.round((COMP.reduce((a, [k]) => a + sc[k], 0) / COMP.length) * 100) / 100;
+          return { sc, n, hours, strengths, weaknesses, contribs, reps, excluded: [...ex] };
         }
 
         async function loadAdmin() {
@@ -487,7 +495,7 @@
           const t = $("a-scores");
           t.replaceChildren();
           const h = node("tr");
-          ["الموظف", "مشرف", "قبول الميثاق", "الالتزام", "التطوير", "التعلم", "التواصل", "القيادة", "المعدل", "إيجابي / سلبي"].forEach((x) => h.append(node("th", x)));
+          ["الموظف", "مشرف", "قبول الميثاق", ...COMP.map(([, l]) => l), "القيادة", "المعدل", "إيجابي / سلبي"].forEach((x) => h.append(node("th", x)));
           t.append(h);
           for (const s of data.staff) {
             const r = score(s);
@@ -521,7 +529,7 @@
             const tdC = node("td");
             tdC.append(ch);
             tr.append(tdC);
-            [r.sc.commit, r.sc.dev, r.sc.learn, r.sc.comm, r.sc.lead].forEach((v) => tr.append(cell(v)));
+            [...COMP.map(([k]) => r.sc[k]), r.sc.lead].forEach((v) => tr.append(cell(v)));
             tr.append(cell(r.sc.avg));
             tr.append(node("td", r.n.pos + " / " + r.n.neg));
             t.append(tr);
@@ -545,7 +553,7 @@
           const card = node("div");
           card.style.cssText = "border-top:1px solid var(--line-strong);margin-top:16px;padding-top:10px";
           card.append(node("h3", s.name + " — " + $("a-year").selectedOptions[0].textContent));
-          const facts = ["أشهر الالتزام الإيجابية: " + r.punct, "التأخر: " + r.n.late, "الخروج: " + r.n.exits, "ساعات التدريب: " + r.hours];
+          const facts = ["البنود المحتسبة: " + r.n.items, "التأخر: " + r.n.late, "الخروج: " + r.n.exits, "ساعات التدريب: " + r.hours];
           if (r.excluded.length) facts.push("أشهر مستبعدة (إجازة): " + r.excluded.join("، "));
           card.append(node("p", facts.join(" · "), "muted"));
           const pdf = node("button", "تنزيل تقرير الموظف PDF", "alt");
@@ -590,9 +598,9 @@
         }
 
         function scoreRows(s, r) {
-          const rows = [["الالتزام الوظيفي", r.sc.commit], ["التطوير", r.sc.dev], ["التعلم المستمر", r.sc.learn], ["التواصل", r.sc.comm]];
-          if (s.supervisor) rows.push(["القيادة", r.sc.lead]);
+          const rows = COMP.map(([k, l]) => [l, r.sc[k]]);
           rows.push(["المعدل", r.sc.avg]);
+          if (s.supervisor) rows.push(["القيادة (للمشرفين، خارج المعدل)", r.sc.lead]);
           return rows;
         }
 
@@ -611,10 +619,10 @@
           if (!data) return;
           const rows = data.staff.map((s) => {
             const r = score(s);
-            return [s.name, s.supervisor ? "نعم" : "لا", r.sc.commit, r.sc.dev, r.sc.learn, r.sc.comm, r.sc.lead ?? "", r.sc.avg, r.n.pos, r.n.neg];
+            return [s.name, s.supervisor ? "نعم" : "لا", ...COMP.map(([k]) => r.sc[k]), r.sc.avg, r.sc.lead ?? "", r.n.pos, r.n.neg];
           });
           window.OPDExport.downloadExcel("تقييم الأداء " + $("a-year").value, [
-            { title: "الجدارات", headers: ["الموظف", "مشرف", "الالتزام الوظيفي", "التطوير", "التعلم المستمر", "التواصل", "القيادة", "المعدل", "تقارير إيجابية", "تقارير سلبية"], rows },
+            { title: "الجدارات", headers: ["الموظف", "مشرف", ...COMP.map(([, l]) => l), "المعدل", "القيادة", "تقارير إيجابية", "تقارير سلبية"], rows },
           ], data.from + " إلى " + data.to);
         };
 
