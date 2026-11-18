@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#0f3a57" />
+    <title>الخدمات الإلكترونية | العيادات الخارجية</title>
+    <link rel="icon" href="../assets/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/portal.css?v=4" />
+    <style>
+      .muted { color: var(--ink-soft); font-size: 13px; }
+      .tabs button .n { display: inline-block; min-width: 20px; margin-inline-start: 6px; padding: 0 6px; border-radius: 999px; background: var(--wait-bg); color: var(--wait-ink); font-size: 12px; }
+      .tabs button .n.red { background: #fde8e6; color: var(--danger); }
+      .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 4px 0 8px; }
+      .bar label { display: flex; gap: 6px; align-items: center; font-weight: 400; margin: 0; }
+      .bar input[type="checkbox"] { width: auto; }
+      .bar select, .bar input[type="search"], .bar input[type="date"] { width: auto; min-width: 180px; margin: 0; }
+      .item.age-mid { border-inline-start: 4px solid #e69138; padding-inline-start: 10px; }
+      .item.age-red { border-inline-start: 4px solid var(--danger); padding-inline-start: 10px; }
+      .item.age-ok { border-inline-start: 4px solid #38761d; padding-inline-start: 10px; }
+      .item.done { background: #f2f8f4; }
+      .item.fail { background: #fff5ee; }
+      .act { display: grid; grid-template-columns: 150px 1fr auto; gap: 8px; align-items: center; margin-top: 6px; }
+      .act select, .act input { margin: 0; }
+      .act button { padding: 8px 16px; }
+      .wa { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; background: #1f8a4c; color: #fff; text-decoration: none; font-weight: 600; }
+      .wa:hover { background: #17703c; }
+      .preview { background: var(--surface-alt); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 13.5px; color: var(--ink-soft); margin: 6px 0; }
+      .tw { overflow-x: auto; }
+      table.t { width: 100%; border-collapse: collapse; font-size: 14px; }
+      table.t th { text-align: right; color: var(--ink-soft); font-weight: 500; border-bottom: 1px solid var(--line-strong); padding: 7px 6px; white-space: nowrap; }
+      table.t td { padding: 7px 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; vertical-align: top; }
+      td.red { background: #fde8e6; color: var(--danger); font-weight: 700; }
+      td.green { background: var(--ok-bg); color: var(--ok-ink); }
+      .k { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 8px 0 12px; }
+      .k div { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+      .k b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+      .k span { color: var(--ink-soft); font-size: 13px; }
+      h3 { margin: 18px 0 6px; font-size: 16px; }
+      .empty { color: var(--ink-soft); padding: 10px 0; }
+      .linkbtn { background: none; border: 0; color: var(--action); padding: 0; text-decoration: underline; cursor: pointer; font: inherit; }
+      @media (max-width: 680px) { .act { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <img class="site-logo" src="../assets/logo.webp" width="220" height="144" alt="شعار مستشفى الرس العام" />
+        <div class="site-titles">
+          <span class="crumb">منصة العيادات الخارجية</span>
+          <h1>الخدمات الإلكترونية</h1>
+          <p>طلبات المرضى: تجديد الموعد وتعديله وإلغاؤه والاستعلام عنه، وسجل رسائل الواتساب</p>
+        </div>
+        <div class="site-actions">
+          <a class="back" href="../"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg><span>العودة للمنصة</span></a>
+        </div>
+      </div>
+    </header>
+
+    <main class="page wrap">
+      <div id="message" class="status-msg" role="status" aria-live="polite"></div>
+
+      <section id="login" class="card hidden">
+        <h2>تسجيل الدخول</h2>
+        <label for="email">البريد الإلكتروني</label>
+        <input id="email" type="email" autocomplete="email" dir="ltr" />
+        <button id="send" type="button">إرسال رمز الدخول</button>
+        <div id="verifyBox" class="hidden">
+          <label for="code" style="margin-top: 16px">رمز التحقق</label>
+          <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" dir="ltr" />
+          <button id="verify" type="button">تحقق</button>
+          <p class="muted" style="margin: 8px 0 0">لم يصلك الرمز؟ تحقق من مجلد البريد غير المرغوب (Junk).</p>
+        </div>
+      </section>
+
+      <section id="noaccess" class="card hidden">
+        <h2>لا توجد صلاحية</h2>
+        <p>هذه الصفحة لمن لديه صلاحية «الخدمات الإلكترونية». يمنحها مدير العيادات الخارجية من لوحة الصلاحيات.</p>
+      </section>
+
+      <div id="app" class="hidden">
+        <div class="card">
+          <div class="toolbar">
+            <strong id="identity"></strong>
+            <div class="bar" style="margin: 0">
+              <label>اسمك <select id="me"></select></label>
+              <button id="refresh" class="alt" type="button">تحديث</button>
+              <span id="updated" class="muted"></span>
+              <button id="logout" class="alt" type="button">تسجيل الخروج</button>
+            </div>
+          </div>
+          <nav class="tabs" id="tabs" aria-label="أقسام الخدمات الإلكترونية"></nav>
+        </div>
+
+        <section id="view" class="card"></section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="credit" dir="ltr">
+        <span>Prepared by</span>
+        <strong>Khalid Rumayh Alrumayh</strong>
+        <span>Information Systems Specialist</span>
+      </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+    <script>
+      (() => {
+        const $ = (id) => document.getElementById(id);
+        const api = supabase.createClient("https://omugonzzrulsdpnycact.supabase.co", "sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs");
+        const msg = (t) => ($("message").textContent = t || "");
+        const hide = (id, show) => $(id).classList.toggle("hidden", !show);
+        const node = (t, text, cls) => {
+          const e = document.createElement(t);
+          if (text !== undefined && text !== null) e.textContent = text;
+          if (cls) e.className = cls;
+          return e;
+        };
+        const store = {
+          get: (k) => { try { return localStorage.getItem(k) || ""; } catch { return ""; } },
+          set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+        };
+
+        /* نفس قواعد الشيت */
+        const GREEN_H = 8, RED_H = 24, HIDE_H = 24;
+        const SERVICES = ["تجديد الموعد", "تعديل الموعد", "إلغاء الموعد", "الاستعلام عن موعد"];
+        const MSG_SOURCES = ["تجديد الموعد", "تعديل الموعد", "الاستعلام عن موعد"];
+        const TABS = [["alerts", "التنبيهات"], ...SERVICES.map((s) => [s, s]), ["messages", "سجل الرسائل"], ["search", "بحث"], ["stats", "الإحصائية والمؤشرات"]];
+        const hoursSince = (iso) => { const t = new Date(iso).getTime(); return isNaN(t) ? 0 : (Date.now() - t) / 36e5; };
+        const fmt = (iso) => {
+          if (!iso) return "";
+          const d = new Date(iso);
+          if (isNaN(d.getTime())) return String(iso);
+          return d.toLocaleString("en-GB", { timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+        };
+        const fmtDate = (v) => {
+          if (!v) return "";
+          if (/^\d{4}-\d{2}-\d{2}T/.test(String(v))) return new Date(v).toLocaleDateString("en-GB", { timeZone: "Asia/Riyadh" });
+          return String(v);
+        };
+        const isPending = (sheet, st, nt) => st === "" || ((sheet === "تجديد الموعد" || sheet === "تعديل الموعد") && st === "لم يتم" && !String(nt || "").trim());
+        /* يطابق buildWaMessage_ في السكربت */
+        function waText(service, clinic, note) {
+          const s = String(service || "");
+          let svc = "موعد";
+          if (s.includes("تجديد")) svc = "تجديد موعد";
+          else if (s.includes("تعديل")) svc = "تعديل موعد";
+          else if (s.includes("إلغاء")) svc = "إلغاء موعد";
+          else if (s.includes("استعلام")) svc = "الاستعلام عن موعد";
+          let n = String(note || "").replace(/\s+/g, " ").trim();
+          if (n && !/[.!؟?]$/.test(n)) n += ".";
+          const clinicPart = clinic ? " عيادة " + String(clinic).trim() : "";
+          return "السلام عليكم، معكم العيادات الخارجية بمستشفى الرس العام. بخصوص طلبكم " + svc + clinicPart + "، " + n + " نتمنى لكم دوام الصحة والعافية.";
+        }
+
+        let data = null, tab = store.get("es_tab") || "alerts", dirty = false, busy = false, timer = null, lastStats = null;
+
+        async function call(body) {
+          const { data: res, error } = await api.functions.invoke("eservices", { body });
+          if (error) {
+            let m = error.message;
+            try { const j = await error.context.json(); m = j.error || m; } catch {}
+            if (m === "not_authorized") m = "لا توجد صلاحية «الخدمات الإلكترونية»";
+            throw new Error(m);
+          }
+          if (!res || !res.ok) throw new Error((res && res.error) || "تعذر الاتصال");
+          return res.data;
+        }
+
+        /* ===== الدخول ===== */
+        $("send").onclick = async () => {
+          const email = $("email").value.trim();
+          if (!email) return;
+          const { error } = await api.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+          if (error) return msg(error.message);
+          hide("verifyBox", true);
+          $("code").focus();
+          msg("تم إرسال رمز التحقق إلى بريدك الإلكتروني.");
+        };
+        $("verify").onclick = async () => {
+          const { error } = await api.auth.verifyOtp({ email: $("email").value.trim(), token: $("code").value.trim(), type: "email" });
+          if (error) return msg(error.message);
+          msg("");
+          await start();
+        };
+        $("logout").onclick = async () => {
+          await api.auth.signOut({ scope: "local" });
+          location.reload();
+        };
+        $("refresh").onclick = () => refresh(true);
+        $("me").onchange = () => store.set("es_me", $("me").value);
+
+        async function start() {
+          const { data: { user: u } } = await api.auth.getUser();
+          hide("login", !u);
+          if (!u) return;
+          const p = await api.rpc("opd_has_perm", { p: "eservices" });
+          if (p.data !== true) { hide("noaccess", true); return; }
+          hide("app", true);
+          $("identity").textContent = u.email;
+          drawTabs();
+          await refresh(true);
+          clearInterval(timer);
+          timer = setInterval(() => { if (document.visibilityState === "visible" && !dirty && !busy) refresh(false); }, 60000);
+          document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !dirty && !busy && data && hoursSince(data.at) > 1 / 60) refresh(false); });
+        }
+
+        async function refresh(loud) {
+          if (busy) return;
+          busy = true;
+          if (loud) msg("جاري التحميل…");
+          try {
+            data = await call({ action: "list" });
+            const me = $("me"), keep = me.value || store.get("es_me");
+            me.replaceChildren(new Option("اختر اسمك", ""), ...data.employees.map((n) => new Option(n, n)));
+            me.value = data.employees.includes(keep) ? keep : "";
+            $("updated").textContent = "آخر تحديث " + fmt(new Date().toISOString()).split(", ")[1];
+            msg("");
+            drawTabs();
+            if (!["search", "stats"].includes(tab) || loud) draw();
+          } catch (e) {
+            msg(e.message);
+          } finally {
+            busy = false;
+          }
+        }
+
+        /* ===== التنبيهات (نفس تبويب التنبيهات في الشيت) ===== */
+        function alertData() {
+          const summary = [], overdue = [];
+          let total = 0;
+          for (const s of SERVICES) {
+            let n = 0, over = 0, mid = 0, oldest = 0;
+            for (const r of data.services[s] || []) {
+              if (!isPending(s, r.status, r.staffNote)) continue;
+              const h = hoursSince(r.ts);
+              n++; oldest = Math.max(oldest, h);
+              if (h > RED_H) { over++; overdue.push([s, r, r.status || "بدون حالة", h]); }
+              else if (h >= GREEN_H) mid++;
+            }
+            total += over;
+            summary.push([s, n, over, mid, Math.round(oldest)]);
+          }
+          let mP = 0, mO = 0, mM = 0, mF = 0, mOld = 0;
+          for (const m of data.messages) {
+            if (m.status === "تم") continue;
+            const h = hoursSince(m.copied);
+            if (m.status) { mF++; overdue.push(["messages", m, m.status, h]); continue; }
+            mP++; mOld = Math.max(mOld, h);
+            if (h > RED_H) { mO++; overdue.push(["messages", m, "لم تُرسل", h]); }
+            else if (h >= GREEN_H) mM++;
+          }
+          total += mO + mF;
+          summary.push(["سجل الرسائل - لم تُرسل", mP, mO, mM, Math.round(mOld)], ["سجل الرسائل - تعذر الإرسال", mF, mF, "-", "-"]);
+          overdue.sort((a, b) => b[3] - a[3]);
+          return { summary, overdue, total };
+        }
+
+        function drawTabs() {
+          const nav = $("tabs");
+          nav.replaceChildren();
+          const a = data ? alertData() : null;
+          for (const [k, label] of TABS) {
+            const b = node("button", label, "alt");
+            b.type = "button";
+            if (k === tab) b.setAttribute("aria-current", "page");
+            if (data && SERVICES.includes(k)) {
+              const pend = (data.services[k] || []).filter((r) => isPending(k, r.status, r.staffNote)).length;
+              if (pend) b.append(node("span", String(pend), "n" + ((data.services[k] || []).some((r) => isPending(k, r.status, r.staffNote) && hoursSince(r.ts) > RED_H) ? " red" : "")));
+            }
+            if (data && k === "messages") {
+              const pend = data.messages.filter((m) => m.status !== "تم").length;
+              if (pend) b.append(node("span", String(pend), "n"));
+            }
+            if (a && k === "alerts" && a.total) b.append(node("span", String(a.total), "n red"));
+            b.onclick = () => {
+              if (dirty && !confirmLeave()) return;
+              tab = k; store.set("es_tab", k); dirty = false; drawTabs(); draw();
+            };
+            nav.append(b);
+          }
+        }
+        function confirmLeave() {
+          msg("عندك تعديل غير محفوظ. احفظه أو اضغط مرة ثانية للتجاهل.");
+          dirty = false;
+          return false;
+        }
+
+        function draw() {
+          const v = $("view");
+          v.replaceChildren();
+          if (!data && !["search"].includes(tab)) return;
+          if (tab === "alerts") return drawAlerts(v);
+          if (SERVICES.includes(tab)) return drawService(v, tab);
+          if (tab === "messages") return drawMessages(v);
+          if (tab === "search") return drawSearch(v);
+          if (tab === "stats") return drawStats(v);
+        }
+
+        function table(headers, rows, cellFn) {
+          const w = node("div", null, "tw"), t = node("table", null, "t"), thead = node("thead"), tr = node("tr");
+          headers.forEach((h) => tr.append(node("th", h)));
+          thead.append(tr);
+          const tb = node("tbody");
+          rows.forEach((r, i) => {
+            const row = node("tr");
+            r.forEach((c, j) => {
+              const td = node("td");
+              if (c instanceof Node) td.append(c); else td.textContent = c === null || c === undefined ? "" : c;
+              if (cellFn) cellFn(td, r, j, i);
+              row.append(td);
+            });
+            tb.append(row);
+          });
+          t.append(thead, tb);
+          w.append(t);
+          return w;
+        }
+
+        function drawAlerts(v) {
+          const a = alertData();
+          v.append(node("h2", "تنبيهات الطلبات المعلقة - العيادات الخارجية"));
+          v.append(node("p", a.total ? "يوجد " + a.total + " طلب/رسالة متأخرة (أكثر من 24 ساعة)." : "لا توجد متأخرات.", "muted"));
+          v.append(table(["التبويب", "المعلق", "متأخر (أكثر من 24 ساعة)", "بين 8 و24 ساعة", "عمر أقدم طلب (ساعة)"], a.summary, (td, r, j) => {
+            if (j === 2) td.className = Number(r[2]) > 0 ? "red" : "green";
+          }));
+          v.append(node("h3", "قائمة المتأخرات (الأقدم أولاً)"));
+          if (!a.overdue.length) return v.append(node("p", "لا توجد متأخرات", "empty"));
+          v.append(table(["التبويب", "الاسم", "العيادة", "الحالة", "العمر (ساعة)", ""], a.overdue.slice(0, 150).map(([s, r, st, h]) => {
+            const b = node("button", "انتقل", "linkbtn");
+            b.type = "button";
+            b.onclick = () => { tab = s; store.set("es_tab", s); drawTabs(); draw(); const el = document.querySelector('[data-row="' + r.row + '"]'); if (el) { el.scrollIntoView({ block: "center" }); el.focus(); } };
+            return [s === "messages" ? "سجل الرسائل" : s, r.name, r.clinic, st, Math.round(h), b];
+          })));
+        }
+
+        function meta(parts) {
+          const m = node("div", null, "rec-meta");
+          parts.filter((p) => p[1] !== "" && p[1] !== null && p[1] !== undefined).forEach(([k, val]) => {
+            const s = node("span", k + ": ");
+            s.append(node("b", String(val)));
+            m.append(s);
+          });
+          return m;
+        }
+
+        function drawService(v, sheet) {
+          const rows = (data.services[sheet] || []).slice().sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+          const onlyPending = store.get("es_pending") !== "0";
+          const bar = node("div", null, "bar");
+          const lb = node("label"), cb = node("input");
+          cb.type = "checkbox"; cb.checked = onlyPending;
+          cb.onchange = () => { store.set("es_pending", cb.checked ? "1" : "0"); draw(); };
+          lb.append(cb, document.createTextNode("المعلق فقط"));
+          const q = node("input"); q.type = "search"; q.placeholder = "بحث بالاسم أو الهوية أو العيادة"; q.value = store.get("es_q");
+          bar.append(lb, q);
+          v.append(node("h2", sheet), bar);
+          const list = node("div");
+          v.append(list);
+          const paint = () => {
+            list.replaceChildren();
+            const term = q.value.trim();
+            const shown = rows.filter((r) => (!onlyPending || isPending(sheet, r.status, r.staffNote)) && (!term || [r.name, r.nid, r.clinic, r.mobile].join(" ").includes(term)));
+            if (!shown.length) return list.append(node("p", onlyPending ? "لا توجد طلبات معلقة." : "لا توجد طلبات ظاهرة.", "empty"));
+            shown.forEach((r) => list.append(serviceItem(sheet, r)));
+          };
+          q.oninput = () => { store.set("es_q", q.value); paint(); };
+          paint();
+          v.append(node("p", "يظهر الطلب المنتهي 24 ساعة بعد إقفاله ثم يختفي، مثل الشيت. الطلبات القديمة في «بحث».", "muted"));
+        }
+
+        function serviceItem(sheet, r) {
+          const pend = isPending(sheet, r.status, r.staffNote), h = hoursSince(r.ts);
+          const it = node("div", null, "item " + (pend ? (h > RED_H ? "age-red" : h >= GREEN_H ? "age-mid" : "age-ok") : r.status === "تم" ? "done" : "fail"));
+          it.dataset.row = r.row; it.tabIndex = -1;
+          const head = node("div", null, "rec-head");
+          head.append(node("strong", r.name || "بدون اسم"));
+          head.append(node("span", pend ? (r.status ? "لم يتم بدون ملاحظة" : "معلق") + " · " + Math.round(h) + " ساعة" : r.status, "badge " + (pend ? (h > RED_H ? "danger" : h >= GREEN_H ? "warn" : "wait") : r.status === "تم" ? "" : "warn")));
+          it.append(head);
+          it.append(meta([["التاريخ", fmt(r.ts)], ["الهوية", r.nid], ["الميلاد", fmtDate(r.dob)], ["الجوال", r.mobile], ["العيادة", r.clinic], ["الفترة", r.period], ["الطبيب", r.doctor]]));
+          it.append(meta([[sheet === "تجديد الموعد" ? "سبب عدم الحضور" : "الغرض من التعديل", r.reason], ["تاريخ الموعد", fmtDate(r.apptDate)], ["ملاحظات المريض", r.notes]]));
+          const act = node("div", null, "act");
+          const st = node("select");
+          st.append(new Option("الحالة", ""), ...data.statuses.map((s) => new Option(s, s)));
+          st.value = r.status;
+          const nt = node("input"); nt.placeholder = "ملاحظات موظف خدمة المراجعين (تُرسل للمريض في الرسالة)"; nt.value = r.staffNote || ""; nt.maxLength = 500;
+          const sv = node("button", "حفظ"); sv.type = "button";
+          [st, nt].forEach((x) => (x.oninput = () => (dirty = true)));
+          sv.onclick = async () => {
+            const me = $("me").value;
+            if (!me) return msg("اختر اسمك أولاً من أعلى الصفحة.");
+            if (MSG_SOURCES.includes(sheet) && st.value === "لم يتم" && !nt.value.trim()) return msg("اكتب ملاحظة للمريض: «لم يتم» مع ملاحظة ينتقل لسجل الرسائل.");
+            sv.disabled = true; msg("جاري الحفظ…");
+            try {
+              await call({ action: "update", sheet, row: r.row, raw: r.raw, status: st.value, employee: me, staffNote: nt.value });
+              dirty = false;
+              const toMsg = MSG_SOURCES.includes(sheet) && nt.value.trim() && (st.value === "لم يتم" || (sheet === "الاستعلام عن موعد" && st.value === "تم"));
+              msg(toMsg ? "تم الحفظ، وانتقل الطلب لسجل الرسائل." : "تم الحفظ.");
+              await refresh(false); draw();
+            } catch (e) { msg(e.message); sv.disabled = false; }
+          };
+          act.append(st, nt, sv);
+          it.append(act);
+          if (r.employee) it.append(node("div", "آخر تعديل: " + r.employee + (r.changed ? " · " + fmt(r.changed) : ""), "muted"));
+          return it;
+        }
+
+        /* ===== سجل الرسائل ===== */
+        function drawMessages(v) {
+          v.append(node("h2", "سجل الرسائل"));
+          v.append(node("p", "اضغط «إرسال 📲» يفتح واتساب والرسالة جاهزة، وبعد الإرسال اختر حالة الرسالة واحفظ. يُحسب SLA من وقت دخول الطلب للسجل.", "muted"));
+          const rows = data.messages.slice().sort((a, b) => (a.status === "تم") - (b.status === "تم") || String(a.copied).localeCompare(String(b.copied)));
+          if (!rows.length) return v.append(node("p", "لا توجد رسائل.", "empty"));
+          rows.forEach((m) => {
+            const h = hoursSince(m.copied);
+            const it = node("div", null, "item " + (m.status === "تم" ? "done" : m.status ? "fail" : h > RED_H ? "age-red" : h >= GREEN_H ? "age-mid" : "age-ok"));
+            it.dataset.row = m.row; it.tabIndex = -1;
+            const head = node("div", null, "rec-head");
+            head.append(node("strong", m.name || "بدون اسم"));
+            head.append(node("span", m.status || "لم تُرسل · " + Math.round(h) + " ساعة", "badge " + (m.status === "تم" ? "" : m.status ? "warn" : h > RED_H ? "danger" : h >= GREEN_H ? "warn" : "wait")));
+            it.append(head);
+            it.append(meta([["الخدمة", m.service], ["الجوال", m.mobile], ["العيادة", m.clinic], ["دخل السجل", fmt(m.copied)], ["وقت الإرسال", fmt(m.sentAt)], ["SLA (ساعة)", m.sla], ["الموظف", m.employee]]));
+            it.append(node("div", waText(m.service, m.clinic, m.note), "preview"));
+            const act = node("div", null, "act");
+            act.style.gridTemplateColumns = "auto 260px auto";
+            let send;
+            if (m.wa) { send = node("a", "إرسال 📲", "wa"); send.href = m.wa; send.target = "_blank"; send.rel = "noopener"; }
+            else send = node("span", m.badPhone ? "رقم الجوال غير صحيح" : "لا توجد ملاحظة", "badge danger");
+            const st = node("select");
+            st.append(new Option("حالة الرسالة", ""), ...data.msgStatuses.map((s) => new Option(s, s)));
+            st.value = m.status;
+            st.oninput = () => (dirty = true);
+            const sv = node("button", "حفظ"); sv.type = "button";
+            sv.onclick = async () => {
+              const me = $("me").value;
+              if (!me) return msg("اختر اسمك أولاً من أعلى الصفحة.");
+              sv.disabled = true; msg("جاري الحفظ…");
+              try {
+                await call({ action: "msg", row: m.row, key: m.key, status: st.value, employee: me });
+                dirty = false; msg("تم الحفظ.");
+                await refresh(false); draw();
+              } catch (e) { msg(e.message); sv.disabled = false; }
+            };
+            act.append(send, st, sv);
+            it.append(act);
+            v.append(it);
+          });
+        }
+
+        /* ===== البحث برقم الهوية ===== */
+        function drawSearch(v) {
+          v.append(node("h2", "بحث برقم الهوية"));
+          v.append(node("p", "يعرض كل طلبات المستفيد في تجديد الموعد وتعديله وإلغائه، بما فيها القديمة المخفية.", "muted"));
+          const bar = node("div", null, "bar");
+          const q = node("input"); q.type = "search"; q.inputMode = "numeric"; q.maxLength = 10; q.placeholder = "رقم الهوية (10 أرقام)"; q.dir = "ltr";
+          const b = node("button", "بحث"); b.type = "button";
+          bar.append(q, b);
+          const out = node("div");
+          v.append(bar, out);
+          const go = async () => {
+            const id = q.value.replace(/[٠-٩]/g, (c) => "٠١٢٣٤٥٦٧٨٩".indexOf(c)).trim();
+            if (!/^\d{10}$/.test(id)) return msg("رقم الهوية 10 أرقام.");
+            b.disabled = true; msg("جاري البحث…");
+            try {
+              const res = await call({ action: "search", nid: id });
+              msg("");
+              out.replaceChildren(res.length
+                ? table(["المصدر", "الاسم", "العيادة", "الطبيب", "التاريخ", "الحالة", "الموظف", "ملاحظات"], res.map((r) => [r.source, r.fullName, r.clinic, r.doctor, fmt(r.timestamp), r.status, r.employee, r.notes]))
+                : node("p", "لا توجد طلبات مسجلة لهذا الرقم", "empty"));
+            } catch (e) { msg(e.message); } finally { b.disabled = false; }
+          };
+          b.onclick = go;
+          q.onkeydown = (e) => { if (e.key === "Enter") go(); };
+          q.focus();
+        }
+
+        /* ===== الإحصائية والمؤشرات ===== */
+        function drawStats(v) {
+          v.append(node("h2", "الإحصائية التشغيلية ولوحة المؤشرات"));
+          const bar = node("div", null, "bar");
+          const f = node("input"), t = node("input");
+          f.type = t.type = "date"; f.dir = t.dir = "ltr";
+          f.value = store.get("es_from"); t.value = store.get("es_to");
+          const lf = node("label", "من تاريخ "), lt = node("label", "إلى تاريخ ");
+          lf.append(f); lt.append(t);
+          const b = node("button", "عرض"); b.type = "button";
+          bar.append(lf, lt, b);
+          v.append(bar, node("p", "اتركهما فارغتين لعرض كل الفترة.", "muted"));
+          const out = node("div");
+          v.append(out);
+          const go = async () => {
+            store.set("es_from", f.value); store.set("es_to", t.value);
+            b.disabled = true; msg("جاري الحساب…");
+            try { lastStats = await call({ action: "stats", from: f.value, to: t.value }); msg(""); paintStats(out, lastStats); }
+            catch (e) { msg(e.message); } finally { b.disabled = false; }
+          };
+          b.onclick = go;
+          if (lastStats && lastStats.from === f.value && lastStats.to === t.value) paintStats(out, lastStats); else go();
+        }
+
+        function paintStats(out, d) {
+          out.replaceChildren();
+          const closed = d.done + d.notDone + d.hiddenNoStatus;
+          const rate = d.total ? Math.round((closed / d.total) * 1000) / 10 + "%" : "-";
+          const k = node("div", null, "k");
+          [["إجمالي الطلبات", d.total], ["المنجزة (تم)", d.done], ["المتعثرة (لم يتم)", d.notDone], ["المعلقة الآن", d.pending], ["المتأخرة (أكثر من 24 ساعة)", d.overdue], ["نسبة الإغلاق", rate], ["متوسط زمن الإغلاق (ساعة)", d.avgCloseHours ?? "-"], ["الرسائل المرسلة", d.msgSent]].forEach(([l, n]) => {
+            const c = node("div"); c.append(node("b", String(n)), node("span", l)); k.append(c);
+          });
+          out.append(node("p", "الفترة: " + (d.from || d.to ? (d.from || "البداية") + " إلى " + (d.to || "اليوم") : "كل الفترة"), "muted"), k);
+          out.append(table(["المؤشر", "القيمة"], [
+            ["إجمالي الطلبات", d.total], ["طلبات تجديد الموعد", d.renew], ["طلبات تعديل الموعد", d.modify], ["طلبات إلغاء الموعد", d.cancel],
+            ["المنجزة (تم)", d.done], ["المتعثرة (لم يتم)", d.notDone], ["منتهية بدون حالة (صفوف قديمة مخفية)", d.hiddenNoStatus],
+            ["المعلقة الآن", d.pending], ["المتأخرة (أكثر من 24 ساعة)", d.overdue], ["نسبة الإغلاق", rate], ["متوسط زمن الإغلاق (ساعة)", d.avgCloseHours ?? "-"],
+            ["الرسائل المرسلة", d.msgSent], ["رسائل تعذر إرسالها", d.msgFail], ["رسائل بانتظار الإرسال", d.msgPending],
+          ], (td, r, j) => { if (j === 1 && r[0] === "المتأخرة (أكثر من 24 ساعة)") td.className = d.overdue > 0 ? "red" : "green"; }));
+          out.append(node("h3", "إنتاجية الموظفين (عدد الطلبات المعالجة)"));
+          out.append(d.employees.length ? table(["اسم الموظف", "الإجمالي", "تم", "لم يتم"], d.employees) : node("p", "لا توجد بيانات", "empty"));
+          out.append(node("h3", "أسباب عدم الحضور (مؤشر كفاءة الجدولة)"));
+          out.append(d.noShow.length ? table(["سبب عدم الحضور", "العدد", "المؤشر المرتبط"], d.noShow) : node("p", "لا توجد بيانات", "empty"));
+          out.append(node("h3", "ملاحظات الموظفين وأسباب الرفض / عدم الإنجاز"));
+          out.append(d.notes.length ? table(["الملاحظة", "التكرار"], d.notes) : node("p", "لا توجد بيانات", "empty"));
+        }
+
+        api.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") location.reload(); });
+        start();
+      })();
+    </script>
+  </body>
+</html>
