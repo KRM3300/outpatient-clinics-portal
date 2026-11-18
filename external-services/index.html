@@ -1,7 +1,99 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>الأنظمة والخدمات الإلكترونية | العيادات الخارجية</title><link rel="stylesheet" href="../assets/portal.css"><style>body{font-family:Tahoma,Arial,sans-serif;background:#f5f8fa;color:#143b52;margin:0}.wrap{max-width:1080px;margin:auto;padding:25px 18px}.head{display:flex;justify-content:space-between;gap:15px;align-items:center}.head a{color:#126782}.sub{color:#627886}#search{width:100%;box-sizing:border-box;padding:14px;border:1px solid #cbdde6;border-radius:12px;font:inherit;margin:15px 0}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:14px}.service{background:white;border:1px solid #dce8ed;border-radius:16px;min-height:160px;padding:16px;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;gap:10px}.mark{display:grid;place-items:center;width:75px;height:68px;border-radius:16px;background:#eaf4f8;color:#136b86;font-size:25px;font-weight:bold}.service img{width:100px;height:70px;object-fit:contain}.service strong{font-size:15px}.service small{color:#637b88}.service a{color:#086b85}.service button{font:inherit;border:0;border-radius:9px;padding:7px 12px;background:#edf1f4;color:#677983;cursor:not-allowed}.hidden{display:none!important}#gate{margin:65px auto;max-width:480px;text-align:center;background:white;border-radius:18px;padding:28px;border:1px solid #dce8ed}#content{display:none}h1{font-size:24px}h2{font-size:19px;margin:24px 0 14px}</style></head><body><main class="wrap"><div class="head"><h1>الأنظمة والخدمات الإلكترونية</h1><a href="../">العودة للمنصة</a></div><div id="gate" role="status">جارٍ التحقق من تسجيل الدخول واعتماد الحساب...</div><section id="content"><p class="sub">دليل الأنظمة والخدمات المشتركة وتجمع القصيم الصحي. الروابط التي لم تُتحقق بعد غير مفعّلة.</p><input id="search" type="search" placeholder="ابحث باسم الخدمة..." aria-label="البحث عن الخدمات"><h2>تجمع القصيم الصحي</h2><div id="qassim" class="grid"></div><h2>الأنظمة والخدمات العامة</h2><div id="general" class="grid"></div></section></main><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script>
-const services=[{"name":"إفادة","group":"general","link":null,"logo":null},{"name":"نظام موعد","group":"general","link":null,"logo":null},{"name":"الملف الإلكتروني الموحد (رقيم)","group":"general","link":null,"logo":null},{"name":"أناة","group":"general","link":null,"logo":null},{"name":"إدارة الأزمات والطوارئ","group":"general","link":null,"logo":null},{"name":"تبليغ الولادة","group":"general","link":null,"logo":null},{"name":"النظام الإحصائي","group":"general","link":null,"logo":null},{"name":"تسجيل الأحداث الجسيمة","group":"general","link":null,"logo":null},{"name":"الترميز الطبي","group":"general","link":null,"logo":null},{"name":"موصول نوبكو","group":"general","link":null,"logo":null},{"name":"قياس رضا المرضى","group":"general","link":null,"logo":null},{"name":"موقع وزارة الصحة","group":"general","link":null,"logo":null},{"name":"إدارة الأسرة","group":"general","link":null,"logo":null},{"name":"برنامج الزواج الصحي","group":"general","link":null,"logo":null},{"name":"برنامج مكافحة التدخين","group":"general","link":null,"logo":null},{"name":"برنامج مراقبة السموم","group":"general","link":null,"logo":null},{"name":"تجمع القصيم الصحي","group":"qassim","link":null,"logo":null},{"name":"تيقظ","group":"general","link":null,"logo":null},{"name":"المركز السعودي لسلامة المرضى","group":"general","link":null,"logo":null},{"name":"منصة صحة","group":"general","link":null,"logo":null},{"name":"استعادة كلمة المرور - موارد","group":"general","link":null,"logo":null},{"name":"جمعية القلب الأمريكية","group":"general","link":null,"logo":null},{"name":"بوابة مقيم","group":"general","link":null,"logo":null},{"name":"ممارس بلس","group":"general","link":null,"logo":null},{"name":"التطوع الصحي","group":"general","link":null,"logo":null},{"name":"مجلس الضمان الصحي","group":"general","link":null,"logo":null},{"name":"متأهب (الهلال الأحمر السعودي)","group":"general","link":null,"logo":null},{"name":"منصة مسار","group":"general","link":null,"logo":null},{"name":"نظام وصفتي","group":"general","link":null,"logo":null},{"name":"تسجيل الأخطاء الدوائية","group":"general","link":null,"logo":null},{"name":"موارد","group":"general","link":null,"logo":null},{"name":"الإحالات","group":"general","link":null,"logo":null},{"name":"منصة اعتماد","group":"general","link":null,"logo":null},{"name":"المؤسسة العامة للتأمينات الاجتماعية","group":"general","link":null,"logo":null}];
-const gate=document.getElementById('gate'),content=document.getElementById('content');
-function render(q=''){for(const id of ['qassim','general'])document.getElementById(id).replaceChildren();for(const x of services.filter(x=>x.name.includes(q.trim()))){const card=document.createElement('article');card.className='service';const mark=document.createElement('span');mark.className='mark';mark.textContent=x.name.slice(0,2);if(x.logo){const img=document.createElement('img');img.src=x.logo;img.alt='شعار '+x.name;img.onerror=()=>img.replaceWith(mark);card.append(img)}else card.append(mark);const name=document.createElement('strong');name.textContent=x.name;card.append(name);if(x.link){const a=document.createElement('a');a.href=x.link;a.target='_blank';a.rel='noopener noreferrer';a.textContent='فتح الخدمة';card.append(a)}else{const btn=document.createElement('button');btn.type='button';btn.disabled=true;btn.textContent='الرابط قريبًا';card.append(btn)}document.getElementById(x.group).append(card)}}
-document.getElementById('search').addEventListener('input',e=>render(e.target.value));
-(async()=>{try{if(!window.supabase)throw Error('تعذر تحميل خدمة التحقق');const api=window.supabase.createClient('https://omugonzzrulsdpnycact.supabase.co','sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs');const {data:{user},error:authError}=await api.auth.getUser();if(authError||!user)throw Error('يلزم تسجيل الدخول إلى المنصة أولًا');const {data,error}=await api.from('opd_appt_members').select('status').eq('user_id',user.id).maybeSingle();if(error||data?.status!=='approved')throw Error('الخدمة متاحة للحسابات المعتمدة فقط');render();gate.style.display='none';content.style.display='block'}catch(e){gate.textContent=e.message+' — ارجع إلى الصفحة الرئيسية لتسجيل الدخول.'}})();
-</script></body></html>
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f3a57">
+<meta name="description" content="الأنظمة والخدمات الإلكترونية - منصة العيادات الخارجية بمستشفى الرس العام">
+<title>الأنظمة والخدمات الإلكترونية | منصة العيادات الخارجية</title>
+<link rel="icon" href="../assets/favicon.png">
+<link rel="stylesheet" href="../assets/portal.css">
+<style>
+:root{--ink:#123b52;--muted:#6b7f8b;--line:#dce7ec;--soft:#f4f8fa;--brand:#0f617d;--brand2:#0f3a57}
+*{box-sizing:border-box}
+body{margin:0;background:#f5f8fa;color:var(--ink);font-family:Tahoma,Arial,sans-serif}
+.shell{max-width:1160px;margin:auto;padding:24px 18px 45px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px}
+.back{display:inline-flex;align-items:center;gap:7px;text-decoration:none;color:var(--brand);font-weight:800}
+h1{font-size:clamp(23px,4vw,32px);margin:10px 0 5px}
+.lead{margin:0;color:var(--muted);line-height:1.8}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:20px 0 14px}
+.search{flex:1;min-width:230px;margin:0!important}
+.search input{width:100%}
+.count{background:#e8f3f7;color:#0d617c;border-radius:999px;padding:8px 12px;font-weight:800;white-space:nowrap}
+.chips{display:flex;gap:8px;overflow:auto;padding:2px 0 16px}
+.chipx{border:1px solid #cfe0e7;background:white;color:#315569;border-radius:999px;padding:9px 13px;font:inherit;font-weight:700;white-space:nowrap;cursor:pointer}
+.chipx.active{background:var(--brand2);color:white;border-color:var(--brand2)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:14px}
+.card{background:white;border:1px solid var(--line);border-radius:17px;padding:17px 14px;min-height:210px;display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:0 4px 18px rgba(20,59,82,.04)}
+.logoBox{height:78px;width:130px;display:grid;place-items:center;margin-bottom:8px}
+.logoBox img{max-width:100%;max-height:72px;object-fit:contain;display:block}
+.fallback{display:grid;place-items:center;width:68px;height:62px;border-radius:14px;background:#eaf4f8;color:#10637e;font-weight:900;font-size:22px}
+.card h2{font-size:15px;line-height:1.65;margin:3px 0 2px}
+.en{font-size:11px;color:#7a8d97;min-height:30px;line-height:1.35}
+.open{margin-top:auto;width:100%;border:0;border-radius:10px;padding:9px 10px;font:inherit;font-weight:800;background:#eef2f4;color:#81919a;cursor:not-allowed}
+.badge{font-size:10px;background:#edf7f2;color:#287356;border-radius:999px;padding:4px 8px;margin-top:5px}
+.empty{grid-column:1/-1;text-align:center;padding:35px;color:var(--muted)}
+#gate{max-width:540px;margin:65px auto;background:white;border:1px solid var(--line);border-radius:18px;padding:28px;text-align:center;box-shadow:0 6px 22px rgba(20,59,82,.06)}
+#content{display:none}
+.note{font-size:12px;color:#7b8c95;margin:16px 2px}
+@media(max-width:520px){.shell{padding:17px 12px 35px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card{min-height:195px;padding:13px 9px}.logoBox{width:105px;height:68px}.logoBox img{max-height:62px}.card h2{font-size:13px}.en{font-size:10px}.top{align-items:flex-start}}
+</style>
+</head>
+<body>
+<main class="shell">
+<div class="top"><div><h1>الأنظمة والخدمات الإلكترونية</h1><p class="lead">دليل موحد للأنظمة والخدمات العامة وخدمات تجمع القصيم الصحي.</p></div><a class="back" href="../">العودة للمنصة</a></div>
+<div id="gate" role="status">جارٍ التحقق من تسجيل الدخول واعتماد الحساب...</div>
+<section id="content" aria-label="الأنظمة والخدمات الإلكترونية">
+<div class="tools">
+<label class="search"><input id="search" type="search" placeholder="ابحث باسم الخدمة أو النظام..." aria-label="البحث عن الخدمات"></label>
+<span class="count" id="count"></span>
+</div>
+<div class="chips" aria-label="تصفية الخدمات">
+<button class="chipx active" type="button" data-filter="all">جميع الخدمات</button>
+<button class="chipx" type="button" data-filter="qassim">تجمع القصيم</button>
+<button class="chipx" type="button" data-filter="moh">وزارة الصحة</button>
+<button class="chipx" type="button" data-filter="national">منصات وجهات أخرى</button>
+</div>
+<div id="grid" class="grid"></div>
+<p class="note">الروابط الخارجية غير مفعلة مؤقتًا لحين استكمال مراجعتها واعتمادها.</p>
+</section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const services=[{"name":"إفادة","en":"Efada","group":"national","logo":"https://legacy.rabet.sa/images/logos/efada-logo.png","link":null},{"name":"نظام موعد","en":"Appointment","group":"moh","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/7/75/Ministry_of_Health_Saudi_Arabia.svg/512px-Ministry_of_Health_Saudi_Arabia.svg.png","link":null},{"name":"الملف الإلكتروني الموحد (رقيم)","en":"Raqeem","group":"moh","logo":"https://surveymonkey-assets.s3.amazonaws.com/survey/512223028/d49cd1c2-49f8-4d73-a846-21b58b81e209.png","link":null},{"name":"أناة","en":"Anat","group":"moh","logo":"https://is3-ssl.mzstatic.com/image/thumb/Purple112/v4/00/f9/57/00f957b7-216e-dd83-8fbb-3bedf7d6047c/AppIcon-0-0-1x_U007emarketing-0-0-0-7-0-0-sRGB-0-0-0-GLES2_U002c0-512MB-85-220-0-0.png/1200x630wa.png","link":null},{"name":"تجمع القصيم الصحي","en":"Qassim Health Cluster","group":"qassim","logo":"https://alrassgh.com/assets/LOGO_2023_02_1749419076730-DAT4SGpB.png","link":null},{"name":"إدارة الأزمات والطوارئ","en":"Emergency Operation Center (EOC)","group":"moh","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/7/75/Ministry_of_Health_Saudi_Arabia.svg/512px-Ministry_of_Health_Saudi_Arabia.svg.png","link":null},{"name":"تبليغ الولادة","en":"Birth Notification","group":"moh","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/7/75/Ministry_of_Health_Saudi_Arabia.svg/512px-Ministry_of_Health_Saudi_Arabia.svg.png","link":null},{"name":"النظام الإحصائي","en":"Statistical System","group":"moh","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/7/75/Ministry_of_Health_Saudi_Arabia.svg/512px-Ministry_of_Health_Saudi_Arabia.svg.png","link":null},{"name":"تسجيل الأحداث الجسيمة","en":"Sentinel Event","group":"moh","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/7/75/Ministry_of_Health_Saudi_Arabia.svg/512px-Ministry_of_Health_Saudi_Arabia.svg.png","link":null},{"name":"الترميز الطبي","en":"Medical Coding","group":"moh","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/7/75/Ministry_of_Health_Saudi_Arabia.svg/512px-Ministry_of_Health_Saudi_Arabia.svg.png","link":null},{"name":"موصول نوبكو","en":"Mawsool - NUPCO","group":"national","logo":"https://upload.wikimedia.org/wikipedia/commons/6/6c/01_NUPCO_LOGO_DUAL_RGB-01.png","link":null},{"name":"قياس رضا المرضى","en":"Patient Satisfaction","group":"moh","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/7/75/Ministry_of_Health_Saudi_Arabia.svg/512px-Ministry_of_Health_Saudi_Arabia.svg.png","link":null},{"name":"موقع وزارة الصحة","en":"Ministry of Health","group":"moh","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/7/75/Ministry_of_Health_Saudi_Arabia.svg/512px-Ministry_of_Health_Saudi_Arabia.svg.png","link":null},{"name":"إدارة الأسرة","en":"Bed Management","group":"moh","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/7/75/Ministry_of_Health_Saudi_Arabia.svg/512px-Ministry_of_Health_Saudi_Arabia.svg.png","link":null},{"name":"برنامج الزواج الصحي","en":"Healthy Marriage","group":"moh","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/7/75/Ministry_of_Health_Saudi_Arabia.svg/512px-Ministry_of_Health_Saudi_Arabia.svg.png","link":null},{"name":"برنامج مكافحة التدخين","en":"Tobacco Control Program","group":"moh","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/7/75/Ministry_of_Health_Saudi_Arabia.svg/512px-Ministry_of_Health_Saudi_Arabia.svg.png","link":null},{"name":"برنامج مراقبة السموم","en":"OTARR","group":"moh","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/7/75/Ministry_of_Health_Saudi_Arabia.svg/512px-Ministry_of_Health_Saudi_Arabia.svg.png","link":null},{"name":"تيقظ","en":"Saudi Vigilance","group":"national","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/3/36/Saudi_Food_and_Drug_Authority_Logo.svg/512px-Saudi_Food_and_Drug_Authority_Logo.svg.png","link":null},{"name":"المركز السعودي لسلامة المرضى","en":"Saudi Patient Safety Center","group":"national","logo":"https://makkahnewspaper.com/uploads/images/2024/09/16/1748249.jpeg","link":null},{"name":"منصة صحة","en":"Seha","group":"national","logo":"https://www.seha.sa/Content/img/SehaLogo.png","link":null},{"name":"استعادة كلمة المرور - موارد","en":"Mawared Password Reset","group":"moh","logo":"https://www.ruokn.com/wp-content/uploads/2022/05/%D8%B1%D8%A7%D8%A8%D8%B7-%D8%AE%D8%AF%D9%85%D8%A9-%D9%85%D9%88%D8%A7%D8%B1%D8%AF-%D8%A7%D9%88%D9%86-%D9%84%D8%A7%D9%8A%D9%86.png?v=1653424026","link":null},{"name":"جمعية القلب الأمريكية","en":"American Heart Association","group":"national","logo":"https://iprsoftwaremedia.com/67/files/20187/5b61c8bd2cfac24ff4806ecb_AHA_LOGO-RGB_rk_LG/AHA_LOGO-RGB_rk_LG_hero.jpg?v=544a4b54-1e6d-4fd2-bec2-cf610fabc723","link":null},{"name":"بوابة مقيم","en":"Muqeem Portal","group":"national","logo":"https://i2.wp.com/alsaudialyaum.com/images/2024/02/%D9%85%D9%86%D8%B5%D8%A9-%D9%85%D9%82%D9%8A%D9%85-1707404252-0.png?resize=750%2C500&ssl=1","link":null},{"name":"ممارس بلس","en":"Mumaris Plus","group":"national","logo":"https://i0.wp.com/phafnanhakami.wordpress.com/wp-content/uploads/2019/02/mumaris-logo-01.jpg?fit=1200%2C848&ssl=1","link":null},{"name":"التطوع الصحي","en":"Health Volunteering","group":"moh","logo":"https://saudipedia.com/var/site/storage/images/8/8/1/4/5894188-1-eng-GB/7779c37d0711-71634.jpg","link":null},{"name":"مجلس الضمان الصحي","en":"Council of Health Insurance","group":"national","logo":"https://images.seeklogo.com/logo-png/41/1/council-of-health-insurance-logo-png_seeklogo-411309.png","link":null},{"name":"متأهب (الهلال الأحمر السعودي)","en":"Muta’aheb","group":"national","logo":"https://pbs.twimg.com/profile_images/1615685234179072000/fCV6cf81.jpg","link":null},{"name":"منصة مسار","en":"Masar","group":"national","logo":"https://saudipedia.com/saudipedia/uploads/images/2023/10/01/72505.jpg","link":null},{"name":"نظام وصفتي","en":"Wasfaty","group":"national","logo":"https://saudipedia.com/var/site/storage/images/1/3/2/4/4744231-1-eng-GB/080c8c4d6c6c-164207.jpg","link":null},{"name":"تسجيل الأخطاء الدوائية","en":"Medication Error Reporting","group":"moh","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/7/75/Ministry_of_Health_Saudi_Arabia.svg/512px-Ministry_of_Health_Saudi_Arabia.svg.png","link":null},{"name":"موارد","en":"Mawared","group":"moh","logo":"https://www.ruokn.com/wp-content/uploads/2022/05/%D8%B1%D8%A7%D8%A8%D8%B7-%D8%AE%D8%AF%D9%85%D8%A9-%D9%85%D9%88%D8%A7%D8%B1%D8%AF-%D8%A7%D9%88%D9%86-%D9%84%D8%A7%D9%8A%D9%86.png?v=1653424026","link":null},{"name":"الإحالات","en":"Referral","group":"moh","logo":"https://upload.wikimedia.org/wikipedia/en/thumb/7/75/Ministry_of_Health_Saudi_Arabia.svg/512px-Ministry_of_Health_Saudi_Arabia.svg.png","link":null},{"name":"منصة اعتماد","en":"Etimad","group":"national","logo":"https://static.sayidaty.net/styles/1200_scale/public/2023-05/247369.jpg.webp?VersionId=tVjEDBT0V4FpqK2Bz7mL8sab0R1.bfs6","link":null},{"name":"المؤسسة العامة للتأمينات الاجتماعية","en":"GOSI","group":"national","logo":"https://www.gosi.gov.sa/GOSIOnline/resources/images/logo.png","link":null},{"name":"Pearson VUE","en":"Pearson VUE","group":"national","logo":"https://i0.wp.com/www.esolarm.org/wp-content/uploads/2019/01/vue.jpg?fit=1000%2C1000&ssl=1","link":null},{"name":"نفيس","en":"NPHIES","group":"national","logo":"https://devportal.nhic.gov.sa/static/media/nphies_logo.9ce3f8cc7a760666c970.png","link":null},{"name":"الاستعلام عن معلومات التأمين الصحي","en":"Health Insurance Inquiry","group":"national","logo":"https://images.seeklogo.com/logo-png/41/1/council-of-health-insurance-logo-png_seeklogo-411309.png","link":null}];
+const gate=document.getElementById("gate"),content=document.getElementById("content"),grid=document.getElementById("grid"),search=document.getElementById("search"),count=document.getElementById("count");
+let filter="all";
+function logoFallback(name){const s=document.createElement("span");s.className="fallback";s.textContent=name.trim().slice(0,2);return s}
+function draw(){
+ const q=search.value.trim().toLocaleLowerCase("ar");
+ const list=services.filter(x=>(filter==="all"||x.group===filter)&&(!q||(x.name+" "+x.en).toLocaleLowerCase("ar").includes(q)));
+ grid.replaceChildren();
+ count.textContent=list.length+" من "+services.length+" خدمة";
+ if(!list.length){const e=document.createElement("p");e.className="empty";e.textContent="لا توجد نتائج مطابقة";grid.append(e);return}
+ for(const x of list){
+  const card=document.createElement("article");card.className="card";
+  const box=document.createElement("div");box.className="logoBox";
+  if(x.logo){const img=document.createElement("img");img.src=x.logo;img.alt="شعار "+x.name;img.loading="lazy";img.decoding="async";img.onerror=()=>box.replaceChildren(logoFallback(x.name));box.append(img)}else box.append(logoFallback(x.name));
+  const h=document.createElement("h2");h.textContent=x.name;
+  const en=document.createElement("div");en.className="en";en.textContent=x.en;
+  const badge=document.createElement("span");badge.className="badge";badge.textContent=x.group==="qassim"?"تجمع القصيم":x.group==="moh"?"وزارة الصحة":"خدمة إلكترونية";
+  const btn=document.createElement("button");btn.type="button";btn.className="open";btn.disabled=true;btn.textContent="الرابط قريبًا";
+  card.append(box,h,en,badge,btn);grid.append(card);
+ }
+}
+search.addEventListener("input",draw);
+document.querySelectorAll(".chipx").forEach(b=>b.addEventListener("click",()=>{filter=b.dataset.filter;document.querySelectorAll(".chipx").forEach(x=>x.classList.toggle("active",x===b));draw()}));
+(async()=>{
+ try{
+  if(!window.supabase)throw Error("تعذر تحميل خدمة التحقق");
+  const api=window.supabase.createClient("https://omugonzzrulsdpnycact.supabase.co","sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs");
+  const {data:{user},error:authError}=await api.auth.getUser();
+  if(authError||!user)throw Error("يلزم تسجيل الدخول إلى المنصة أولًا");
+  const {data,error}=await api.from("opd_appt_members").select("status").eq("user_id",user.id).maybeSingle();
+  if(error||data?.status!=="approved")throw Error("الخدمة متاحة للحسابات المعتمدة فقط");
+  draw();gate.style.display="none";content.style.display="block";
+ }catch(e){gate.textContent=e.message+" — ارجع إلى الصفحة الرئيسية لتسجيل الدخول."}
+})();
+</script>
+</body></html>
