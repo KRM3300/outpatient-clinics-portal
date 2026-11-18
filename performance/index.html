@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#0f3a57" />
+    <title>تقييم الأداء | العيادات الخارجية</title>
+    <link rel="icon" href="../assets/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../assets/portal.css?v=4" />
+    <style>
+      .muted { color: var(--ink-soft); font-size: 13px; }
+      .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 14px; }
+      fieldset { border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 8px 12px 10px; margin: 10px 0 0; }
+      legend { font-weight: 600; padding: 0 6px; }
+      .chk { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; font-weight: 400; }
+      .chk input { width: auto; margin-top: 4px; }
+      .kind { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+      .kind label { display: flex; gap: 6px; align-items: center; border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 14px; font-weight: 500; cursor: pointer; }
+      .kind input { width: auto; }
+      .tw { overflow-x: auto; margin-top: 8px; }
+      table.recs { width: 100%; border-collapse: collapse; font-size: 14px; }
+      table.recs th { text-align: right; color: var(--ink-soft); font-weight: 500; border-bottom: 1px solid var(--line-strong); padding: 7px 6px; white-space: nowrap; }
+      table.recs td { padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; font-variant-numeric: tabular-nums; }
+      table.recs tr.pick { cursor: pointer; }
+      table.recs tr.pick:hover td { background: var(--surface); }
+      .sc { font-weight: 700; }
+      .sc.lo { color: var(--danger); }
+      .sc.hi { color: #1f8a4c; }
+      .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+      .row-actions button { padding: 4px 10px; font-size: 13px; }
+      .pill { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 12.5px; border: 1px solid var(--line-strong); }
+      .pill.pos { color: #1f8a4c; border-color: #1f8a4c; }
+      .pill.neg { color: var(--danger); border-color: var(--danger); }
+      h3 { margin: 18px 0 4px; font-size: 16px; }
+      .empty { color: var(--ink-soft); padding: 8px 0; }
+      .rules { font-size: 13.5px; color: var(--ink-soft); line-height: 1.9; }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap">
+        <img class="site-logo" src="../assets/logo.webp" width="220" height="144" alt="شعار مستشفى الرس العام" />
+        <div class="site-titles">
+          <span class="crumb">منصة العيادات الخارجية</span>
+          <h1>تقييم الأداء</h1>
+          <p>التقارير الداخلية والمبادرات والتعلم المستمر، واحتساب الجدارات حسب سياسة العيادات الخارجية</p>
+        </div>
+        <div class="site-actions">
+          <a class="back" href="../"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg><span>العودة للمنصة</span></a>
+        </div>
+      </div>
+    </header>
+
+    <main class="page wrap">
+      <div id="message" class="status-msg" role="status" aria-live="polite"></div>
+
+      <section id="login" class="card">
+        <h2>تسجيل الدخول</h2>
+        <label for="email">البريد الإلكتروني</label>
+        <input id="email" type="email" autocomplete="email" dir="ltr" />
+        <button id="send" type="button">إرسال رمز الدخول</button>
+        <div id="verifyBox" class="hidden">
+          <label for="code" style="margin-top: 16px">رمز التحقق</label>
+          <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" dir="ltr" />
+          <button id="verify" type="button">تحقق</button>
+          <p class="muted" style="margin: 8px 0 0; font-size: 13.5px">لم يصلك الرمز؟ تحقق من مجلد البريد غير المرغوب (Junk).</p>
+        </div>
+      </section>
+
+      <section id="noaccess" class="card hidden">
+        <h2>لا توجد صلاحية</h2>
+        <p>هذه الصفحة للموظفين المعتمدين في المنصة. سجّل من الصفحة الرئيسية وانتظر الاعتماد.</p>
+      </section>
+
+      <div id="app" class="hidden">
+        <div class="card">
+          <div class="toolbar">
+            <strong id="identity"></strong>
+            <button id="logout" class="alt" type="button">تسجيل الخروج</button>
+          </div>
+        </div>
+
+        <!-- التقرير الداخلي: يرفعه من لديه الصلاحية فقط، ولا يطّلع على شيء بعد الرفع -->
+        <section id="reportCard" class="card hidden">
+          <h2>تقرير داخلي</h2>
+          <p class="muted">التقرير سري: يطّلع عليه مدير العيادات الخارجية فقط، ولا يظهر للموظف ولا لكاتب التقرير بعد رفعه.</p>
+          <div class="grid2">
+            <div><label for="r-staff">الموظف</label><select id="r-staff"></select></div>
+            <div><label for="r-date">تاريخ الواقعة</label><input id="r-date" type="date" dir="ltr" /></div>
+          </div>
+          <div class="kind" role="radiogroup" aria-label="نوع التقرير">
+            <label><input type="radio" name="r-kind" value="positive" /> إيجابي</label>
+            <label><input type="radio" name="r-kind" value="negative" /> سلبي</label>
+          </div>
+          <div id="r-items"></div>
+          <label for="r-notes" style="margin-top: 10px">ملاحظات</label>
+          <textarea id="r-notes" rows="3" maxlength="1500"></textarea>
+          <button id="r-submit" type="button" style="margin-top: 10px">رفع التقرير</button>
+        </section>
+
+        <!-- المبادرات والتعلم: لأي موظف معتمد -->
+        <section id="contribCard" class="card">
+          <h2>مبادرة أو تطوير أو تعلم</h2>
+          <p class="muted">سجّل مبادرة تحسين، أو إجراء كتبته، أو شرحاً مبسطاً وضعته في منطقة العمل، أو محاضرة قدمتها أو حضرتها، أو دورة. تُعتمد من مدير العيادات الخارجية.</p>
+          <div class="grid2">
+            <div>
+              <label for="c-type">النوع</label>
+              <select id="c-type">
+                <option value="initiative">مبادرة تحسين</option>
+                <option value="procedure">كتابة إجراء</option>
+                <option value="explanation">شرح مبسط لطريقة عمل (في منطقة العمل)</option>
+                <option value="lecture_given">محاضرة داخلية قدمتها</option>
+                <option value="lecture_attended">محاضرة داخلية حضرتها</option>
+                <option value="course">دورة تدريبية</option>
+              </select>
+            </div>
+            <div><label for="c-date">التاريخ</label><input id="c-date" type="date" dir="ltr" /></div>
+          </div>
+          <label for="c-title" style="margin-top: 10px">العنوان</label>
+          <input id="c-title" maxlength="300" />
+          <div id="c-init">
+            <label for="c-problem" style="margin-top: 10px">المشكلة أو فرصة التحسين</label>
+            <textarea id="c-problem" rows="3" maxlength="2000"></textarea>
+            <label for="c-solution" style="margin-top: 10px">الحل / المبادرة</label>
+            <textarea id="c-solution" rows="3" maxlength="2000"></textarea>
+            <label for="c-impl" style="margin-top: 10px">التطبيق</label>
+            <select id="c-impl"><option value="true">نعم، تم التطبيق</option><option value="false">لم يطبق بعد</option></select>
+          </div>
+          <div id="c-hoursBox" class="grid2 hidden" style="margin-top: 10px">
+            <div><label for="c-hours">عدد الساعات التدريبية</label><input id="c-hours" type="number" min="0" step="0.5" dir="ltr" /></div>
+            <div><label for="c-days">أو عدد الأيام (إذا الساعات غير محددة)</label><input id="c-days" type="number" min="0" step="1" dir="ltr" /></div>
+          </div>
+          <fieldset>
+            <legend>المشاركون (حتى 3)</legend>
+            <div class="grid2">
+              <select id="c-p1"></select>
+              <select id="c-p2"></select>
+              <select id="c-p3"></select>
+            </div>
+          </fieldset>
+          <p class="muted">لإرفاق صورة أو فيديو أو شهادة: أرسلها على بريد العيادات الخارجية <span dir="ltr">alrass.opd1@gmail.com</span> واكتب عنوان الطلب.</p>
+          <button id="c-submit" type="button">رفع الطلب</button>
+          <h3>طلباتي</h3>
+          <div class="tw"><table class="recs" id="c-mine"></table></div>
+        </section>
+
+        <!-- لوحة التقييم: للمدير فقط -->
+        <section id="adminCard" class="card hidden">
+          <h2>لوحة التقييم</h2>
+          <div class="grid2">
+            <div><label for="a-year">سنة التقييم</label><select id="a-year"></select></div>
+            <div style="align-self: end" class="row-actions">
+              <button id="a-excel" class="alt" type="button">تنزيل Excel</button>
+            </div>
+          </div>
+          <p class="muted" id="a-period"></p>
+          <h3>طلبات بانتظار الاعتماد</h3>
+          <div class="tw"><table class="recs" id="a-pending"></table></div>
+          <h3>الجدارات</h3>
+          <p class="muted">اضغط على اسم الموظف لعرض التفاصيل. الأصل 4 لكل جدارة، والحد الأعلى 5 والأدنى 1.</p>
+          <div class="tw"><table class="recs" id="a-scores"></table></div>
+          <div id="a-detail"></div>
+          <details style="margin-top: 14px">
+            <summary>طريقة الاحتساب</summary>
+            <div class="rules">
+              <div><b>الالتزام الوظيفي:</b> +0.2 لكل شهر فيه تقرير إيجابي «يلتزم بمواعيد العمل»، −0.05 لكل تأخر، −0.1 لكل خروج (بدون إذن، بدون توقيع انصراف، قبل نهاية الشفت). الشهر الذي فيه إجازة معتمدة 15 يوماً فأكثر لا يُحتسب.</div>
+              <div><b>التطوير:</b> +0.25 لكل مبادرة أو إجراء أو شرح أو محاضرة قدّمها (معتمدة)، ولكل تقرير إيجابي «يساعد الآخرين على تطوير أنفسهم».</div>
+              <div><b>التعلم المستمر:</b> +0.25 لكل محاضرة حضرها أو دورة (معتمدة)، ولكل تقرير إيجابي «يسعى إلى التعلم». الساعات فوق 21: +0.25 لكل 5 ساعات أو جزء منها. الدورة بدون ساعات: اليوم = ساعتان.</div>
+              <div><b>التواصل:</b> −0.3 لكل تقرير سلبي في التواصل.</div>
+              <div><b>القيادة (للمشرفين):</b> −0.3 لكل تقرير سلبي في القيادة.</div>
+              <div>تقارير ديسمبر تدخل في السنة التالية. باقي البنود تظهر كنقاط قوة وضعف بدون نقاط.</div>
+            </div>
+          </details>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="credit" dir="ltr">
+        <span>Prepared by</span>
+        <strong>Khalid Rumayh Alrumayh</strong>
+        <span>Information Systems Specialist</span>
+      </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+    <script src="../assets/opd-aggregate-export.js"></script>
+    <script>
+      (() => {
+        const $ = (id) => document.getElementById(id);
+        const api = supabase.createClient("https://omugonzzrulsdpnycact.supabase.co", "sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs");
+        const msg = (t) => ($("message").textContent = t || "");
+        const err = (e) => msg(e?.message || String(e));
+        const hide = (id, show) => $(id).classList.toggle("hidden", !show);
+        const node = (t, text, cls) => {
+          const e = document.createElement(t);
+          if (text !== undefined) e.textContent = text;
+          if (cls) e.className = cls;
+          return e;
+        };
+        const emptyRow = (t, text) => {
+          const tr = node("tr");
+          tr.append(node("td", text, "empty"));
+          t.append(tr);
+        };
+        const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" });
+
+        /* بنود التقرير الداخلي (نفس نموذج الوزارة) مع بند التأخر */
+        const LATE = "تأخر عن بداية الدوام";
+        const EXITS = ["خروج الموظف بدون توقيع استئذان أو بدون إذن", "خروج الموظف بدون توقيع انصراف", "خروج الموظف قبل نهاية الشفت"];
+        const PUNCT = "يلتزم بمواعيد العمل ويكون متواجداً عند الحاجة إليه";
+        const LEARN = "يسعى إلى التعلم وتطوير نفسه باستمرار";
+        const HELP = "يساعد الآخرين على تطوير أنفسهم ومشاركة النصح والاقتراحات";
+        const GROUPS = [
+          ["حس المسؤولية", ["يتحمل مسؤولية أعماله وقراراته، ولا يلقي اللوم على الآخرين", "يفهم دوره، وكيفية ارتباطه بالأهداف العامة لجهة عمله", "يفصح عن ما يواجهه من تحديات بشفافية", "يساهم في رفع كفاءة الإنفاق وإنجاز المهمة بإنتاجية أكبر بنفس الموارد أو أقل تكلفة"]],
+          ["التعاون", ["يشارك المعلومات بانفتاح وفق متطلبات العمل", "يسعى إلى الاستفادة من آراء الآخرين وبناء علاقات داعمة", "يستجيب لطلبات الدعم والمساندة من الوحدات التنظيمية"]],
+          ["التواصل", ["يستخدم التواصل المكتوب الواضح والفعال", "يستخدم التواصل الشفهي الواضح والفعال", "ينصت للآخرين بعناية"]],
+          ["تحقق النتائج", ["يستطيع القيام بمهام متعددة وتحديد أولوياتها", "يمكن الاعتماد عليه، وينفذ مهامه في وقتها بجودة عالية", "مبادر ويعمل بدون توجيه من رئيسه"]],
+          ["الالتزام الوظيفي (الارتباط الوظيفي)", [PUNCT, LATE, ...EXITS, "لديه الاستعداد لمواجهة تحديات العمل", "يتطلع إلى مستوى أعلى من الإنجاز والابتكار", "يركز على خدمة العملاء عند تنفيذ أعماله"]],
+          ["التطوير والتعلم", [LEARN, HELP]],
+          ["القيادة (للمشرفين ورؤساء الأقسام)", ["مرن وقادر على تنفيذ أعمال هامة في ظروف فيها مخاطرة وعدم يقين", "يدعم ويشجع فريقه على تحقيق أهدافه حتى في الظروف الصعبة", "يفكر بمنطقية وإبداع دون التأثر بتحيزاته الشخصية", "يفوض الصلاحيات ويتابع النتائج", "يوفر ويدعم فرص تطوير المرؤوسين"]],
+        ];
+        const COMM = GROUPS[2][1], LEAD = GROUPS[6][1];
+        const CTYPE = { initiative: "مبادرة تحسين", procedure: "كتابة إجراء", explanation: "شرح مبسط", lecture_given: "محاضرة قدّمها", lecture_attended: "محاضرة حضرها", course: "دورة تدريبية" };
+        const DEV_TYPES = ["initiative", "procedure", "explanation", "lecture_given"], LEARN_TYPES = ["lecture_attended", "course"];
+        const STATUS = { pending: "بانتظار الاعتماد", approved: "معتمد", rejected: "غير معتمد" };
+
+        let staff = [], admin = false, data = null;
+
+        $("send").onclick = async () => {
+          const email = $("email").value.trim();
+          if (!email) return;
+          const { error } = await api.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+          if (error) return err(error);
+          hide("verifyBox", true);
+          $("code").focus();
+          msg("تم إرسال رمز التحقق إلى بريدك الإلكتروني.");
+        };
+        $("verify").onclick = async () => {
+          const { error } = await api.auth.verifyOtp({ email: $("email").value.trim(), token: $("code").value.trim(), type: "email" });
+          if (error) return err(error);
+          msg("");
+          await load();
+        };
+        $("logout").onclick = async () => {
+          await api.auth.signOut({ scope: "local" });
+          await load();
+        };
+
+        function fillStaff(sel, label) {
+          sel.replaceChildren(new Option(label, ""), ...staff.map((s) => new Option(s.name, s.id)));
+        }
+
+        async function load() {
+          const { data: { user: u } } = await api.auth.getUser();
+          hide("login", !u);
+          hide("app", false);
+          hide("noaccess", false);
+          if (!u) return;
+          const list = await api.rpc("opd_perf_staff_list");
+          if (list.error) return hide("noaccess", true);
+          staff = list.data || [];
+          hide("app", true);
+          $("identity").textContent = u.email;
+          const [rep, adm] = await Promise.all([api.rpc("opd_has_perm", { p: "perf_report" }), api.rpc("opd_kpi_is_admin")]);
+          admin = adm.data === true;
+          hide("reportCard", rep.data === true);
+          hide("adminCard", admin);
+          fillStaff($("r-staff"), "اختر الموظف");
+          ["c-p1", "c-p2", "c-p3"].forEach((id, i) => fillStaff($(id), i ? "— (اختياري)" : "اختر الموظف"));
+          $("r-date").value = $("r-date").max = today();
+          $("c-date").value = today();
+          drawItems();
+          drawCtype();
+          await mine();
+          if (admin) await loadAdmin();
+        }
+
+        /* ===== التقرير الداخلي ===== */
+        function drawItems() {
+          const root = $("r-items");
+          root.replaceChildren();
+          for (const [g, items] of GROUPS) {
+            const fs = node("fieldset");
+            fs.append(node("legend", g));
+            for (const it of items) {
+              const l = node("label", undefined, "chk");
+              const c = node("input");
+              c.type = "checkbox";
+              c.value = it;
+              l.append(c, node("span", it));
+              fs.append(l);
+            }
+            root.append(fs);
+          }
+        }
+        $("r-submit").onclick = async () => {
+          const kind = document.querySelector('input[name="r-kind"]:checked')?.value;
+          const items = [...$("r-items").querySelectorAll("input:checked")].map((c) => c.value);
+          if (!$("r-staff").value) return msg("اختر الموظف.");
+          if (!kind) return msg("اختر نوع التقرير: إيجابي أو سلبي.");
+          if (!items.length) return msg("اختر بنداً واحداً على الأقل.");
+          $("r-submit").disabled = true;
+          const { error } = await api.rpc("opd_perf_report_submit", { p_staff: $("r-staff").value, p_kind: kind, p_date: $("r-date").value, p_items: items, p_notes: $("r-notes").value });
+          $("r-submit").disabled = false;
+          if (error) return err(error);
+          $("r-items").querySelectorAll("input").forEach((c) => (c.checked = false));
+          document.querySelectorAll('input[name="r-kind"]').forEach((c) => (c.checked = false));
+          $("r-notes").value = "";
+          $("r-staff").value = "";
+          msg("تم رفع التقرير.");
+          if (admin) await loadAdmin();
+        };
+
+        /* ===== المبادرات والتعلم ===== */
+        function drawCtype() {
+          const t = $("c-type").value;
+          hide("c-init", t === "initiative");
+          hide("c-hoursBox", LEARN_TYPES.includes(t));
+        }
+        $("c-type").onchange = drawCtype;
+        $("c-submit").onclick = async () => {
+          const t = $("c-type").value;
+          const parts = [...new Set(["c-p1", "c-p2", "c-p3"].map((id) => $(id).value).filter(Boolean))];
+          if ($("c-title").value.trim().length < 3) return msg("اكتب العنوان.");
+          if (!parts.length) return msg("اختر موظفاً واحداً على الأقل.");
+          if (t === "initiative" && (!$("c-problem").value.trim() || !$("c-solution").value.trim())) return msg("اكتب المشكلة والحل.");
+          const p = { ctype: t, title: $("c-title").value.trim(), event_date: $("c-date").value || today(), participants: parts };
+          if (t === "initiative") Object.assign(p, { problem: $("c-problem").value, solution: $("c-solution").value, implemented: $("c-impl").value });
+          if (LEARN_TYPES.includes(t)) Object.assign(p, { hours: $("c-hours").value, days: $("c-days").value });
+          $("c-submit").disabled = true;
+          const { error } = await api.rpc("opd_perf_contrib_submit", { p });
+          $("c-submit").disabled = false;
+          if (error) return err(error);
+          ["c-title", "c-problem", "c-solution", "c-hours", "c-days"].forEach((id) => ($(id).value = ""));
+          ["c-p1", "c-p2", "c-p3"].forEach((id) => ($(id).value = ""));
+          msg("تم رفع الطلب، وينتظر الاعتماد.");
+          await mine();
+          if (admin) await loadAdmin();
+        };
+        async function mine() {
+          const { data: rows, error } = await api.rpc("opd_perf_my_contribs");
+          const t = $("c-mine");
+          t.replaceChildren();
+          if (error) return err(error);
+          if (!rows?.length) return emptyRow(t, "لا توجد طلبات.");
+          const h = node("tr");
+          ["النوع", "العنوان", "التاريخ", "الحالة"].forEach((x) => h.append(node("th", x)));
+          t.append(h);
+          for (const r of rows) {
+            const tr = node("tr");
+            [CTYPE[r.ctype], r.title, r.event_date, STATUS[r.status]].forEach((x) => tr.append(node("td", x)));
+            t.append(tr);
+          }
+        }
+
+        /* ===== لوحة التقييم (المدير) ===== */
+        const curYear = () => {
+          const d = today();
+          return +d.slice(0, 4) + (d.slice(5, 7) === "12" ? 1 : 0);
+        };
+        (function years() {
+          const y = curYear();
+          for (let i = y; i >= 2025; i--) $("a-year").append(new Option("تقييم " + i + " (ديسمبر " + (i - 1) + " – نوفمبر " + i + ")", i));
+        })();
+        $("a-year").onchange = () => loadAdmin();
+        const nameOf = (id) => (data?.staff || []).find((s) => s.id === id)?.name || "—";
+        const clamp = (v) => Math.max(1, Math.min(5, Math.round(v * 100) / 100));
+
+        function excludedMonths(sid) {
+          // شهر فيه إجازة معتمدة 15 يوماً فأكثر لا يُحتسب في الالتزام الوظيفي
+          const perMonth = {};
+          for (const l of data.leaves.filter((x) => x.staff_id === sid)) {
+            for (let d = new Date(l.start + "T12:00:00"); d <= new Date(l.end + "T12:00:00"); d.setDate(d.getDate() + 1)) {
+              const m = d.toISOString().slice(0, 7);
+              perMonth[m] = (perMonth[m] || 0) + 1;
+            }
+          }
+          return new Set(Object.keys(perMonth).filter((m) => perMonth[m] >= 15));
+        }
+
+        function score(s) {
+          const ex = excludedMonths(s.id);
+          const reps = data.reports.filter((r) => r.staff_id === s.id);
+          const contribs = data.contribs.filter((c) => c.status === "approved" && c.participants.includes(s.id) && c.event_date >= data.from && c.event_date <= data.to);
+          let commit = 4, dev = 4, learn = 4, comm = 4, lead = 4;
+          const punct = new Set(), strengths = {}, weaknesses = {};
+          const n = { late: 0, exits: 0, pos: 0, neg: 0 };
+          for (const r of reps) {
+            const month = r.report_date.slice(0, 7), counted = !ex.has(month);
+            const bag = r.kind === "positive" ? strengths : weaknesses;
+            r.items.forEach((it) => (bag[it] = (bag[it] || 0) + 1));
+            if (r.kind === "positive") {
+              n.pos++;
+              if (counted && r.items.includes(PUNCT)) punct.add(month);
+              if (r.items.includes(HELP)) dev += 0.25;
+              if (r.items.includes(LEARN)) learn += 0.25;
+            } else {
+              n.neg++;
+              if (counted) {
+                if (r.items.includes(LATE)) { commit -= 0.05; n.late++; }
+                const e = r.items.filter((x) => EXITS.includes(x)).length;
+                commit -= 0.1 * e;
+                n.exits += e;
+              }
+              if (r.items.some((x) => COMM.includes(x))) comm -= 0.3;
+              if (r.items.some((x) => LEAD.includes(x))) lead -= 0.3;
+            }
+          }
+          commit += 0.2 * punct.size;
+          let hours = 0;
+          for (const c of contribs) {
+            if (DEV_TYPES.includes(c.ctype)) dev += 0.25;
+            if (LEARN_TYPES.includes(c.ctype)) {
+              learn += 0.25;
+              hours += c.hours != null ? +c.hours : c.days != null ? 2 * c.days : 0;
+            }
+          }
+          if (hours > 21) learn += 0.25 * Math.ceil((hours - 21) / 5);
+          const sc = { commit: clamp(commit), dev: clamp(dev), learn: clamp(learn), comm: clamp(comm) };
+          if (s.supervisor) sc.lead = clamp(lead);
+          const vals = Object.values(sc);
+          sc.avg = Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100;
+          return { sc, n, hours, punct: punct.size, strengths, weaknesses, contribs, reps, excluded: [...ex] };
+        }
+
+        async function loadAdmin() {
+          const y = +$("a-year").value;
+          const { data: d, error } = await api.rpc("opd_perf_admin_data", { p_year: y });
+          if (error) return err(error);
+          data = d;
+          $("a-period").textContent = "فترة الاحتساب: " + d.from + " إلى " + d.to + " · ميثاق الأداء يُقبل قبل نهاية فبراير " + y + ".";
+          drawPending();
+          drawScores();
+          $("a-detail").replaceChildren();
+        }
+
+        function drawPending() {
+          const t = $("a-pending");
+          t.replaceChildren();
+          const rows = data.contribs.filter((c) => c.status === "pending");
+          if (!rows.length) return emptyRow(t, "لا توجد طلبات معلقة.");
+          const h = node("tr");
+          ["النوع", "العنوان", "التاريخ", "المشاركون", "التفاصيل", ""].forEach((x) => h.append(node("th", x)));
+          t.append(h);
+          for (const c of rows) {
+            const tr = node("tr");
+            const det = [c.problem && "المشكلة: " + c.problem, c.solution && "الحل: " + c.solution, c.implemented != null && "التطبيق: " + (c.implemented ? "نعم" : "لا"), c.hours != null && "الساعات: " + c.hours, c.days != null && "الأيام: " + c.days, c.submitter_name && "رفعه: " + c.submitter_name].filter(Boolean).join(" · ");
+            [CTYPE[c.ctype], c.title, c.event_date, c.participants.map(nameOf).join("، "), det].forEach((x) => tr.append(node("td", x)));
+            const td = node("td"), box = node("div", undefined, "row-actions");
+            for (const [st, lb] of [["approved", "اعتماد"], ["rejected", "رفض"]]) {
+              const b = node("button", lb, st === "rejected" ? "alt" : "");
+              b.onclick = async () => {
+                const { error } = await api.rpc("opd_perf_contrib_decide", { p_id: c.id, p_status: st });
+                if (error) return err(error);
+                await loadAdmin();
+              };
+              box.append(b);
+            }
+            td.append(box);
+            tr.append(td);
+            t.append(tr);
+          }
+        }
+
+        function cell(v) {
+          const td = node("td", v == null ? "—" : v.toFixed(2), "sc" + (v == null ? "" : v < 3.5 ? " lo" : v > 4 ? " hi" : ""));
+          return td;
+        }
+
+        function drawScores() {
+          const t = $("a-scores");
+          t.replaceChildren();
+          const h = node("tr");
+          ["الموظف", "مشرف", "قبول الميثاق", "الالتزام", "التطوير", "التعلم", "التواصل", "القيادة", "المعدل", "إيجابي / سلبي"].forEach((x) => h.append(node("th", x)));
+          t.append(h);
+          for (const s of data.staff) {
+            const r = score(s);
+            const tr = node("tr", undefined, "pick");
+            const nm = node("td", s.name);
+            nm.style.fontWeight = "600";
+            nm.onclick = () => detail(s, r);
+            tr.append(nm);
+            const sup = node("input");
+            sup.type = "checkbox";
+            sup.checked = !!s.supervisor;
+            sup.style.width = "auto";
+            sup.onchange = async () => {
+              const { error } = await api.rpc("opd_perf_set_supervisor", { p_staff: s.id, p_flag: sup.checked });
+              if (error) return err(error);
+              await loadAdmin();
+            };
+            const tdS = node("td");
+            tdS.append(sup);
+            tr.append(tdS);
+            const ch = node("input");
+            ch.type = "date";
+            ch.dir = "ltr";
+            ch.style.minWidth = "130px";
+            ch.value = data.charter.find((x) => x.staff_id === s.id)?.accepted_on || "";
+            ch.onchange = async () => {
+              const { error } = await api.rpc("opd_perf_charter_set", { p_staff: s.id, p_year: +$("a-year").value, p_on: ch.value || null });
+              if (error) err(error);
+              else msg("تم حفظ تاريخ قبول الميثاق.");
+            };
+            const tdC = node("td");
+            tdC.append(ch);
+            tr.append(tdC);
+            [r.sc.commit, r.sc.dev, r.sc.learn, r.sc.comm, r.sc.lead].forEach((v) => tr.append(cell(v)));
+            tr.append(cell(r.sc.avg));
+            tr.append(node("td", r.n.pos + " / " + r.n.neg));
+            t.append(tr);
+          }
+        }
+
+        function list(title, obj) {
+          const box = node("div");
+          box.append(node("h3", title));
+          const entries = Object.entries(obj).sort((a, b) => b[1] - a[1]);
+          if (!entries.length) box.append(node("p", "لا يوجد.", "empty"));
+          const ul = node("ul");
+          entries.forEach(([k, v]) => ul.append(node("li", k + (v > 1 ? " (" + v + ")" : ""))));
+          box.append(ul);
+          return box;
+        }
+
+        function detail(s, r) {
+          const root = $("a-detail");
+          root.replaceChildren();
+          const card = node("div");
+          card.style.cssText = "border-top:1px solid var(--line-strong);margin-top:16px;padding-top:10px";
+          card.append(node("h3", s.name + " — " + $("a-year").selectedOptions[0].textContent));
+          const facts = ["أشهر الالتزام الإيجابية: " + r.punct, "التأخر: " + r.n.late, "الخروج: " + r.n.exits, "ساعات التدريب: " + r.hours];
+          if (r.excluded.length) facts.push("أشهر مستبعدة (إجازة): " + r.excluded.join("، "));
+          card.append(node("p", facts.join(" · "), "muted"));
+          const pdf = node("button", "تنزيل تقرير الموظف PDF", "alt");
+          pdf.onclick = () => employeePdf(s, r);
+          card.append(pdf);
+          card.append(list("نقاط القوة", r.strengths), list("نقاط الضعف", r.weaknesses));
+          card.append(node("h3", "التقارير الداخلية"));
+          const tw = node("div", undefined, "tw"), t = node("table", undefined, "recs");
+          const h = node("tr");
+          ["التاريخ", "النوع", "البنود", "ملاحظات", "الكاتب", ""].forEach((x) => h.append(node("th", x)));
+          t.append(h);
+          for (const x of r.reps) {
+            const tr = node("tr");
+            tr.append(node("td", x.report_date));
+            const k = node("td");
+            k.append(node("span", x.kind === "positive" ? "إيجابي" : "سلبي", "pill " + (x.kind === "positive" ? "pos" : "neg")));
+            tr.append(k);
+            [x.items.join("، "), x.notes || "", x.author_name || ""].forEach((v) => tr.append(node("td", v)));
+            const del = node("button", "حذف", "alt");
+            del.style.cssText = "padding:3px 9px;font-size:12.5px";
+            del.onclick = async () => {
+              if (!confirm("حذف هذا التقرير نهائياً؟")) return;
+              const { error } = await api.rpc("opd_perf_report_delete", { p_id: x.id });
+              if (error) return err(error);
+              await loadAdmin();
+            };
+            const td = node("td");
+            td.append(del);
+            tr.append(td);
+            t.append(tr);
+          }
+          if (!r.reps.length) emptyRow(t, "لا توجد تقارير.");
+          tw.append(t);
+          card.append(tw);
+          card.append(node("h3", "المبادرات والتعلم المعتمدة"));
+          const ul = node("ul");
+          r.contribs.forEach((c) => ul.append(node("li", CTYPE[c.ctype] + ": " + c.title + " (" + c.event_date + ")")));
+          if (!r.contribs.length) card.append(node("p", "لا يوجد.", "empty"));
+          card.append(ul);
+          root.append(card);
+          card.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        function scoreRows(s, r) {
+          const rows = [["الالتزام الوظيفي", r.sc.commit], ["التطوير", r.sc.dev], ["التعلم المستمر", r.sc.learn], ["التواصل", r.sc.comm]];
+          if (s.supervisor) rows.push(["القيادة", r.sc.lead]);
+          rows.push(["المعدل", r.sc.avg]);
+          return rows;
+        }
+
+        function employeePdf(s, r) {
+          const period = data.from + " إلى " + data.to;
+          const sw = (o) => Object.entries(o).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, v]);
+          window.OPDExport.downloadPDF("تقييم الأداء — " + s.name, [
+            { title: "الجدارات (الأصل 4، الحد الأعلى 5)", headers: ["الجدارة", "الدرجة"], rows: scoreRows(s, r) },
+            { title: "نقاط القوة", headers: ["البند", "عدد التقارير"], rows: sw(r.strengths) },
+            { title: "نقاط الضعف", headers: ["البند", "عدد التقارير"], rows: sw(r.weaknesses) },
+            { title: "المبادرات والتعلم", headers: ["النوع", "العنوان", "التاريخ"], rows: r.contribs.map((c) => [CTYPE[c.ctype], c.title, c.event_date]) },
+          ].filter((x) => x.rows.length), period);
+        }
+
+        $("a-excel").onclick = () => {
+          if (!data) return;
+          const rows = data.staff.map((s) => {
+            const r = score(s);
+            return [s.name, s.supervisor ? "نعم" : "لا", r.sc.commit, r.sc.dev, r.sc.learn, r.sc.comm, r.sc.lead ?? "", r.sc.avg, r.n.pos, r.n.neg];
+          });
+          window.OPDExport.downloadExcel("تقييم الأداء " + $("a-year").value, [
+            { title: "الجدارات", headers: ["الموظف", "مشرف", "الالتزام الوظيفي", "التطوير", "التعلم المستمر", "التواصل", "القيادة", "المعدل", "تقارير إيجابية", "تقارير سلبية"], rows },
+          ], data.from + " إلى " + data.to);
+        };
+
+        api.auth.onAuthStateChange((ev) => {
+          if (ev === "SIGNED_OUT") load();
+        });
+        load();
+      })();
+    </script>
+  </body>
+</html>
