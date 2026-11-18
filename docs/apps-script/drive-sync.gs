@@ -251,20 +251,34 @@ function buildSchedule_() {
   const ei = H.indexOf('Employee No');
   if (ei < 0) throw new Error('عمود Employee No غير موجود في Staff Names — شغّل fillEmployeeNumbers() مرة واحدة');
   const fam = c => String(c || '').toLowerCase().split(/[\s/]+/)[0];
-  const exact = {}, family = {}, byName = {};
+  const exact = {}, family = {}, byName = {}, rows = [];
   const put = (obj, k, v) => { if (!(k in obj)) obj[k] = v; else if (obj[k] && obj[k].full !== v.full) obj[k] = null; };
   for (const r of N.slice(nh + 1)) {
     if (ni >= 0 && !/^\d+$/.test(r[ni] || '')) continue;
     const sn = (r[si] || '').toLowerCase(), full = r[fi] || '';
     if (!sn || !full) continue;
     const v = { full, emp: emp(r[ei]) };
+    rows.push({ fam: fam(r[ci]), full, v });
     exact[sn + '|' + (r[ci] || '').toLowerCase()] = v;
     put(family, sn + '|' + fam(r[ci]), v);
     put(byName, sn, v);
   }
+  // احتياط: إذا اسم الجدول ما يطابق Schedule Name، نطابق كلماته مع الاسم الكامل داخل نفس التخصص (لازم نتيجة وحدة)
+  const words = t => String(t || '').toLowerCase().replace(/^dr\.?\s*/, '').split(/[^a-z]+/).filter(w => w.length > 1)
+    .map(w => /^m[uo]ham+[ae]d$/.test(w) ? 'mohammed' : w);
+  const byTokens = (name, clinic) => {
+    const w = words(name);
+    if (!w.length) return null;
+    const hits = rows.filter(x => x.fam === fam(clinic)).filter(x => {
+      const f = words(x.full);
+      return f[0] === w[0] && w.every(t => f.includes(t));
+    });
+    const uniq = hits.filter((x, i) => hits.findIndex(y => y.full === x.full) === i);
+    return uniq.length === 1 ? uniq[0].v : null;
+  };
   const doctorOf = (name, clinic) => {
     const k = name.toLowerCase();
-    return exact[k + '|' + clinic.toLowerCase()] || family[k + '|' + fam(clinic)] || byName[k] || null;
+    return exact[k + '|' + clinic.toLowerCase()] || family[k + '|' + fam(clinic)] || byName[k] || byTokens(name, clinic) || null;
   };
 
   // الإجازات المقفلة بالنظام فقط
