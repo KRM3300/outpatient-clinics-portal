@@ -13,6 +13,15 @@ const json = (o: unknown, status = 200) =>
   new Response(JSON.stringify(o), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const ACTIONS = ["list", "update", "msg", "search", "stats"];
 const PUBLIC_KEY = "sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs";
+// مفتاح الخدمة يحقنه Supabase تلقائياً (القديم أو الجديد) — لا يُكتب يدوياً
+function serviceKey(): string {
+  try {
+    const keys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
+    const k = keys.default ?? Object.values(keys)[0];
+    if (k) return String(k);
+  } catch { /* تجاهل */ }
+  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -31,7 +40,7 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { body = {}; }
   if (!ACTIONS.includes(String(body.action))) return json({ ok: false, error: "unknown_action" }, 400);
 
-  const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+  const admin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey(), { auth: { persistSession: false } });
   const link = await admin.from("opd_eservices_link").select("script_url, secret").eq("id", 1).maybeSingle();
   const url = link.data?.script_url, secret = link.data?.secret;
   if (!url || !secret) return json({ ok: false, error: "الربط مع سكربت الشيت غير مكتمل" }, 500);
