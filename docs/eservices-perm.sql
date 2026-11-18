@@ -38,3 +38,11 @@ begin
 end $fn$;
 revoke all on function public.opd_eservices_register(text) from public, anon, authenticated;
 grant execute on function public.opd_eservices_register(text) to anon;
+
+-- اسم صاحب الحساب (يُكتب في عمود «اسم الموظف» بالشيت بدل أن يختاره الموظف)
+create or replace function public.opd_my_full_name()
+returns text language sql stable security definer set search_path = '' as $fn$
+  select nullif(btrim(m.full_name), '') from public.opd_appt_members m where m.user_id = auth.uid() limit 1;
+$fn$;
+revoke all on function public.opd_my_full_name() from public, anon;
+grant execute on function public.opd_my_full_name() to authenticated;

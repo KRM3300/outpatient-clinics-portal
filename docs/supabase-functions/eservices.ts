@@ -45,8 +45,8 @@ Deno.serve(async (req) => {
   const who = await sb.auth.getUser();
   const uid = who.data.user?.id;
   if (!uid) return json({ ok: false, error: "not_signed_in" }, 401);
-  const mem = await admin.from("opd_appt_members").select("full_name").eq("user_id", uid).maybeSingle();
-  const actor = String(mem.data?.full_name ?? "").trim() || String(who.data.user?.email ?? "");
+  const mem = await sb.rpc("opd_my_full_name");
+  const actor = String(mem.data ?? "").trim() || String(who.data.user?.email ?? "");
   const link = await admin.from("opd_eservices_link").select("script_url, secret").eq("id", 1).maybeSingle();
   const url = link.data?.script_url, secret = link.data?.secret;
   if (!url || !secret) return json({ ok: false, error: "الربط مع سكربت الشيت غير مكتمل" }, 500);
