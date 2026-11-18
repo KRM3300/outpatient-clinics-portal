@@ -220,7 +220,7 @@ function emailError_(source, filename, details) {
 }
 
 /* ===== جدول أطباء العيادات (بديل مهمة الخميس) =====
-   يقرأ Weekly OPD Schedule: الصف 2 تواريخ الأسبوع، الأعمدة F..T = 5 أيام × 3 فترات، A رقم الغرفة (مدمج أحياناً)، B العيادة.
+   يقرأ Weekly OPD Schedule: الصف 2 تواريخ الأسبوع، و15 عموداً تبدأ من عمود Sunday = 5 أيام × 3 فترات، A رقم الغرفة (مدمج أحياناً)، B العيادة.
    الإجازة من تبويب Doctors' Leaves for Clinic Closure فقط (الصفوف اللي «هل تم إقفال الجدول بالنظام» = تم)،
    مطابقة بالرقم الوظيفي: Staff Names (Schedule Name → Full Name + Employee No). لون الخلية وملاحظتها لا يُعتمد عليهما. */
 function buildSchedule_() {
@@ -235,8 +235,11 @@ function buildSchedule_() {
   const clean = v => String(v == null ? '' : v).trim();
   const emp = v => clean(v).replace(/\D/g, '').replace(/^0+/, '');
   const V = byGid(DRIVE_SYNC.SCHEDULE_GID).getDataRange().getDisplayValues();
-  if (clean((V[0] || [])[5]) !== 'Sunday' || clean((V[0] || [])[17]) !== 'Thursday')
-    throw new Error('أعمدة الجدول الأسبوعي تغيّرت: أيام الأسبوع ليست في الأعمدة F..T');
+  // أعمدة الأيام تُحدد من صف العناوين (الأحد = بداية 15 عموداً: 5 أيام × 3 فترات)
+  const head = (V[0] || []).map(clean);
+  const sun = head.findIndex(x => /^sunday$/i.test(x)), thu = head.findIndex(x => /^thursday$/i.test(x));
+  if (sun < 0 || thu !== sun + 12)
+    throw new Error('أعمدة الجدول الأسبوعي تغيّرت: لم أجد Sunday..Thursday في الصف الأول بالترتيب المتوقع');
   const WEEK = (V[1] || []).map(clean).filter(x => /^\d{4}\/\d{2}\/\d{2}$/.test(x)).map(x => x.replace(/\//g, '-'));
   if (WEEK.length !== 5) throw new Error('تواريخ الأسبوع في الصف 2 من الجدول الأسبوعي غير مكتملة');
 
@@ -286,16 +289,16 @@ function buildSchedule_() {
 
   const SCH_DATA = [], noEmp = {};
   let room = '';
-  for (let r = 4; r < V.length; r++) {
+  for (let r = 2; r < V.length; r++) {
     const row = V[r].map(clean);
     if (/^Number of weekly/i.test(row[0] || '')) break;
     if (row[0]) room = row[0];
     const clinic = row[1];
     if (!clinic || !/^\d+$/.test(room)) continue;
-    for (let c = 5; c <= 19; c++) {
+    for (let c = sun; c < sun + 15; c++) {
       const name = row[c];
       if (!name || /^available$/i.test(name)) continue;
-      const day = Math.floor((c - 5) / 3), period = (c - 5) % 3, date = WEEK[day];
+      const day = Math.floor((c - sun) / 3), period = (c - sun) % 3, date = WEEK[day];
       const x = { name, clinic, room, day, period, date, leave: false };
       const d = doctorOf(name, clinic);
       if (d) x.fullName = d.full;
