@@ -677,6 +677,7 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
+    <script src="./assets/auth-otp.js?v=1"></script>
     <script>
       (function () {
         const q = document.getElementById("search"),
@@ -1059,8 +1060,21 @@
             email,
             options: { shouldCreateUser: true, emailRedirectTo: location.origin + location.pathname },
           });
-          msg.textContent = error ? error.message : "تم إرسال الرمز إلى بريدك";
-          if (!error) { byId("auth-verify-box").classList.remove("hidden"); byId("auth-code-hint").classList.remove("hidden"); }
+          msg.textContent = error ? error.message : "تم إرسال الرمز إلى بريدك. اكتبه في خانة رمز التحقق واضغط «تحقق ودخول».";
+          if (!error) {
+            byId("auth-verify-box").classList.remove("hidden");
+            byId("auth-code-hint").classList.remove("hidden");
+            byId("auth-code").focus();
+            /* منع طلب رمز جديد قبل دقيقة (الطلب الثاني يلغي الأول ويرفضه النظام) */
+            const b = byId("auth-send"), label = b.textContent;
+            let left = 60;
+            b.disabled = true;
+            const tick = setInterval(() => {
+              left--;
+              b.textContent = left > 0 ? "رمز جديد بعد " + left + " ث" : label;
+              if (left <= 0) { clearInterval(tick); b.disabled = false; }
+            }, 1000);
+          }
         };
         byId("auth-verify").onclick = async () => {
           const { error } = await api.auth.verifyOtp({
