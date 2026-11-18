@@ -205,7 +205,7 @@
           drawTabs();
           await refresh(true);
           clearInterval(timer);
-          timer = setInterval(() => { if (document.visibilityState === "visible" && !dirty && !busy) refresh(false); }, 60000);
+          timer = setInterval(() => { if (document.visibilityState === "visible" && !dirty && !busy) refresh(false); }, 120000);
           document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !dirty && !busy && data && hoursSince(data.at) > 1 / 60) refresh(false); });
         }
 
