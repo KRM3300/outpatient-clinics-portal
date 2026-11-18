@@ -489,6 +489,9 @@
       </nav>
 
       <section class="services" id="services" aria-label="الخدمات">
+<article class="tile hidden" id="external-services-tile" data-group="active" data-search="الأنظمة والخدمات الإلكترونية وصول تجمع القصيم الأنظمة الصحية">
+<span class="tile-ico"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+<div class="tile-top"><h3>الأنظمة والخدمات الإلكترونية</h3><span class="state">معتمد</span></div><div class="en">External Health Systems</div><p class="desc">دليل خدمات وصول والأنظمة الصحية العامة وتجمع القصيم الصحي.</p><a class="go" href="./external-services/">فتح الخدمة</a></article>
         <article class="tile" data-group="active" data-search="دليل الموظف الذكي التعليمات التعاميم جدول الأطباء الموظفين">
           <span class="tile-ico"
             ><svg class="i" viewBox="0 0 24 24" aria-hidden="true">
@@ -1456,6 +1459,7 @@
             currentUser = user;
             isAdmin = false;
             accountApproved = false;
+            byId("external-services-tile").classList.add("hidden");
             viewWrap.classList.add("hidden");
             byId("quick-logout").classList.toggle("hidden", !user);
             byId("who-email").classList.toggle("hidden", !user);
@@ -1484,6 +1488,7 @@
               return;
             }
             accountApproved = data.status === "approved";
+            byId("external-services-tile").classList.toggle("hidden", !accountApproved);
             isAdmin = data.role === "admin" && accountApproved;
             byId("auth-user-status").textContent =
               user.email + " — " + (data.status === "approved" ? "معتمد" : "بانتظار الاعتماد / " + data.status);
