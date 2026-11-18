@@ -224,6 +224,7 @@
           ["القيادة (للمشرفين ورؤساء الأقسام)", ["مرن وقادر على تنفيذ أعمال هامة في ظروف فيها مخاطرة وعدم يقين", "يدعم ويشجع فريقه على تحقيق أهدافه حتى في الظروف الصعبة", "يفكر بمنطقية وإبداع دون التأثر بتحيزاته الشخصية", "يفوض الصلاحيات ويتابع النتائج", "يوفر ويدعم فرص تطوير المرؤوسين"]],
         ];
         const COMM = GROUPS[2][1], LEAD = GROUPS[6][1];
+        const OTHER_KEY = ["حس المسؤولية", "التعاون", "التواصل", "تحقق النتائج", "الالتزام الوظيفي", "التطوير والتعلم", "القيادة"];
         const CTYPE = { initiative: "مبادرة تحسين", procedure: "كتابة إجراء", explanation: "شرح مبسط", lecture_given: "محاضرة قدّمها", lecture_attended: "محاضرة حضرها", course: "دورة تدريبية" };
         const DEV_TYPES = ["initiative", "procedure", "explanation", "lecture_given"], LEARN_TYPES = ["lecture_attended", "course"];
         const STATUS = { pending: "بانتظار الاعتماد", approved: "معتمد", rejected: "غير معتمد" };
@@ -283,7 +284,7 @@
         function drawItems() {
           const root = $("r-items");
           root.replaceChildren();
-          for (const [g, items] of GROUPS) {
+          GROUPS.forEach(([g, items], gi) => {
             const fs = node("fieldset");
             fs.append(node("legend", g));
             for (const it of items) {
@@ -294,20 +295,31 @@
               l.append(c, node("span", it));
               fs.append(l);
             }
+            // «أخرى»: ملاحظة مكتوبة تحت نفس الجدارة
+            const other = node("input");
+            other.className = "other";
+            other.dataset.key = OTHER_KEY[gi];
+            other.maxLength = 300;
+            other.placeholder = "أخرى (اكتب الملاحظة تحت هذه الجدارة)";
+            other.style.marginTop = "4px";
+            fs.append(other);
             root.append(fs);
-          }
+          });
         }
         $("r-submit").onclick = async () => {
           const kind = document.querySelector('input[name="r-kind"]:checked')?.value;
           const items = [...$("r-items").querySelectorAll("input:checked")].map((c) => c.value);
+          const others = [...$("r-items").querySelectorAll("input.other")].filter((i) => i.value.trim());
+          others.forEach((i) => items.push("أخرى: " + i.dataset.key));
+          const notes = [...others.map((i) => "[" + i.dataset.key + "] " + i.value.trim()), $("r-notes").value.trim()].filter(Boolean).join(" | ");
           if (!$("r-staff").value) return msg("اختر الموظف.");
           if (!kind) return msg("اختر نوع التقرير: إيجابي أو سلبي.");
-          if (!items.length) return msg("اختر بنداً واحداً على الأقل.");
+          if (!items.length) return msg("اختر بنداً واحداً على الأقل، أو اكتب ملاحظة في «أخرى».");
           $("r-submit").disabled = true;
-          const { error } = await api.rpc("opd_perf_report_submit", { p_staff: $("r-staff").value, p_kind: kind, p_date: $("r-date").value, p_items: items, p_notes: $("r-notes").value });
+          const { error } = await api.rpc("opd_perf_report_submit", { p_staff: $("r-staff").value, p_kind: kind, p_date: $("r-date").value, p_items: items, p_notes: notes });
           $("r-submit").disabled = false;
           if (error) return err(error);
-          $("r-items").querySelectorAll("input").forEach((c) => (c.checked = false));
+          $("r-items").querySelectorAll("input").forEach((c) => (c.type === "checkbox" ? (c.checked = false) : (c.value = "")));
           document.querySelectorAll('input[name="r-kind"]').forEach((c) => (c.checked = false));
           $("r-notes").value = "";
           $("r-staff").value = "";
