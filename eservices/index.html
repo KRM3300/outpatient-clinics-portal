@@ -541,8 +541,18 @@
         function drawMessages(v) {
           v.append(node("h2", "سجل الرسائل"));
           v.append(node("p", "اضغط «إرسال 📲» يفتح واتساب والرسالة جاهزة، وبعد الإرسال اختر حالة الرسالة واحفظ. يُحسب SLA من وقت دخول الطلب للسجل.", "muted"));
-          const rows = data.messages.slice().sort((a, b) => (a.status === "تم") - (b.status === "تم") || String(a.copied).localeCompare(String(b.copied)));
-          if (!rows.length) return v.append(node("p", "لا توجد رسائل.", "empty"));
+          /* «غير المرسلة فقط» مفعّلة تلقائياً: الرسالة تختفي من القائمة لحظة حفظها «تم» (الشيت نفسه يخفيها بعد 24 ساعة) */
+          const onlyOpen = store.get("es_msg_open") !== "0";
+          const bar = node("div", null, "bar");
+          const lb = node("label"), cb = node("input");
+          cb.type = "checkbox"; cb.checked = onlyOpen;
+          cb.onchange = () => { store.set("es_msg_open", cb.checked ? "1" : "0"); draw(); };
+          const sentCount = data.messages.filter((m) => m.status === "تم").length;
+          lb.append(cb, document.createTextNode("غير المرسلة فقط" + (onlyOpen && sentCount ? " (مخفي " + sentCount + " مرسلة)" : "")));
+          bar.append(lb);
+          v.append(bar);
+          const rows = data.messages.filter((m) => !onlyOpen || m.status !== "تم").sort((a, b) => (a.status === "تم") - (b.status === "تم") || String(a.copied).localeCompare(String(b.copied)));
+          if (!rows.length) return v.append(node("p", onlyOpen ? "كل الرسائل مرسلة." : "لا توجد رسائل.", "empty"));
           rows.forEach((m) => {
             const h = hoursSince(m.copied);
             const it = node("div", null, "item " + (m.status === "تم" ? "done" : m.status ? "fail" : h > RED_H ? "age-red" : h >= GREEN_H ? "age-mid" : "age-ok"));
