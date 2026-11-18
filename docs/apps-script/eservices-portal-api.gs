@@ -24,7 +24,11 @@ function doPost(e) {
   const secret = PropertiesService.getScriptProperties().getProperty('PORTAL_SECRET');
   if (!secret || String(req.secret || '') !== secret) return out({ ok: false, error: 'unauthorized' });
   try {
-    if (req.action === 'list') return out({ ok: true, data: portalList_() });
+    if (req.action === 'list') {
+      const data = portalList_();
+      data.me = req.actor ? portalActor_(req.actor) : '';
+      return out({ ok: true, data: data });
+    }
     if (req.action === 'update') return out({ ok: true, data: portalUpdate_(req) });
     if (req.action === 'msg') return out({ ok: true, data: portalMsg_(req) });
     if (req.action === 'search') return out({ ok: true, data: portalSearch_(req) });
@@ -67,7 +71,7 @@ function portalList_() {
   const hidden = getHiddenMap_(ss);
   const now = Date.now();
   const delayMs = OPD.HIDE_DELAY_HOURS * 36e5;
-  const res = { at: new Date().toISOString(), employees: OPD.EMPLOYEES, statuses: OPD.STATUS_LIST,
+  const res = { at: new Date().toISOString(), statuses: OPD.STATUS_LIST,
                 msgStatuses: OPD.MESSAGE_STATUS_LIST, services: {}, messages: [] };
 
   PORTAL_API.SERVICE_SHEETS.forEach(name => {
@@ -150,8 +154,24 @@ function portalClean_(v, max) {
   return String(v === null || v === undefined ? '' : v).replace(/\s+/g, ' ').trim().slice(0, max || 500);
 }
 
-function portalCheckEmployee_(name) {
-  if (name && OPD.EMPLOYEES.indexOf(name) === -1) throw new Error('اسم الموظف غير موجود في القائمة');
+/* اسم الموظف = صاحب الحساب في المنصة (يرسله Supabase من الخادم، لا يختاره الموظف).
+   يُطابَق مع قائمة أسماء الشيت لتبقى الصيغة نفسها في الإحصائية؛ وإن لم يطابق يُكتب كما هو. */
+function portalActor_(actor) {
+  const name = portalClean_(actor, 80);
+  if (!name) throw new Error('تعذر تحديد اسم الموظف من الحساب');
+  const key = compact_(name);
+  const exact = OPD.EMPLOYEES.filter(e => compact_(e) === key);
+  if (exact.length === 1) return exact[0];
+  const toks = normalize_(name).split(' ').filter(Boolean);
+  if (toks.length >= 2) {
+    const first = toks[0], last = toks[toks.length - 1];
+    const hit = OPD.EMPLOYEES.filter(e => {
+      const t = normalize_(e).split(' ').filter(Boolean);
+      return t[0] === first && t[t.length - 1] === last;
+    });
+    if (hit.length === 1) return hit[0];
+  }
+  return name;
 }
 
 /* تحديث طلب في تبويب الخدمة: الحالة + اسم الموظف + ملاحظات موظف الاستقبال */
@@ -160,8 +180,7 @@ function portalUpdate_(req) {
   if (PORTAL_API.SERVICE_SHEETS.indexOf(name) === -1) throw new Error('تبويب غير معروف');
   const status = portalClean_(req.status, 20);
   if (status && OPD.STATUS_LIST.indexOf(status) === -1) throw new Error('حالة غير صحيحة');
-  const employee = portalClean_(req.employee, 80);
-  portalCheckEmployee_(employee);
+  const employee = portalActor_(req.actor);
   const note = portalClean_(req.staffNote, 500);
   const row = Number(req.row);
   if (!(row >= 2)) throw new Error('رقم الصف غير صحيح');
@@ -196,8 +215,7 @@ function portalUpdate_(req) {
 function portalMsg_(req) {
   const status = portalClean_(req.status, 80);
   if (status && OPD.MESSAGE_STATUS_LIST.indexOf(status) === -1) throw new Error('حالة غير صحيحة');
-  const employee = portalClean_(req.employee, 80);
-  portalCheckEmployee_(employee);
+  const employee = portalActor_(req.actor);
   const row = Number(req.row);
   if (!(row >= 2)) throw new Error('رقم الصف غير صحيح');
 

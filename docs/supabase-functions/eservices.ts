@@ -41,6 +41,12 @@ Deno.serve(async (req) => {
   if (!ACTIONS.includes(String(body.action))) return json({ ok: false, error: "unknown_action" }, 400);
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey(), { auth: { persistSession: false } });
+  // اسم الموظف من حسابه المعتمد في المنصة (لا يُقبل اسم من المتصفح)
+  const who = await sb.auth.getUser();
+  const uid = who.data.user?.id;
+  if (!uid) return json({ ok: false, error: "not_signed_in" }, 401);
+  const mem = await admin.from("opd_appt_members").select("full_name").eq("user_id", uid).maybeSingle();
+  const actor = String(mem.data?.full_name ?? "").trim() || String(who.data.user?.email ?? "");
   const link = await admin.from("opd_eservices_link").select("script_url, secret").eq("id", 1).maybeSingle();
   const url = link.data?.script_url, secret = link.data?.secret;
   if (!url || !secret) return json({ ok: false, error: "الربط مع سكربت الشيت غير مكتمل" }, 500);
@@ -49,7 +55,7 @@ Deno.serve(async (req) => {
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ ...body, secret }),
+      body: JSON.stringify({ ...body, actor, employee: undefined, secret }),
       redirect: "follow",
       signal: AbortSignal.timeout(55000),
     });

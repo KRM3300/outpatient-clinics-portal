@@ -86,7 +86,7 @@
           <div class="toolbar">
             <strong id="identity"></strong>
             <div class="bar" style="margin: 0">
-              <label>اسمك <select id="me"></select></label>
+              <span id="me" class="muted"></span>
               <button id="refresh" class="alt" type="button">تحديث</button>
               <span id="updated" class="muted"></span>
               <button id="logout" class="alt" type="button">تسجيل الخروج</button>
@@ -192,7 +192,6 @@
           location.reload();
         };
         $("refresh").onclick = () => refresh(true);
-        $("me").onchange = () => store.set("es_me", $("me").value);
 
         async function start() {
           const { data: { user: u } } = await api.auth.getUser();
@@ -215,9 +214,7 @@
           if (loud) msg("جاري التحميل…");
           try {
             data = await call({ action: "list" });
-            const me = $("me"), keep = me.value || store.get("es_me");
-            me.replaceChildren(new Option("اختر اسمك", ""), ...data.employees.map((n) => new Option(n, n)));
-            me.value = data.employees.includes(keep) ? keep : "";
+            $("me").textContent = data.me ? "تُسجَّل الإجراءات باسم: " + data.me : "";
             $("updated").textContent = "آخر تحديث " + fmt(new Date().toISOString()).split(", ")[1];
             msg("");
             drawTabs();
@@ -391,12 +388,10 @@
           const sv = node("button", "حفظ"); sv.type = "button";
           [st, nt].forEach((x) => (x.oninput = () => (dirty = true)));
           sv.onclick = async () => {
-            const me = $("me").value;
-            if (!me) return msg("اختر اسمك أولاً من أعلى الصفحة.");
             if (MSG_SOURCES.includes(sheet) && st.value === "لم يتم" && !nt.value.trim()) return msg("اكتب ملاحظة للمريض: «لم يتم» مع ملاحظة ينتقل لسجل الرسائل.");
             sv.disabled = true; msg("جاري الحفظ…");
             try {
-              await call({ action: "update", sheet, row: r.row, raw: r.raw, status: st.value, employee: me, staffNote: nt.value });
+              await call({ action: "update", sheet, row: r.row, raw: r.raw, status: st.value, staffNote: nt.value });
               dirty = false;
               const toMsg = MSG_SOURCES.includes(sheet) && nt.value.trim() && (st.value === "لم يتم" || (sheet === "الاستعلام عن موعد" && st.value === "تم"));
               msg(toMsg ? "تم الحفظ، وانتقل الطلب لسجل الرسائل." : "تم الحفظ.");
@@ -436,11 +431,9 @@
             st.oninput = () => (dirty = true);
             const sv = node("button", "حفظ"); sv.type = "button";
             sv.onclick = async () => {
-              const me = $("me").value;
-              if (!me) return msg("اختر اسمك أولاً من أعلى الصفحة.");
               sv.disabled = true; msg("جاري الحفظ…");
               try {
-                await call({ action: "msg", row: m.row, key: m.key, status: st.value, employee: me });
+                await call({ action: "msg", row: m.row, key: m.key, status: st.value });
                 dirty = false; msg("تم الحفظ.");
                 await refresh(false); draw();
               } catch (e) { msg(e.message); sv.disabled = false; }
