@@ -428,7 +428,7 @@
             const act = node("div", null, "act");
             act.style.gridTemplateColumns = "auto 260px auto";
             let send;
-            if (m.wa) { send = node("a", "إرسال 📲", "wa"); send.href = m.wa; send.target = "_blank"; send.rel = "noopener"; }
+            if (m.phone && m.note) { send = node("a", "إرسال 📲", "wa"); send.href = "https://wa.me/" + m.phone + "?text=" + encodeURIComponent(waText(m.service, m.clinic, m.note)); send.target = "_blank"; send.rel = "noopener"; }
             else send = node("span", m.badPhone ? "رقم الجوال غير صحيح" : "لا توجد ملاحظة", "badge danger");
             const st = node("select");
             st.append(new Option("حالة الرسالة", ""), ...data.msgStatuses.map((s) => new Option(s, s)));

@@ -21,6 +21,7 @@ create table if not exists public.opd_eservices_link (
 );
 alter table public.opd_eservices_link enable row level security;
 revoke all on table public.opd_eservices_link from public, anon, authenticated;
+grant select on table public.opd_eservices_link to service_role;
 
 -- السكربت يسجّل مفتاحه مرة واحدة فقط (setupPortalApi)؛ أي محاولة بعدها تُرفض
 create or replace function public.opd_eservices_register(p_secret text)

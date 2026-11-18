@@ -36,6 +36,13 @@ function doPost(e) {
   }
 }
 
+function portalZip_(text) {
+  return Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(text, 'application/json')).getBytes());
+}
+function portalUnzip_(b64) {
+  return Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(b64), 'application/x-gzip')).getDataAsString('UTF-8');
+}
+
 function portalVal_(v) {
   if (v instanceof Date) return isNaN(v.getTime()) ? '' : v.toISOString();
   return v === null || v === undefined ? '' : v;
@@ -54,7 +61,7 @@ function portalTail_(sh) {
 function portalList_() {
   const cache = CacheService.getScriptCache();
   const hit = cache.get(PORTAL_API.CACHE_LIST);
-  if (hit) return JSON.parse(hit);
+  if (hit) return JSON.parse(portalUnzip_(hit));
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const hidden = getHiddenMap_(ss);
@@ -68,6 +75,7 @@ function portalList_() {
     const rows = [];
     if (sh) {
       const t = portalTail_(sh);
+      const hid = hidden ? (hidden[name] || []) : null;
       const c = n => findColTrim_(t.headers, n);
       const col = {
         ts: c('طابع زمني'), service: c('نوع الخدمة'), noShow: c('سبب عدم الحضور'), purpose: c('الغرض من التعديل'),
@@ -80,7 +88,7 @@ function portalList_() {
       t.data.forEach((r, i) => {
         const rowNo = t.start + i;
         if (!col.ts || !hasValue_(r[col.ts - 1])) return;
-        if (hidden ? isHiddenFast_(hidden, sh, rowNo) : (col.changed && isExpired_(r[col.changed - 1], now, delayMs))) return;
+        if (hid ? !!hid[rowNo - 1] : (col.changed && isExpired_(r[col.changed - 1], now, delayMs))) return;
         const g = k => (col[k] ? portalVal_(r[col[k] - 1]) : '');
         rows.push({
           row: rowNo, raw: g('raw'), ts: g('ts'), service: g('service'),
@@ -97,6 +105,7 @@ function portalList_() {
   const msg = ss.getSheetByName(OPD.SHEET_MESSAGES);
   if (msg) {
     const t = portalTail_(msg);
+    const hid = hidden ? (hidden[OPD.SHEET_MESSAGES] || []) : null;
     const c = n => findColTrim_(t.headers, n);
     const col = {
       copied: c('تاريخ النسخ إلى سجل الرسائل'), ts: c('طابع زمني'), name: c('الإسم رباعي'), mobile: c('رقم الجوال'),
@@ -106,10 +115,10 @@ function portalList_() {
     t.data.forEach((r, i) => {
       const rowNo = t.start + i;
       if (!col.copied || !hasValue_(r[col.copied - 1])) return;
-      if (hidden ? isHiddenFast_(hidden, msg, rowNo) : false) return;
+      if (hid && hid[rowNo - 1]) return;
       const g = k => (col[k] ? portalVal_(r[col[k] - 1]) : '');
       const status = String(g('status')).trim();
-      if (!hidden && status === 'تم' && isExpired_(r[col.sentAt - 1], now, delayMs)) return;
+      if (!hid && status === 'تم' && col.sentAt && isExpired_(r[col.sentAt - 1], now, delayMs)) return;
       const key = String(g('key'));
       const phone = normalizeSaMobile_(g('mobile'));
       const note = String(g('note')).trim();
@@ -117,14 +126,13 @@ function portalList_() {
         row: rowNo, key: key, copied: g('copied'), ts: g('ts'), name: g('name'), mobile: g('mobile'),
         clinic: g('clinic'), note: note, status: status, employee: g('employee'), sentAt: g('sentAt'), sla: g('sla'),
         service: key.split('#')[0],
-        wa: note && phone ? 'https://wa.me/' + phone + '?text=' + encodeURIComponent(buildWaMessage_(key.split('#')[0], g('clinic'), note)) : '',
-        badPhone: !!note && !phone
+        phone: phone, badPhone: !!note && !phone
       });
     });
   }
 
-  const json = JSON.stringify(res);
-  if (json.length < 95000) cache.put(PORTAL_API.CACHE_LIST, json, PORTAL_API.CACHE_SEC);
+  const packed = portalZip_(JSON.stringify(res));
+  if (packed.length < 95000) cache.put(PORTAL_API.CACHE_LIST, packed, PORTAL_API.CACHE_SEC);
   return res;
 }
 
@@ -241,6 +249,13 @@ function portalStats_(req) {
   const hit = cache.get(key);
   if (hit) return JSON.parse(hit);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  // تسريع لهذا التنفيذ فقط: نفس منطق isHiddenFast_ لكن بدون استدعاء getName() لكل صف
+  const names = new Map();
+  isHiddenFast_ = function (map, sheet, row) {
+    let n = names.get(sheet);
+    if (n === undefined) { n = sheet.getName(); names.set(sheet, n); }
+    return map && map[n] ? !!map[n][row - 1] : false;
+  };
   const d = collectDashboardData_(ss, from, to);
   const avg = d.closeHours.length ? Math.round(d.closeHours.reduce((a, b) => a + b, 0) / d.closeHours.length * 10) / 10 : null;
   const notes = Object.keys(d.notes).map(k => [k, d.notes[k]]).sort((a, b) => b[1] - a[1]).slice(0, 30);
