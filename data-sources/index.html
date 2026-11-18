@@ -71,6 +71,7 @@ footer{padding:25px 18px;text-align:center;border-top:1px solid #dce7eb;font-siz
 <div class="log"><strong>18 نوفمبر 2026</strong> — تفعيل المزامنة اليومية (OPD Drive Sync) وإيقاف قراءة شيتات Drive من مهمة موعد المسائية.</div>
 <div class="log"><strong>18 نوفمبر 2026</strong> — نقل تحديث جدول الأطباء من مهمة ChatGPT الأسبوعية إلى السكربت اليومي؛ الدليل وصفحة الجدول يقرآن من Supabase مع بقاء الجدول المضمّن احتياطاً، وتواريخ الإجازة من سجل الإجازات.</div>
 <div class="log"><strong>18 نوفمبر 2026</strong> — صفحة «الخدمات الإلكترونية» للموظفين: تقرأ وتكتب مباشرة في شيت OPD Services Responses عبر دالة Supabase الوسيطة (شبكة المستشفى تحجب قوقل)، بنفس قواعد الشيت ونص رسالة الواتساب، وبدون نسخ بيانات المرضى إلى Supabase.</div>
+<div class="log"><strong>18 نوفمبر 2026</strong> — الخدمات الإلكترونية: اسم الموظف يُسجَّل تلقائياً من حسابه في المنصة. دخول المنصة: تنظيف رمز التحقق (الأرقام العربية والمسافات)، ورسائل خطأ بالعربي، ومنع طلب رمز جديد قبل دقيقة.</div>
 </section>
 </div>
 </main>
@@ -92,7 +93,7 @@ const definitions=[
  {id:"adaa",name:"أداء الأسبوعي",method:"مهمة Claude — موقوفة",frequency:"موقوف",saves:"تقارير الأداء الأسبوعية السابقة",code:"../kpis/",codeText:"تقارير الأداء",type:"paused"},
  {id:"employees",name:"إدخالات الموظفين",method:"منصات الموظفين",frequency:"عند كل إدخال",saves:"تجربة المريض، عدم الالتزام، إجازات الموظفين، طلبات الحجز",code:"../",codeText:"بوابة العيادات",type:"employee"},
  {id:"doctor_leaves",name:"إجازات الأطباء",method:"Claude → Google Sheet",frequency:"وفق مهمة Claude",saves:"إجازات الأطباء في OPD Schedule",code:"https://docs.google.com/spreadsheets/d/1htAUP32cClYWToDntdR1Pcdi_U7y0Bdy_Kz3r-wgt1Y/edit#gid=304595282",codeText:"شيت الإجازات",type:"external"},
- {id:"eservices",name:"الخدمات الإلكترونية (طلبات المرضى)",method:"صفحة المنصة → دالة Supabase الوسيطة eservices → سكربت شيت OPD Services Responses",frequency:"مباشر عند فتح الصفحة (تحديث كل دقيقتين وهي مفتوحة)",saves:"لا يُخزَّن شيء في Supabase؛ القراءة والكتابة في الشيت نفسه",code:"../docs/apps-script/eservices-portal-api.gs",codeText:"eservices-portal-api.gs"},
+ {id:"eservices",name:"الخدمات الإلكترونية (طلبات المرضى)",method:"صفحة المنصة → دالة Supabase الوسيطة eservices → سكربت شيت OPD Services Responses",frequency:"مباشر عند فتح الصفحة (تحديث كل دقيقتين وهي مفتوحة)",saves:"لا يُخزَّن شيء في Supabase؛ القراءة والكتابة في الشيت نفسه. اسم الموظف من حسابه. الإيقاف: أرشفة نشر «Portal API» في Apps Script (لا تلمس نشر صفحة المريض). الإرجاع: نشر جديد + تحديث script_url في opd_eservices_link",code:"../docs/apps-script/eservices-portal-api.gs",codeText:"eservices-portal-api.gs"},
  {id:"clinic_schedule",name:"جدول الأطباء في الدليل وصفحة الجدول",method:"Apps Script → Supabase (OPD Schedule + سجل الإجازات + Staff Names)",frequency:"يوميًا قرابة 5 صباحًا",saves:"جدول الأسبوع، الغرف، الإجازات بتاريخ البداية والنهاية، الاسم الكامل",code:"../docs/clinic-schedule-sync.sql",codeText:"clinic-schedule-sync.sql"}
 ];
 function stamp(value){if(!value)return"لا يوجد سجل";const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString("ar-SA",{timeZone:"Asia/Riyadh",year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"غير متاح";}
