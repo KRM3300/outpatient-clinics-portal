@@ -508,7 +508,13 @@
           head.append(node("span", pend ? (r.status ? "لم يتم بدون ملاحظة" : "معلق") + " · " + Math.round(h) + " ساعة" : r.status, "badge " + (pend ? (h > RED_H ? "danger" : h >= GREEN_H ? "warn" : "wait") : r.status === "تم" ? "" : "warn")));
           it.append(head);
           it.append(meta([["التاريخ", fmt(r.ts)], ["الهوية", r.nid], ["الميلاد", fmtDate(r.dob)], ["الجوال", r.mobile], ["العيادة", r.clinic], ["الفترة", r.period], ["الطبيب", r.doctor]]));
-          it.append(meta([[sheet === "تجديد الموعد" ? "سبب عدم الحضور" : "الغرض من التعديل", r.reason], ["تاريخ الموعد", fmtDate(r.apptDate)], ["ملاحظات المريض", r.notes]]));
+          /* «أخرى» في سبب عدم الحضور: يظهر السبب اللي كتبه المريض بدل نص الخيار */
+          const otherReason = sheet === "تجديد الموعد" && /^أخرى/.test(String(r.reason || ""));
+          it.append(meta([
+            [sheet === "تجديد الموعد" ? "سبب عدم الحضور" : "الغرض من التعديل", otherReason ? "أخرى" : r.reason],
+            [otherReason ? "السبب الذي كتبه المريض" : "ملاحظات المريض", otherReason ? r.notes || "لم يكتب المريض السبب" : r.notes],
+            ["تاريخ الموعد", fmtDate(r.apptDate)],
+          ]));
           const act = node("div", null, "act");
           const st = node("select");
           st.append(new Option("الحالة", ""), ...data.statuses.map((s) => new Option(s, s)));

@@ -47,6 +47,17 @@ function portalUnzip_(b64) {
   return Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(b64), 'application/x-gzip')).getDataAsString('UTF-8');
 }
 
+/* أرقام الأعمدة المطابقة لأي من الأسماء، بتجاهل الحروف المخفية والمسافات الزائدة */
+function portalNormH_(h) {
+  return String(h || '').replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\u00A0\uFEFF]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function portalCols_(headers, names) {
+  const want = names.map(portalNormH_);
+  const out = [];
+  want.forEach(w => headers.forEach((h, i) => { if (portalNormH_(h) === w && out.indexOf(i + 1) === -1) out.push(i + 1); }));
+  return out;
+}
+
 function portalVal_(v) {
   if (v instanceof Date) return isNaN(v.getTime()) ? '' : v.toISOString();
   return v === null || v === undefined ? '' : v;
@@ -82,25 +93,33 @@ function portalList_() {
       const t = portalTail_(sh);
       const hid = hidden ? (hidden[name] || []) : null;
       const c = n => findColTrim_(t.headers, n);
+      const cs = (...names) => portalCols_(t.headers, names);
       const col = {
-        ts: c('طابع زمني'), service: c('نوع الخدمة'), noShow: c('سبب عدم الحضور'), purpose: c('الغرض من التعديل'),
+        ts: c('طابع زمني'), service: c('نوع الخدمة'), noShow: c('سبب عدم الحضور'),
         name: c('الإسم رباعي'), nid: c('رقم الهوية'), dob: c('تاريخ الميلاد'), mobile: c('رقم الجوال'),
-        clinic: c('العيادة'), period: c('الفترة'), modDate: c('تاريخ الموعد المراد تعديله'),
-        cancelDate: c('تاريخ الموعد المراد إلغاؤه'), doctor: c('الطبيب'), notes: c('ملاحظات أو طلبات خاصة'),
+        clinic: c('العيادة'), period: c('الفترة'), doctor: c('الطبيب'),
         status: c('حالة الطلب'), employee: c('اسم الموظف'), staffNote: c('ملاحظات موظف الاستقبال'),
         raw: c(OPD.TECH_RAW_ROW), changed: c(OPD.TECH_STATUS_CHANGED_AT)
       };
+      // أعمدة أسماؤها تختلف بين التبويبات (حروف مخفية أو اسم مختصر): نقرأ أول قيمة غير فارغة
+      const multi = {
+        purpose: cs('الغرض من التعديل'),
+        notes: cs('ملاحظات أو طلبات خاصة', 'ملاحظات'),
+        apptDate: cs('تاريخ الموعد المراد تعديله', 'تاريخ الموعد المراد إلغاؤه', 'تاريخ الموعد')
+      };
+      if (!col.noShow) col.noShow = portalCols_(t.headers, ['سبب عدم الحضور'])[0] || 0;
       t.data.forEach((r, i) => {
         const rowNo = t.start + i;
         if (!col.ts || !hasValue_(r[col.ts - 1])) return;
         if (col.clinic) { const cl = String(r[col.clinic - 1] || '').trim(); if (cl && cl.length <= 60) clinicSet[cl] = 1; }
         if (hid ? !!hid[rowNo - 1] : (col.changed && isExpired_(r[col.changed - 1], now, delayMs))) return;
         const g = k => (col[k] ? portalVal_(r[col[k] - 1]) : '');
+        const gm = k => { for (const ci of multi[k]) { const v = portalVal_(r[ci - 1]); if (hasValue_(v)) return v; } return ''; };
         rows.push({
           row: rowNo, raw: g('raw'), ts: g('ts'), service: g('service'),
-          reason: g('noShow') || g('purpose'), name: g('name'), nid: String(g('nid')).replace(/^'/, ''),
+          reason: g('noShow') || gm('purpose'), name: g('name'), nid: String(g('nid')).replace(/^'/, ''),
           dob: String(g('dob')).replace(/^'/, ''), mobile: g('mobile'), clinic: g('clinic'), period: g('period'),
-          apptDate: g('modDate') || g('cancelDate'), doctor: g('doctor'), notes: g('notes'),
+          apptDate: gm('apptDate'), doctor: g('doctor'), notes: gm('notes'),
           status: String(g('status')).trim(), employee: g('employee'), staffNote: g('staffNote'), changed: g('changed')
         });
       });
