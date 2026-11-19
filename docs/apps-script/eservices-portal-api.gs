@@ -342,13 +342,42 @@ function portalStats_(req) {
     total: d.total, renew: d.renew, modify: d.modify, cancel: d.cancel, done: d.done, notDone: d.notDone,
     hiddenNoStatus: d.hiddenNoStatus, pending: d.pending, overdue: d.overdue, avgCloseHours: avg,
     msgSent: d.msgSent, msgFail: d.msgFail, msgPending: d.msgPending,
-    employees: Object.keys(d.employees).map(k => [k, d.employees[k].total, d.employees[k].done, d.employees[k].notDone]).sort((a, b) => b[1] - a[1]),
+    employees: portalEmpRows_(ss, d, from, to),
     noShow: Object.keys(d.noShow).map(k => [k, d.noShow[k].count, d.noShow[k].tag]).sort((a, b) => b[1] - a[1]),
     notes: notes
   };
   const json = JSON.stringify(res);
   if (json.length < 95000) cache.put(key, json, PORTAL_API.STATS_SEC);
   return res;
+}
+
+/* إنتاجية الموظف = الطلبات المعالجة + رسائل سجل الرسائل (نفس فلتر التاريخ: تاريخ النسخ إلى سجل الرسائل)
+   الصف: [الموظف، طلبات، تم، لم يتم، رسائل مرسلة، لا يوجد واتساب، الإجمالي] */
+function portalEmpRows_(ss, d, from, to) {
+  const m = {};
+  const get = k => m[k] || (m[k] = { total: 0, done: 0, notDone: 0, sent: 0, noWa: 0 });
+  Object.keys(d.employees).forEach(k => { const e = get(k), s = d.employees[k]; e.total = s.total; e.done = s.done; e.notDone = s.notDone; });
+  const msg = ss.getSheetByName(OPD.SHEET_MESSAGES);
+  if (msg && msg.getLastRow() >= 2) {
+    const data = msg.getRange(1, 1, msg.getLastRow(), msg.getLastColumn()).getValues();
+    const h = data[0];
+    const cC = findColTrim_(h, 'تاريخ النسخ إلى سجل الرسائل');
+    const sC = getHeaderCol_(h, 'حالة الرسالة');
+    const eC = findColTrim_(h, 'اسم الموظف');
+    if (cC && sC) {
+      for (let i = 1; i < data.length; i++) {
+        const r = data[i];
+        if (!hasValue_(r[cC - 1]) || !isDateInRange_(r[cC - 1], from, to)) continue;
+        const st = String(r[sC - 1] || '').trim();
+        const isSent = st === 'تم', isNoWa = st.indexOf('لا يوجد واتساب') === 0;
+        if (!isSent && !isNoWa) continue;
+        const emp = (eC ? String(r[eC - 1] || '').trim() : '') || 'غير محدد';
+        if (isSent) get(emp).sent++; else get(emp).noWa++;
+      }
+    }
+  }
+  return Object.keys(m).map(k => { const e = m[k]; return [k, e.total, e.done, e.notDone, e.sent, e.noWa, e.total + e.sent + e.noWa]; })
+    .sort((a, b) => b[6] - a[6]);
 }
 
 /* تشغيل لمرة واحدة من المحرر: يولّد المفتاح السري ويحفظه هنا، ويسجّله في Supabase

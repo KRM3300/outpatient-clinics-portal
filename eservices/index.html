@@ -661,8 +661,9 @@
             ["المعلقة الآن", d.pending], ["المتأخرة (أكثر من 24 ساعة)", d.overdue], ["نسبة الإغلاق", rate], ["متوسط زمن الإغلاق (ساعة)", d.avgCloseHours ?? "-"],
             ["الرسائل المرسلة", d.msgSent], ["رسائل تعذر إرسالها", d.msgFail], ["رسائل بانتظار الإرسال", d.msgPending],
           ], (td, r, j) => { if (j === 1 && r[0] === "المتأخرة (أكثر من 24 ساعة)") td.className = d.overdue > 0 ? "red" : "green"; }));
-          out.append(node("h3", "إنتاجية الموظفين (عدد الطلبات المعالجة)"));
-          out.append(d.employees.length ? table(["اسم الموظف", "الإجمالي", "تم", "لم يتم"], d.employees) : node("p", "لا توجد بيانات", "empty"));
+          out.append(node("h3", "إنتاجية الموظفين (الطلبات المعالجة والرسائل)"));
+          const emps = d.employees.map((r) => r.length >= 7 ? r : [r[0], r[1], r[2], r[3], 0, 0, r[1]]);
+          out.append(emps.length ? table(["اسم الموظف", "طلبات معالجة", "تم", "لم يتم", "رسائل مرسلة", "لا يوجد واتساب", "الإجمالي"], emps) : node("p", "لا توجد بيانات", "empty"));
           out.append(node("h3", "أسباب عدم الحضور (مؤشر كفاءة الجدولة)"));
           out.append(d.noShow.length ? table(["سبب عدم الحضور", "العدد", "المؤشر المرتبط"], d.noShow) : node("p", "لا توجد بيانات", "empty"));
           out.append(node("h3", "ملاحظات الموظفين وأسباب الرفض / عدم الإنجاز"));
