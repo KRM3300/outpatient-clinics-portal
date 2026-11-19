@@ -66,6 +66,7 @@ footer{padding:25px 18px;text-align:center;border-top:1px solid #dce7eb;font-siz
 </section>
 <section class="panel">
 <h2>سجل التعديلات</h2>
+<div class="log"><strong>20 نوفمبر 2026</strong> — جدول العيادات: تحديث أسبوعي إضافي كل خميس قرابة 8:15 م بعد سكربت الشيت (7:30 م)، مع بقاء التحديث اليومي 5 فجراً.</div>
 <div class="log"><strong>18 نوفمبر 2026</strong> — إضافة نموذج مزامنة Drive اليومي الآمن، وسجل محاولات المزامنة، وقائمة أطباء VIDA، ولوحة مصادر البيانات.</div>
 <div class="log"><strong>18 نوفمبر 2026</strong> — إضافة رابط لوحة المصادر وتنبيه تجاوز 26 ساعة في لوحة المدير، مع أولوية قراءة أسماء الأطباء من Supabase والرجوع للقائمة المحلية عند تعذرها.</div>
 <div class="log"><strong>18 نوفمبر 2026</strong> — تفعيل المزامنة اليومية (OPD Drive Sync) وإيقاف قراءة شيتات Drive من مهمة موعد المسائية.</div>
@@ -95,7 +96,7 @@ const definitions=[
  {id:"employees",name:"إدخالات الموظفين",method:"منصات الموظفين",frequency:"عند كل إدخال",saves:"تجربة المريض، عدم الالتزام، إجازات الموظفين، طلبات الحجز",code:"../",codeText:"بوابة العيادات",type:"employee"},
  {id:"doctor_leaves",name:"إجازات الأطباء",method:"Claude → Google Sheet",frequency:"وفق مهمة Claude",saves:"إجازات الأطباء في OPD Schedule",code:"https://docs.google.com/spreadsheets/d/1htAUP32cClYWToDntdR1Pcdi_U7y0Bdy_Kz3r-wgt1Y/edit#gid=304595282",codeText:"شيت الإجازات",type:"external"},
  {id:"eservices",name:"الخدمات الإلكترونية (طلبات المرضى)",method:"صفحة المنصة → دالة Supabase الوسيطة eservices → سكربت شيت OPD Services Responses",frequency:"مباشر عند فتح الصفحة (تحديث كل دقيقتين وهي مفتوحة)",saves:"لا يُخزَّن شيء في Supabase؛ القراءة والكتابة في الشيت نفسه. اسم الموظف من حسابه. الإيقاف: أرشفة نشر «Portal API» في Apps Script (لا تلمس نشر صفحة المريض). الإرجاع: نشر جديد + تحديث script_url في opd_eservices_link",code:"../docs/apps-script/eservices-portal-api.gs",codeText:"eservices-portal-api.gs"},
- {id:"clinic_schedule",name:"جدول الأطباء في الدليل وصفحة الجدول",method:"Apps Script → Supabase (OPD Schedule + سجل الإجازات + Staff Names)",frequency:"يوميًا قرابة 5 صباحًا",saves:"جدول الأسبوع، الغرف، الإجازات بتاريخ البداية والنهاية، الاسم الكامل",code:"../docs/clinic-schedule-sync.sql",codeText:"clinic-schedule-sync.sql"}
+ {id:"clinic_schedule",name:"جدول الأطباء في الدليل وصفحة الجدول",method:"Apps Script → Supabase (OPD Schedule + سجل الإجازات + Staff Names)",frequency:"يوميًا قرابة 5 صباحًا + كل خميس قرابة 8:15 مساءً (بعد تجهيز جدول الأسبوع الجديد)",saves:"جدول الأسبوع، الغرف، الإجازات بتاريخ البداية والنهاية، الاسم الكامل",code:"../docs/clinic-schedule-sync.sql",codeText:"clinic-schedule-sync.sql"}
 ];
 function stamp(value){if(!value)return"لا يوجد سجل";const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString("ar-SA",{timeZone:"Asia/Riyadh",year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"غير متاح";}
 function hours(value){const t=Date.parse(value||"");return Number.isFinite(t)?(Date.now()-t)/3600000:Infinity;}

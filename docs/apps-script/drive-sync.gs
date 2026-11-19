@@ -421,3 +421,16 @@ function fillEmployeeNumbers() {
   }
   Logger.log('تمت كتابة ' + written + ' رقم وظيفي. بدون رقم (أضفه يدوياً): ' + (unmatched.join('، ') || 'لا يوجد'));
 }
+
+/* تحديث أسبوعي إضافي لجدول العيادات: كل خميس قرابة 8:15 م (بين 8:00 و8:30)،
+   بعد سكربت الشيت الذي يجهّز جدول الأسبوع الجديد ويسجّل الإجازات الساعة 7:30 م.
+   يبقى التحديث اليومي (syncDrive) الساعة 5 فجراً كما هو. شغّله مرة واحدة. */
+function setupWeeklySchedule() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'syncSchedule')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('syncSchedule')
+    .timeBased().onWeekDay(ScriptApp.WeekDay.THURSDAY).atHour(20).nearMinute(15)
+    .inTimezone(DRIVE_SYNC.ZONE).create();
+  Logger.log('تم: تحديث جدول العيادات كل خميس قرابة 8:15 م بتوقيت الرياض.');
+}
