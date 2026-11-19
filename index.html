@@ -1319,7 +1319,8 @@
             if (m.role === "nurse" || m.job_title === "nurse") return "تمريض";
             if (m.role === "scheduler" || ["reception","carelink"].includes(m.job_title)) return "موظف العيادات الخارجية";
             if (m.role === "supervisor" || m.job_title === "supervisor") return "مشرف";
-            return jobNames[m.job_title] || roleNames[m.role] || "أخرى";
+            const g = jobNames[m.job_title] || roleNames[m.role] || "أخرى";
+            return g === "موظف مواعيد" ? "موظف العيادات الخارجية" : g;
           };
           const groups = new Map();
           for (const m of rows) {
