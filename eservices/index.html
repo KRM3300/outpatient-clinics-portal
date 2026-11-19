@@ -464,7 +464,12 @@
           if (inquiry) {
             extra = node("div", null, "bar");
             clinic = node("select"); clinic.setAttribute("aria-label", "عيادة الموعد");
-            clinic.append(new Option("العيادة", ""), ...(data.clinics || []).map((c) => new Option(c, c)), new Option("غير موجودة، أكتبها", OTHER));
+            const hipClinic = "الخلوع الولادية";
+            const clinicChoices = new Set((data.clinics || []).map((name) =>
+              /^(?:عيادة\s+)?(?:خلع الورك التطو(?:ي)?ري|الخلوع الولادية|DDH)$/i.test(name.trim()) ? hipClinic : name
+            ));
+            clinicChoices.add(hipClinic);
+            clinic.append(new Option("العيادة", ""), ...Array.from(clinicChoices).sort((a, b) => a.localeCompare(b, "ar")).map((c) => new Option(c, c)), new Option("غير موجودة، أكتبها", OTHER));
             other = node("input"); other.placeholder = "اسم العيادة"; other.maxLength = 60; other.classList.add("hidden");
             d = node("input"); d.type = "date"; d.dir = "ltr"; d.min = todayISO(); d.setAttribute("aria-label", "تاريخ الموعد");
             t = node("input"); t.type = "time"; t.dir = "ltr"; t.min = "07:30"; t.max = "19:30"; t.setAttribute("aria-label", "وقت الموعد");

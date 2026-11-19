@@ -7,17 +7,20 @@
   const AR = "٠١٢٣٤٥٦٧٨٩", FA = "۰۱۲۳۴۵۶۷۸۹";
   const digits = (s) => String(s || "").replace(/[٠-٩]/g, (d) => AR.indexOf(d)).replace(/[۰-۹]/g, (d) => FA.indexOf(d)).replace(/\D/g, "");
   const email = (s) => String(s || "").trim().toLowerCase();
-  function arabic(e) {
+  function localizeError(e) {
     if (!e) return e;
     const m = String(e.message || "");
     const wait = m.match(/after (\d+) second/i);
+    const english = document.documentElement.lang === "en";
     let t = m;
     if (wait || /rate limit|over_email_send_rate_limit|too many/i.test(m) || e.status === 429) {
-      t = "أُرسل لك رمز قبل قليل. اكتب الرمز اللي وصلك في خانة رمز التحقق" + (wait ? "، أو انتظر " + wait[1] + " ثانية إذا تبي رمزاً جديداً." : "، أو انتظر دقيقة إذا تبي رمزاً جديداً.");
+      t = english
+        ? "A code was sent recently. Enter that code or wait " + (wait ? wait[1] + " seconds" : "a minute") + " before requesting another."
+        : "أُرسل لك رمز قبل قليل. اكتب الرمز اللي وصلك في خانة رمز التحقق" + (wait ? "، أو انتظر " + wait[1] + " ثانية إذا تبي رمزاً جديداً." : "، أو انتظر دقيقة إذا تبي رمزاً جديداً.");
     } else if (/expired|invalid/i.test(m) && /token|otp|code/i.test(m)) {
-      t = "الرمز غير صحيح أو قديم. اكتب آخر رمز وصلك فقط؛ كل رمز جديد يلغي اللي قبله.";
+      t = english ? "This code is invalid or has expired. Enter the latest code you received." : "الرمز غير صحيح أو قديم. اكتب آخر رمز وصلك فقط؛ كل رمز جديد يلغي اللي قبله.";
     } else if (/email/i.test(m) && /invalid/i.test(m)) {
-      t = "البريد الإلكتروني غير صحيح.";
+      t = english ? "Enter a valid email address." : "البريد الإلكتروني غير صحيح.";
     }
     try { e.message = t; return e; } catch (x) { const n = new Error(t); n.status = e.status; return n; }
   }
@@ -28,13 +31,13 @@
     const send = a.signInWithOtp.bind(a), verify = a.verifyOtp.bind(a);
     a.signInWithOtp = async (p) => {
       const r = await send(p && p.email ? Object.assign({}, p, { email: email(p.email) }) : p);
-      if (r && r.error) r.error = arabic(r.error);
+      if (r && r.error) r.error = localizeError(r.error);
       return r;
     };
     a.verifyOtp = async (p) => {
       const q = p && p.token ? Object.assign({}, p, { token: digits(p.token), email: p.email ? email(p.email) : p.email }) : p;
       const r = await verify(q);
-      if (r && r.error) r.error = arabic(r.error);
+      if (r && r.error) r.error = localizeError(r.error);
       return r;
     };
     return client;

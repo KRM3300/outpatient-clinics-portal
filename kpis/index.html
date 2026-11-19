@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#0f3a57" />
-    <title>الأداء والمؤشرات | العيادات الخارجية</title>
+    <title data-en="Performance and KPIs | Outpatient Clinics">الأداء والمؤشرات | العيادات الخارجية</title>
     <link rel="icon" href="../assets/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -77,14 +77,14 @@
       <div class="wrap">
         <img class="site-logo" src="../assets/logo.webp" width="220" height="144" alt="شعار مستشفى الرس العام" />
         <div class="site-titles">
-          <span class="crumb">منصة العيادات الخارجية</span>
-          <h1>الأداء والمؤشرات</h1>
-          <p>أرشيف تقارير ومؤشرات العيادات الخارجية — للمعتمدين فقط</p>
+          <span class="crumb" data-en="Outpatient Clinics Portal">منصة العيادات الخارجية</span>
+          <h1 data-en="Performance and KPIs">الأداء والمؤشرات</h1>
+          <p data-en="Archive of outpatient reports and indicators for approved users.">أرشيف تقارير ومؤشرات العيادات الخارجية — للمعتمدين فقط</p>
         </div>
         <div class="site-actions">
           <a class="back" href="../"
             ><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg
-            ><span>العودة للمنصة</span></a
+            ><span data-en="Return to portal">العودة للمنصة</span></a
           >
         </div>
       </div>
@@ -94,25 +94,26 @@
       <div id="message" class="status-msg" role="status" aria-live="polite"></div>
 
       <section id="login" class="card">
-        <h2>تسجيل الدخول</h2>
-        <label for="email">البريد الإلكتروني</label>
+        <h2 data-en="Sign in">تسجيل الدخول</h2>
+        <p id="satisfaction-entry" class="page-note" hidden data-en="Sign in to view Patient Satisfaction results.">سجّل الدخول لعرض نتائج رضا المريض.</p>
+        <label for="email" data-en="Email address">البريد الإلكتروني</label>
         <input id="email" type="email" autocomplete="email" placeholder="name@example.com" dir="ltr" />
-        <button id="send" type="button">إرسال رمز الدخول</button>
+        <button id="send" type="button" data-en="Send sign-in code">إرسال رمز الدخول</button>
         <div id="verifyBox" class="hidden">
-          <label for="code" style="margin-top: 16px">رمز التحقق</label>
+          <label for="code" style="margin-top: 16px" data-en="Verification code">رمز التحقق</label>
           <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" dir="ltr" />
-          <button id="verify" type="button">تحقق</button>
-          <p class="muted" style="margin: 8px 0 0; font-size: 13.5px">لم يصلك الرمز؟ تحقق من مجلد البريد غير المرغوب (Junk). وإذا طلبت الرمز أكثر من مرة فاكتب آخر رمز وصلك فقط.</p>
+          <button id="verify" type="button" data-en="Verify">تحقق</button>
+          <p class="muted" style="margin: 8px 0 0; font-size: 13.5px" data-en="Check your Junk folder if the code has not arrived. If you requested several codes, enter the latest one.">لم يصلك الرمز؟ تحقق من مجلد البريد غير المرغوب (Junk). وإذا طلبت الرمز أكثر من مرة فاكتب آخر رمز وصلك فقط.</p>
         </div>
       </section>
 
       <section id="pending" class="card hidden">
-        <h2>بانتظار اعتماد الصلاحية</h2>
-        <p>حسابك مسجّل، لكن مشاهدة المؤشرات تحتاج اعتماد مدير العيادات الخارجية.</p>
-        <button id="refresh" type="button">تحديث الحالة</button>
+        <h2 data-en="Awaiting access approval">بانتظار اعتماد الصلاحية</h2>
+        <p data-en="Your account is registered. Viewing indicators requires approval from the outpatient clinics manager.">حسابك مسجّل، لكن مشاهدة المؤشرات تحتاج اعتماد مدير العيادات الخارجية.</p>
+        <button id="refresh" type="button" data-en="Refresh status">تحديث الحالة</button>
       </section>
 
-      <section id="app" class="hidden">
+      <section id="app" class="hidden" lang="ar" dir="rtl">
         <div class="card">
           <div class="toolbar">
             <strong id="identity"></strong>
@@ -252,8 +253,14 @@
       </div>
     </footer>
 
+    <script src="../assets/portal-language.js"></script>
+    <script>
+      document.getElementById("satisfaction-entry").hidden =
+        new URLSearchParams(location.search).get("ind") !== "satisfaction";
+      OPDLanguage.applyServiceEntry();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
-    <script src="../assets/auth-otp.js?v=1"></script>
+    <script src="../assets/auth-otp.js?v=2"></script>
     <script src="./dash.js?v=4"></script>
     <script>
       (() => {
@@ -292,11 +299,11 @@
         $("send").onclick = async () => {
           const email = $("email").value.trim();
           if (!email) return;
-          const { error } = await api.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+          const { error } = await api.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname + (new URLSearchParams(location.search).get("ind") === "satisfaction" ? "?ind=satisfaction" : "") } });
           if (error) return err(error);
           hide("verifyBox", true);
           $("code").focus();
-          msg("تم إرسال رمز التحقق إلى بريدك الإلكتروني.");
+          msg(document.documentElement.lang === "en" ? "A verification code was sent to your email." : "تم إرسال رمز التحقق إلى بريدك الإلكتروني.");
         };
         $("verify").onclick = async () => {
           const { error } = await api.auth.verifyOtp({ email: $("email").value.trim(), token: $("code").value.trim(), type: "email" });

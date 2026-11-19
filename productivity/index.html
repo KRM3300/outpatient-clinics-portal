@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#0f3a57" />
-    <title>إنتاجية الموظفين | العيادات الخارجية</title>
+    <title data-en="Staff Productivity | Outpatient Clinics">إنتاجية الموظفين | العيادات الخارجية</title>
     <link rel="icon" href="../assets/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -46,12 +46,12 @@
       <div class="wrap">
         <img class="site-logo" src="../assets/logo.webp" width="220" height="144" alt="شعار مستشفى الرس العام" />
         <div class="site-titles">
-          <span class="crumb">منصة العيادات الخارجية</span>
-          <h1>إنتاجية الموظفين</h1>
-          <p>ما رفعه وأقفله كل موظف في تجربة المريض وتقرير عدم الالتزام</p>
+          <span class="crumb" data-en="Outpatient Clinics Portal">منصة العيادات الخارجية</span>
+          <h1 data-en="Staff Productivity">إنتاجية الموظفين</h1>
+          <p data-en="Patient experience cases raised and closed by each employee, and non-compliance reports.">ما رفعه وأقفله كل موظف في تجربة المريض وتقرير عدم الالتزام</p>
         </div>
         <div class="site-actions">
-          <a class="back" href="../"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg><span>العودة للمنصة</span></a>
+          <a class="back" href="../"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg><span data-en="Return to portal">العودة للمنصة</span></a>
         </div>
       </div>
     </header>
@@ -60,24 +60,24 @@
       <div id="message" class="status-msg" role="status" aria-live="polite"></div>
 
       <section id="login" class="card">
-        <h2>تسجيل الدخول</h2>
-        <label for="email">البريد الإلكتروني</label>
+        <h2 data-en="Sign in">تسجيل الدخول</h2>
+        <label for="email" data-en="Email address">البريد الإلكتروني</label>
         <input id="email" type="email" autocomplete="email" dir="ltr" />
-        <button id="send" type="button">إرسال رمز الدخول</button>
+        <button id="send" type="button" data-en="Send sign-in code">إرسال رمز الدخول</button>
         <div id="verifyBox" class="hidden">
-          <label for="code" style="margin-top: 16px">رمز التحقق</label>
+          <label for="code" style="margin-top: 16px" data-en="Verification code">رمز التحقق</label>
           <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" dir="ltr" />
-          <button id="verify" type="button">تحقق</button>
-          <p class="muted" style="margin: 8px 0 0; font-size: 13.5px">لم يصلك الرمز؟ تحقق من مجلد البريد غير المرغوب (Junk). وإذا طلبت الرمز أكثر من مرة فاكتب آخر رمز وصلك فقط.</p>
+          <button id="verify" type="button" data-en="Verify">تحقق</button>
+          <p class="muted" style="margin: 8px 0 0; font-size: 13.5px" data-en="Check your Junk folder if the code has not arrived. If you requested several codes, enter the latest one.">لم يصلك الرمز؟ تحقق من مجلد البريد غير المرغوب (Junk). وإذا طلبت الرمز أكثر من مرة فاكتب آخر رمز وصلك فقط.</p>
         </div>
       </section>
 
       <section id="noaccess" class="card hidden">
-        <h2>لا توجد صلاحية</h2>
-        <p>صفحة الإنتاجية متاحة لمدير العيادات الخارجية ولمن يمنحه صلاحية «إنتاجية الموظفين: اطلاع» من الصفحة الرئيسية.</p>
+        <h2 data-en="Access required">لا توجد صلاحية</h2>
+        <p data-en="This page is available to the outpatient clinics manager and staff granted permission to view productivity.">صفحة الإنتاجية متاحة لمدير العيادات الخارجية ولمن يمنحه صلاحية «إنتاجية الموظفين: اطلاع» من الصفحة الرئيسية.</p>
       </section>
 
-      <div id="app" class="hidden">
+      <div id="app" class="hidden" lang="ar" dir="rtl">
         <div class="card">
           <div class="toolbar">
             <strong id="identity"></strong>
@@ -136,8 +136,12 @@
       </div>
     </footer>
 
+    <script src="../assets/portal-language.js"></script>
+    <script>
+      OPDLanguage.applyServiceEntry();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.0/dist/umd/supabase.min.js"></script>
-    <script src="../assets/auth-otp.js?v=1"></script>
+    <script src="../assets/auth-otp.js?v=2"></script>
     <script>
       (() => {
         const $ = (id) => document.getElementById(id);
@@ -159,7 +163,7 @@
           if (error) return err(error);
           hide("verifyBox", true);
           $("code").focus();
-          msg("تم إرسال رمز التحقق إلى بريدك الإلكتروني.");
+          msg(document.documentElement.lang === "en" ? "A verification code was sent to your email." : "تم إرسال رمز التحقق إلى بريدك الإلكتروني.");
         };
         $("verify").onclick = async () => {
           const { error } = await api.auth.verifyOtp({ email: $("email").value.trim(), token: $("code").value.trim(), type: "email" });
