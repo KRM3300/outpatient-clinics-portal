@@ -1375,31 +1375,73 @@
             grid.className = "perm-grid";
             drawPerms(grid, start);
             line.append(grid);
-            const save = async (decision) => {
+            /* الحفظ يحدّث بطاقة هذا الموظف فقط: لا تنقفل المجموعات ولا ترجع الصفحة لأعلى، والتأكيد يظهر تحت الموظف نفسه */
+            const buttons = [];
+            const note = document.createElement("p");
+            note.className = "page-note";
+            note.setAttribute("role", "status");
+            note.hidden = true;
+            const busy = (b, on) => {
+              for (const x of buttons) x.disabled = on;
+              if (on) { b.dataset.label = b.textContent; b.textContent = "جاري الحفظ…"; }
+              else if (b.dataset.label) b.textContent = b.dataset.label;
+            };
+            const done = async (text, ok, finished) => {
+              note.hidden = false;
+              note.textContent = (ok ? "✓ " : "") + text;
+              note.style.color = ok ? "var(--ok-ink)" : "var(--danger)";
+              if (!ok) return;
+              line.style.transition = "background-color .4s";
+              line.style.backgroundColor = "var(--ok-bg)";
+              setTimeout(() => (line.style.backgroundColor = ""), 2000);
+              if (finished) for (const x of buttons) x.remove();
+              /* تحديث البيانات في الخلفية بدون إعادة رسم القائمة */
+              const fresh = await api.rpc("opd_perm_admin_list");
+              if (fresh.error || !fresh.data) return;
+              staffRows = fresh.data;
+              const n = staffRows.filter((x) => x.role !== "admin" && (x.req_id || x.status === "pending")).length;
+              byId("staff-filter").options[0].textContent = "الطلبات الجديدة" + (n ? " (" + n + ")" : "");
+              const me = staffRows.find((x) => x.user_id === m.user_id);
+              if (me) {
+                Object.assign(m, me);
+                label.textContent = (m.full_name || "مستخدم") + " — " + (statusNames[m.status] || m.status);
+              }
+            };
+            const save = async (decision, b) => {
+              busy(b, true);
               const { error } = await api.rpc("opd_perm_save", { p_user: m.user_id, p_perms: checkedPerms(grid), p_decision: decision });
-              msg.textContent = error ? error.message : decision === "rejected" ? "تم رفض الطلب" : "تم حفظ الصلاحيات";
-              if (!error) await staff();
+              busy(b, false);
+              if (error) return done(error.message, false);
+              await done(decision === "rejected" ? "تم رفض الطلب" : pending ? "تم الاعتماد" : "تم حفظ الصلاحيات", true, pending);
             };
             const btn = (text, fn, alt) => {
               const b = document.createElement("button");
               b.type = "button";
               b.textContent = text;
               if (alt) b.className = "alt";
-              b.onclick = fn;
+              b.onclick = () => fn(b);
+              buttons.push(b);
               line.append(b);
+              return b;
             };
             if (pending) {
-              btn("اعتماد", () => save("approved"));
-              btn("رفض", () => save("rejected"), true);
+              btn("اعتماد", (b) => save("approved", b));
+              btn("رفض", (b) => save("rejected", b), true);
             } else {
-              btn("حفظ التعديل", () => save("approved"));
-              const next = m.status === "approved" ? "suspended" : "approved";
-              btn(next === "suspended" ? "إيقاف الحساب" : "تفعيل الحساب", async () => {
+              btn("حفظ التعديل", (b) => save("approved", b));
+              const toggleLabel = () => (m.status === "approved" ? "إيقاف الحساب" : "تفعيل الحساب");
+              const tb = btn(toggleLabel(), async (b) => {
+                const next = m.status === "approved" ? "suspended" : "approved";
+                busy(b, true);
                 const { error } = await api.rpc("opd_appt_manage_member", { p_user: m.user_id, p_role: m.role, p_status: next });
-                msg.textContent = error ? error.message : "تم تحديث المستخدم";
-                if (!error) await staff();
+                busy(b, false);
+                if (error) return done(error.message, false);
+                m.status = next;
+                await done(next === "suspended" ? "تم إيقاف الحساب" : "تم تفعيل الحساب", true, false);
+                tb.textContent = toggleLabel();
               }, true);
             }
+            line.append(note);
             body.append(line);
             }
             root.append(details);
