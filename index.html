@@ -87,6 +87,12 @@
       .staff-role-group{margin:12px 0;border:1px solid var(--line);border-radius:12px;overflow:hidden}
       .staff-role-group>summary{cursor:pointer;font-weight:700;padding:13px 16px;background:var(--panel, #f4f7f8);list-style:revert}
       .staff-role-members{padding:0 14px 12px}
+      .staff-pick{display:flex;width:100%;justify-content:space-between;align-items:center;gap:10px;margin:8px 0 0;padding:10px 14px;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:10px;font-weight:600;text-align:right}
+      .staff-pick:hover{border-color:var(--action)}
+      .staff-pick[aria-expanded="true"]{border-color:var(--action);background:#e8f3fa}
+      .staff-pick small{font-weight:400;color:var(--ink-soft);white-space:nowrap}
+      .staff-card[hidden]{display:none !important}
+      .staff-card{border:1px solid var(--action);border-top:0;border-radius:0 0 10px 10px;padding:4px 12px 12px;margin-bottom:4px}
       #auth-staff .line,
       #auth-services .line {
         border-bottom: 1px solid var(--line);
@@ -1311,7 +1317,7 @@
             if (m.role === "phc_doctor" || m.job_title === "phc_doctor") return "طبيب مركز صحي";
             if (m.role === "doctor" || m.job_title === "doctor") return "طبيب";
             if (m.role === "nurse" || m.job_title === "nurse") return "تمريض";
-            if (m.role === "scheduler" || ["reception","carelink"].includes(m.job_title)) return "موظف مواعيد";
+            if (m.role === "scheduler" || ["reception","carelink"].includes(m.job_title)) return "موظف العيادات الخارجية";
             if (m.role === "supervisor" || m.job_title === "supervisor") return "مشرف";
             return jobNames[m.job_title] || roleNames[m.role] || "أخرى";
           };
@@ -1321,6 +1327,44 @@
             if (!groups.has(group)) groups.set(group, []);
             groups.get(group).push(m);
           }
+          /* القائمة المختصرة: اسم الموظف فقط، والضغط عليه يفتح بطاقته (بطاقة وحدة مفتوحة في كل مرة) */
+          const compact = f !== "pending";
+          const place = (body, m, line) => {
+            if (!compact) return body.append(line);
+            const pick = document.createElement("button");
+            pick.type = "button";
+            pick.className = "staff-pick";
+            pick.setAttribute("aria-expanded", "false");
+            const nm = document.createElement("span");
+            nm.textContent = m.full_name || m.email || "مستخدم";
+            const st = document.createElement("small");
+            const permsN = (m.perms || []).length;
+            st.textContent = m.role === "admin" ? "مدير النظام" : (statusNames[m.status] || m.status) + " · " + permsN + " صلاحية";
+            pick.append(nm, st);
+            line.classList.add("staff-card");
+            line.hidden = true;
+            const back = document.createElement("button");
+            back.type = "button";
+            back.className = "alt";
+            back.textContent = "رجوع للقائمة";
+            const close = () => {
+              line.hidden = true;
+              pick.setAttribute("aria-expanded", "false");
+              pick.scrollIntoView({ block: "center" });
+              pick.focus();
+            };
+            back.onclick = close;
+            line.append(back);
+            pick.onclick = () => {
+              if (!line.hidden) return close();
+              root.querySelectorAll(".staff-card").forEach((c) => { c.hidden = true; });
+              root.querySelectorAll(".staff-pick").forEach((b) => b.setAttribute("aria-expanded", "false"));
+              line.hidden = false;
+              pick.setAttribute("aria-expanded", "true");
+              pick.scrollIntoView({ block: "start" });
+            };
+            body.append(pick, line);
+          };
           const collator = new Intl.Collator("ar", { sensitivity: "base" });
           for (const [category, people] of [...groups.entries()].sort((a,b)=>collator.compare(a[0],b[0]))) {
             people.sort((a,b)=>collator.compare(a.full_name||"",b.full_name||""));
@@ -1360,7 +1404,7 @@
               p.className = "page-note";
               p.textContent = "مدير النظام: كل الصلاحيات";
               line.append(p);
-              body.append(line);
+              place(body, m, line);
               continue;
             }
             const pending = !!m.req_id || m.status === "pending";
@@ -1442,7 +1486,7 @@
               }, true);
             }
             line.append(note);
-            body.append(line);
+            place(body, m, line);
             }
             root.append(details);
           }
