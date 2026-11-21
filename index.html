@@ -447,6 +447,29 @@
             <p id="auth-user-status" style="margin: 0"></p>
             <button id="auth-logout" class="alt" type="button">تسجيل الخروج</button>
           </div>
+          <div id="auth-profile" class="line hidden" style="margin: 10px 0 14px">
+            <label><span>الوظيفة</span>
+              <select id="auth-profile-job">
+                <option value="doctor">طبيب</option>
+                <option value="phc_doctor">طبيب مركز صحي</option>
+                <option value="nurse">تمريض</option>
+                <option value="reception">موظف عيادات (خدمة المراجعين)</option>
+                <option value="carelink">كير لينك</option>
+                <option value="tech_supervisor">مشرف فني</option>
+                <option value="pharmacy">صيدلية</option>
+                <option value="radiology">أشعة</option>
+                <option value="lab">مختبر</option>
+                <option value="physio">علاج طبيعي</option>
+                <option value="scheduler">موظف مواعيد</option>
+                <option value="pe_agent">موظف تجربة المريض</option>
+                <option value="supervisor">مشرف</option>
+                <option value="other">أخرى</option>
+              </select>
+            </label>
+            <button id="auth-profile-save" type="button">حفظ الوظيفة</button>
+            <span id="auth-profile-scope" class="page-note" style="margin:0"></span>
+            <a id="auth-leave-link" class="btn-link hidden" href="https://krm3300.github.io/opd-smart-guide/staff-leaves/">طلب إجازة / إجازاتي</a>
+          </div>
           <div id="auth-myperms"></div>
           <div id="auth-admin" class="hidden">
             <div class="toolbar" style="margin-bottom: 12px">
@@ -1291,6 +1314,14 @@
         byId("auth-job").addEventListener("change", (e) =>
           drawPerms(byId("auth-perms"), JOB_DEFAULTS[e.target.value] || [], { requestable: true }),
         );
+        byId("auth-profile-save").onclick = async () => {
+          const b = byId("auth-profile-save");
+          b.disabled = true;
+          const { error } = await api.rpc("opd_member_update_job", { p_job_title: byId("auth-profile-job").value });
+          b.disabled = false;
+          msg.textContent = error ? error.message : "تم تحديث الوظيفة";
+          if (!error) await check();
+        };
 
         /* صلاحيات الموظف الحالية + طلب صلاحية إضافية */
         async function myPerms(status) {
@@ -1466,6 +1497,51 @@
               place(body, m, line);
               continue;
             }
+
+            const profileLine = document.createElement("div");
+            profileLine.className = "line";
+            const jobSel = document.createElement("select");
+            jobSel.setAttribute("aria-label", "وظيفة " + (m.full_name || m.email || "الموظف"));
+            jobSel.add(new Option("— اختر الوظيفة —", ""));
+            for (const [key, name] of Object.entries(jobNames)) jobSel.add(new Option(name, key));
+            jobSel.value = m.job_title || "";
+            const opdLabel = document.createElement("label");
+            opdLabel.className = "perm-opt";
+            const opdCb = document.createElement("input");
+            opdCb.type = "checkbox";
+            opdCb.checked = !!m.outpatient_staff;
+            const opdText = document.createElement("span");
+            opdText.textContent = "تابع للعيادات الخارجية";
+            opdLabel.append(opdCb, opdText);
+            const profileSave = document.createElement("button");
+            profileSave.type = "button";
+            profileSave.textContent = "حفظ بيانات الموظف";
+            const profileNote = document.createElement("span");
+            profileNote.className = "page-note";
+            profileNote.style.margin = "0";
+            profileSave.onclick = async () => {
+              profileSave.disabled = true;
+              profileSave.textContent = "جاري الحفظ…";
+              const { error } = await api.rpc("opd_member_admin_profile", {
+                p_user: m.user_id,
+                p_job_title: jobSel.value || null,
+                p_outpatient_staff: opdCb.checked,
+              });
+              profileSave.disabled = false;
+              profileSave.textContent = "حفظ بيانات الموظف";
+              if (error) {
+                profileNote.textContent = error.message;
+                profileNote.style.color = "var(--danger)";
+                return;
+              }
+              m.job_title = jobSel.value || m.job_title;
+              m.outpatient_staff = opdCb.checked;
+              profileNote.textContent = "✓ تم الحفظ";
+              profileNote.style.color = "var(--ok-ink)";
+            };
+            profileLine.append(jobSel, opdLabel, profileSave, profileNote);
+            line.append(profileLine);
+
             const pending = !!m.req_id || m.status === "pending";
             if (m.req_id) {
               const r = document.createElement("p");
@@ -1644,7 +1720,7 @@
               render();
               return;
             }
-            const { data, error } = await api.from("opd_appt_members").select("role,status").eq("user_id", user.id).maybeSingle();
+            const { data, error } = await api.from("opd_appt_members").select("role,status,job_title,outpatient_staff").eq("user_id", user.id).maybeSingle();
             if (error) {
               msg.textContent = error.message;
               return;
@@ -1664,6 +1740,14 @@
             isAdmin = data.role === "admin" && accountApproved;
             byId("auth-user-status").textContent =
               user.email + " — " + (data.status === "approved" ? "معتمد" : "بانتظار الاعتماد / " + data.status);
+            byId("auth-profile").classList.toggle("hidden", !accountApproved);
+            if (accountApproved) {
+              byId("auth-profile-job").value = data.job_title || "other";
+              byId("auth-profile-scope").textContent = data.outpatient_staff ? "تابع للعيادات الخارجية: نعم" : "تابع للعيادات الخارجية: لا";
+              byId("auth-leave-link").classList.toggle("hidden", !data.outpatient_staff);
+            } else {
+              byId("auth-leave-link").classList.add("hidden");
+            }
             byId("auth-admin").classList.toggle("hidden", !isAdmin);
             if (isAdmin) {
               viewWrap.classList.remove("hidden");
