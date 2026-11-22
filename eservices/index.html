@@ -202,12 +202,15 @@
         };
         $("refresh").onclick = () => refresh(true);
 
+        let canEditNotes = false;
         async function start() {
           const { data: { user: u } } = await api.auth.getUser();
           hide("login", !u);
           if (!u) return;
           const p = await api.rpc("opd_has_perm", { p: "eservices" });
           if (p.data !== true) { hide("noaccess", true); return; }
+          canEditNotes = (await api.rpc("opd_kpi_is_admin")).data === true;
+          if (!canEditNotes && tab === "noteSettings") tab = "alerts";
           hide("app", true);
           $("identity").textContent = u.email;
           drawTabs();
@@ -270,7 +273,7 @@
           const nav = $("tabs");
           nav.replaceChildren();
           const a = data ? alertData() : null;
-          for (const [k, label] of TABS) {
+          for (const [k, label] of (canEditNotes ? [...TABS, ["noteSettings", "إعدادات ملاحظات لم يتم"]] : TABS)) {
             const b = node("button", label, "alt");
             b.type = "button";
             if (k === tab) b.setAttribute("aria-current", "page");
@@ -300,11 +303,56 @@
           const v = $("view");
           v.replaceChildren();
           if (!data && !["search"].includes(tab)) return;
+          if (tab === "noteSettings" && canEditNotes) return drawNoteSettings(v);
           if (tab === "alerts") return drawAlerts(v);
           if (SERVICES.includes(tab)) return drawService(v, tab);
           if (tab === "messages") return drawMessages(v);
           if (tab === "search") return drawSearch(v);
           if (tab === "stats") return drawStats(v);
+        }
+
+        function drawNoteSettings(view) {
+          view.append(node("h2", "تعديل ملاحظات لم يتم"));
+          const form = node("form"), service = node("select"), choice = node("select"), input = node("textarea");
+          const save = node("button", "حفظ الملاحظة");
+          save.type = "submit";
+          input.maxLength = 500;
+          input.required = true;
+          for (const [title, control] of [["الخدمة", service], ["الملاحظة الحالية", choice], ["نص الملاحظة", input]]) {
+            const label = node("label", title);
+            label.append(control);
+            form.append(label);
+          }
+          form.append(save);
+          view.append(form);
+          const options = (s) => (data.noteOptions[s] || []).filter(n => s !== "الاستعلام عن موعد" || n !== NO_APPT);
+          for (const s of SERVICES.filter(s => options(s).length)) service.add(new Option(s, s));
+          if (!service.length) { form.replaceChildren(node("p", "لا توجد ملاحظات قابلة للتعديل.")); return; }
+          function selectNote() { input.value = choice.value; dirty = false; }
+          function selectService() {
+            choice.replaceChildren(...options(service.value).map(n => new Option(n, n)));
+            selectNote();
+          }
+          service.onchange = selectService;
+          choice.onchange = selectNote;
+          input.oninput = () => { dirty = input.value !== choice.value; };
+          selectService();
+          form.onsubmit = async (event) => {
+            event.preventDefault();
+            const sheet = service.value, previous = choice.value, note = input.value.replace(/\s+/g, " ").trim();
+            if (!note || note.startsWith("=")) return msg("أدخل نص الملاحظة.");
+            if (note === previous) return msg("الصيغة محفوظة بالفعل.");
+            for (const el of [save, input, choice, service]) el.disabled = true;
+            try {
+              const result = await call({ action: "editNote", sheet, previous, note });
+              data.noteOptions[sheet] = result.options;
+              selectService();
+              choice.value = note;
+              selectNote();
+              msg("حُفظت الملاحظة.");
+            } catch (e) { msg(e.message); }
+            finally { for (const el of [save, input, choice, service]) el.disabled = false; }
+          };
         }
 
         function table(headers, rows, cellFn) {

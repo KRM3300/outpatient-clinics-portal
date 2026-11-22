@@ -29,6 +29,7 @@ function doPost(e) {
       data.me = req.actor ? portalActor_(req.actor) : '';
       return out({ ok: true, data: data });
     }
+    if (req.action === 'editNote') return out({ ok: true, data: portalEditNote_(req) });
     if (req.action === 'update') return out({ ok: true, data: portalUpdate_(req) });
     if (req.action === 'msg') return out({ ok: true, data: portalMsg_(req) });
     if (req.action === 'search') return out({ ok: true, data: portalSearch_(req) });
@@ -199,6 +200,38 @@ function portalNoteOptions_(sh) {
   } catch (err) {
     console.log('noteOptions ' + sh.getName() + ': ' + err);
     return [];
+  }
+}
+
+/* الصلاحية الإدارية تُفحص في وسيط Supabase قبل تمرير هذا الإجراء. */
+function portalEditNote_(req) {
+  if (!PORTAL_API.SERVICE_SHEETS.includes(req.sheet)) throw new Error('خدمة غير معروفة');
+  const note = String(req.note || '').replace(/\s+/g, ' ').trim();
+  if (!note || note.length > 500 || note.startsWith('=')) throw new Error('أدخل ملاحظة نصية من ١ إلى ٥٠٠ حرف');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(25000);
+  try {
+    const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(req.sheet);
+    const options = portalNoteOptions_(sh);
+    const index = options.indexOf(req.previous);
+    if (index < 0) throw new Error('تغيّرت الملاحظة. حدّث الصفحة ثم حاول مجددًا');
+    if (note === req.previous) return { options: options };
+    if (options.includes(note) || (req.sheet === OPD.SHEET_INQUIRY && [note, req.previous].includes(PORTAL_NO_APPT))) {
+      throw new Error('هذه الصيغة موجودة أو محجوزة لرد الاستعلام');
+    }
+    const col = findColTrim_(getHeaders_(sh), 'ملاحظات موظف الاستقبال');
+    const target = sh.getRange(2, col, sh.getMaxRows() - 1);
+    let rule = target.getCell(1, 1).getDataValidation();
+    if (!rule) rule = sh.getRange(sh.getLastRow(), col).getDataValidation();
+    if (!rule) throw new Error('تعذر تحديد قائمة الملاحظات');
+    options[index] = note;
+    // تُحفظ قائمة الخدمة بشكل مستقل حتى لو كانت القائمة الأصلية مشتركة بين خدمات.
+    target.setDataValidation(rule.copy().requireValueInList(options, true).build());
+    SpreadsheetApp.flush();
+    CacheService.getScriptCache().remove(PORTAL_API.CACHE_LIST);
+    return { options: options };
+  } finally {
+    lock.releaseLock();
   }
 }
 

@@ -11,7 +11,7 @@ const cors = {
 };
 const json = (o: unknown, status = 200) =>
   new Response(JSON.stringify(o), { status, headers: { ...cors, "Content-Type": "application/json" } });
-const ACTIONS = ["list", "update", "msg", "search", "stats"];
+const ACTIONS = ["list", "update", "msg", "search", "stats", "editNote"];
 const PUBLIC_KEY = "sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs";
 // مفتاح الخدمة يحقنه Supabase تلقائياً (القديم أو الجديد) — لا يُكتب يدوياً
 function serviceKey(): string {
@@ -39,6 +39,11 @@ Deno.serve(async (req) => {
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { body = {}; }
   if (!ACTIONS.includes(String(body.action))) return json({ ok: false, error: "unknown_action" }, 400);
+
+  if (body.action === "editNote") {
+    const check = await sb.rpc("opd_kpi_is_admin");
+    if (check.error || check.data !== true) return json({ ok: false, error: "تعديل الملاحظات متاح للمدير فقط" }, 403);
+  }
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey(), { auth: { persistSession: false } });
   // اسم الموظف من حسابه المعتمد في المنصة (لا يُقبل اسم من المتصفح)
