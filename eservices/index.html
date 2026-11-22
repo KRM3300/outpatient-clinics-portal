@@ -202,15 +202,30 @@
         };
         $("refresh").onclick = () => refresh(true);
 
-        let canEditNotes = false;
+        let canEditNotes = false, currentUser = null, managedClinics = [];
+        const activeClinicNames = () => {
+          const names = managedClinics.filter(c => c.active).map(c => String(c.name || "").trim()).filter(Boolean);
+          const fallback = data && Array.isArray(data.clinics) ? data.clinics : [];
+          return [...new Set((names.length ? names : fallback).map(n =>
+            /^(?:عيادة\s+)?(?:خلع الورك التطو(?:ي)?ري|الخلوع الولادية|DDH)$/i.test(String(n).trim()) ? "الخلوع الولادية" : String(n).trim()
+          ))].filter(Boolean).sort((a,b)=>a.localeCompare(b,"ar"));
+        };
+        async function refreshManagedClinics() {
+          const { data: rows, error } = await api.from("opd_eservice_clinics")
+            .select("id,name,active,sort_order").order("sort_order").order("name");
+          if (error) throw error;
+          managedClinics = rows || [];
+        }
         async function start() {
           const { data: { user: u } } = await api.auth.getUser();
           hide("login", !u);
           if (!u) return;
+          currentUser = u;
           const p = await api.rpc("opd_has_perm", { p: "eservices" });
           if (p.data !== true) { hide("noaccess", true); return; }
           canEditNotes = (await api.rpc("opd_kpi_is_admin")).data === true;
-          if (!canEditNotes && tab === "noteSettings") tab = "alerts";
+          if (!canEditNotes && ["noteSettings","clinicSettings"].includes(tab)) tab = "alerts";
+          try { await refreshManagedClinics(); } catch (_error) { managedClinics = []; }
           hide("app", true);
           $("identity").textContent = u.email;
           drawTabs();
@@ -273,7 +288,7 @@
           const nav = $("tabs");
           nav.replaceChildren();
           const a = data ? alertData() : null;
-          for (const [k, label] of (canEditNotes ? [...TABS, ["noteSettings", "إعدادات ملاحظات لم يتم"]] : TABS)) {
+          for (const [k, label] of (canEditNotes ? [...TABS, ["clinicSettings", "إدارة العيادات"], ["noteSettings", "إعدادات ملاحظات لم يتم"]] : TABS)) {
             const b = node("button", label, "alt");
             b.type = "button";
             if (k === tab) b.setAttribute("aria-current", "page");
@@ -303,12 +318,76 @@
           const v = $("view");
           v.replaceChildren();
           if (!data && !["search"].includes(tab)) return;
+          if (tab === "clinicSettings" && canEditNotes) return drawClinicSettings(v);
           if (tab === "noteSettings" && canEditNotes) return drawNoteSettings(v);
           if (tab === "alerts") return drawAlerts(v);
           if (SERVICES.includes(tab)) return drawService(v, tab);
           if (tab === "messages") return drawMessages(v);
           if (tab === "search") return drawSearch(v);
           if (tab === "stats") return drawStats(v);
+        }
+
+        function drawClinicSettings(view) {
+          view.append(node("h2", "إدارة قائمة العيادات"));
+          view.append(node("p", "أضف عيادة أو غيّر اسمها أو أوقفها مؤقتًا. الطلبات القديمة تبقى بالاسم الذي سُجلت به.", "muted"));
+
+          const addBar = node("div", null, "bar");
+          const addInput = node("input"); addInput.placeholder = "اسم العيادة الجديدة"; addInput.maxLength = 120;
+          const addBtn = node("button", "إضافة عيادة"); addBtn.type = "button";
+          addBar.append(addInput, addBtn); view.append(addBar);
+
+          const list = node("div");
+          view.append(list);
+
+          const paint = () => {
+            list.replaceChildren();
+            if (!managedClinics.length) return list.append(node("p", "لا توجد عيادات مسجلة.", "empty"));
+            for (const c of managedClinics) {
+              const it = node("div", null, "item");
+              const bar = node("div", null, "bar");
+              const input = node("input"); input.value = c.name; input.maxLength = 120;
+              const save = node("button", "حفظ الاسم"); save.type = "button";
+              const toggle = node("button", c.active ? "إيقاف" : "إعادة تفعيل", "alt"); toggle.type = "button";
+              const state = node("span", c.active ? "مفعلة" : "موقوفة", "badge " + (c.active ? "" : "warn"));
+              save.onclick = async () => {
+                const name = input.value.replace(/\s+/g, " ").trim();
+                if (name.length < 2) return msg("اكتب اسم عيادة صحيحًا.");
+                save.disabled = toggle.disabled = true;
+                const { error } = await api.from("opd_eservice_clinics")
+                  .update({ name, updated_at: new Date().toISOString(), updated_by: currentUser?.id || null })
+                  .eq("id", c.id);
+                save.disabled = toggle.disabled = false;
+                if (error) return msg(error.code === "23505" ? "اسم العيادة موجود مسبقًا." : error.message);
+                await refreshManagedClinics(); paint(); msg("تم تحديث اسم العيادة.");
+              };
+              toggle.onclick = async () => {
+                save.disabled = toggle.disabled = true;
+                const { error } = await api.from("opd_eservice_clinics")
+                  .update({ active: !c.active, updated_at: new Date().toISOString(), updated_by: currentUser?.id || null })
+                  .eq("id", c.id);
+                save.disabled = toggle.disabled = false;
+                if (error) return msg(error.message);
+                await refreshManagedClinics(); paint(); msg(c.active ? "تم إيقاف العيادة." : "تمت إعادة تفعيل العيادة.");
+              };
+              bar.append(input, save, toggle, state);
+              it.append(bar); list.append(it);
+            }
+          };
+
+          addBtn.onclick = async () => {
+            const name = addInput.value.replace(/\s+/g, " ").trim();
+            if (name.length < 2) return msg("اكتب اسم عيادة صحيحًا.");
+            addBtn.disabled = true;
+            const nextOrder = managedClinics.reduce((m,c)=>Math.max(m, Number(c.sort_order)||0),0) + 1;
+            const { error } = await api.from("opd_eservice_clinics")
+              .insert({ name, active: true, sort_order: nextOrder, updated_by: currentUser?.id || null });
+            addBtn.disabled = false;
+            if (error) return msg(error.code === "23505" ? "اسم العيادة موجود مسبقًا." : error.message);
+            addInput.value = "";
+            await refreshManagedClinics(); paint(); msg("تمت إضافة العيادة.");
+          };
+          addInput.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); addBtn.click(); } };
+          paint();
         }
 
         function drawNoteSettings(view) {
@@ -325,7 +404,9 @@
           }
           form.append(save);
           view.append(form);
-          const options = (s) => (data.noteOptions[s] || []).filter(n => s !== "الاستعلام عن موعد" || n !== NO_APPT);
+          const options = (s) => (data.noteOptions[s] || []).filter(n =>
+            (s !== "الاستعلام عن موعد" || n !== NO_APPT) && !isExistingAppointmentNote(n)
+          );
           for (const s of SERVICES.filter(s => options(s).length)) service.add(new Option(s, s));
           if (!service.length) { form.replaceChildren(node("p", "لا توجد ملاحظات قابلة للتعديل.")); return; }
           function selectNote() { input.value = choice.value; dirty = false; }
@@ -432,6 +513,7 @@
         const NO_APPT = "لا يوجد موعد";
         const APPT_OPTION = "__appt__", OTHER = "__other__";
         const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+        const isExistingAppointmentNote = (v) => /لوجود موعد محجوز مسبقًا|لوجود موعد محجوز مسبقا|موعد محجوز مسبقًا|موعد محجوز مسبقا/.test(String(v || ""));
         const todayISO = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Riyadh" });
         function apptText(clinic, d, t) {
           const [y, m, dd] = d.split("-").map(Number);
