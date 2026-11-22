@@ -1868,7 +1868,7 @@
             accountApproved = data.status === "approved";
             isAdmin = data.role === "admin" && accountApproved;
             byId("auth-user-status").textContent =
-              user.email + " — " + (data.status === "approved" ? "معتمد" : "بانتظار الاعتماد / " + data.status);
+              user.email + " — " + (statusNames[data.status] || data.status);
             byId("auth-rejected").classList.toggle("hidden", data.status !== "rejected");
             if (data.status === "rejected") {
               byId("auth-resubmit-name").value = data.full_name || "";
