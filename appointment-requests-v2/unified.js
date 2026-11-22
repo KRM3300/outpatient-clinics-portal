@@ -92,6 +92,7 @@
   }
 
   let queueData=[],queueKind="all",queueOffset=0,queueHasMore=true,lastReport=null;
+  let queueMode="mine";
   let section="entry",queueBusy=false;
   const can = x => member?.role==="admin" || perms.has(x);
   const handler = () => can("appt_booking_handle") || can("appt_er_handle") || can("appt_fu_handle");
@@ -168,9 +169,11 @@
   function panel(id){
     section=id;
     for(const x of ["entry","queue","stats","settings"])$(x).classList.toggle("hidden",x!==id);
-    for(const [nav,target] of [["navNew","entry"],["navQueue","queue"],["navStats","stats"],["navSettings","settings"]]){
-      $(nav).classList.toggle("alt",target!==id);
-    }
+    $("navNew").classList.toggle("alt",id!=="entry");
+    $("navMine").classList.toggle("alt",!(id==="queue"&&queueMode==="mine"));
+    $("navQueue").classList.toggle("alt",!(id==="queue"&&queueMode==="manage"));
+    $("navStats").classList.toggle("alt",id!=="stats");
+    $("navSettings").classList.toggle("alt",id!=="settings");
   }
   function showState(name){
     for(const id of ["auth","onboard","waiting","app"])$(id).classList.toggle("hidden",id!==name);
@@ -205,23 +208,15 @@
     showState("app");
     $("navSettings").classList.toggle("hidden",!admin());
     $("navStats").classList.toggle("hidden",!handler());
-    $("navQueue").classList.remove("hidden");
-    $("navQueue").textContent=handler()?"الطلبات":"طلباتي";
-    const queueTitle=document.querySelector("#queue h2");
-    if(queueTitle)queueTitle.textContent=handler()?"طلبات الحجز":"طلباتي";
-    const st=$("status");
-    if(st?.options?.length>=3){
-      st.options[1].textContent=handler()?"المفتوحة":"لم يتم";
-      st.options[2].textContent=handler()?"المقفلة":"تم";
-    }
-    const qh=$("queueHint");
-    if(qh)qh.textContent=handler()
-      ?"المعيار التشغيلي 24 ساعة من وقت رفع الطلب. الإغلاق يتطلب موعدًا محجوزًا أو سبب رفض موثقًا."
-      :"تعرض «طلباتي» الطلبات التي رفعتها أنت فقط. الحالة «تم» عند حجز الموعد، و«لم يتم» حتى يتم الحجز.";
+    $("navMine").classList.remove("hidden");
+    $("navQueue").classList.toggle("hidden",!handler());
     $("navNew").classList.toggle("hidden",!allowedKinds().length);
     drawForm();
     panel(allowedKinds().length?"entry":"queue");
-    if(!allowedKinds().length)await loadQueue(true);
+    if(!allowedKinds().length){
+      queueMode="mine";
+      await loadQueue(true);
+    }
   }
   $("sendOtp").onclick=async()=>{
     const email=$("email").value.trim();
@@ -332,10 +327,13 @@
   };
   function buildTabs(){
     const root=$("routeTabs");clear(root);root.append(showTab("all"));
-    const visible=can("appt_booking_handle")?Object.keys(names):
-      [...new Set([...allowedKinds(),
-        ...(can("appt_er_handle")?["emergency"]:[]),
-        ...(can("appt_fu_handle")?["followup"]:[])])];
+    const visible=queueMode==="manage"
+      ?(can("appt_booking_handle")?Object.keys(names):
+        [...new Set([
+          ...(can("appt_er_handle")?["emergency"]:[]),
+          ...(can("appt_fu_handle")?["followup"]:[])
+        ])])
+      :allowedKinds();
     for(const k of visible)root.append(showTab(k));
   }
   function hoursUntilNow(date){
@@ -378,10 +376,22 @@
   }
   function renderQueue(){
     const root=$("requestList");clear(root);buildTabs();
+    const requesterView=queueMode==="mine";
+    const queueTitle=document.querySelector("#queue h2");
+    if(queueTitle)queueTitle.textContent=requesterView?"طلباتي":"معالجة الطلبات";
+    const st=$("status");
+    if(st?.options?.length>=3){
+      st.options[1].textContent=requesterView?"لم يتم":"المفتوحة";
+      st.options[2].textContent=requesterView?"تم":"المقفلة";
+    }
+    const qh=$("queueHint");
+    if(qh)qh.textContent=requesterView
+      ?"تعرض «طلباتي» الطلبات التي رفعتها أنت فقط. الحالة «تم» عند حجز الموعد، و«لم يتم» حتى يتم الحجز."
+      :"المعيار التشغيلي 24 ساعة من وقت رفع الطلب. الإغلاق يتطلب موعدًا محجوزًا أو سبب رفض موثقًا.";
     const term=$("q").value.trim().toLowerCase();
     const status=$("status").value;
-    const requesterView=!handler();
     const rows=queueData.filter(r=>
+      (!requesterView||r.requested_by===user?.id)&&
       (queueKind==="all"||r.kind===queueKind)&&
       (status==="all"||(requesterView
         ?(status==="open"?r.status!=="booked":r.status==="booked")
@@ -394,7 +404,7 @@
       const card=el("article",undefined,"request"),top=el("div",undefined,"top");
       const heading=el("strong",(names[r.kind]||r.kind)+" — "+r.patient_name);
       const late=!statusClosed(r.status)&&hoursUntilNow(r.created_at)>24;
-      const requesterView=!handler();
+      const requesterView=queueMode==="mine";
       const statusText=requesterView?(r.status==="booked"?"تم":"لم يتم"):(statuses[r.status]||r.status)+(late?" — متأخر":"");
       const statusClass=requesterView?(r.status==="booked"?"chip done":"chip notdone"):"chip"+(late?" late":"");
       top.append(heading,el("span",statusText,statusClass));
@@ -411,9 +421,9 @@
         ["السبب/التشخيص",r.diagnosis_reason],["الملاحظات",r.request_note]
       ])if(value)extra.append(el("p",caption+": "+value,"muted"));
       card.append(extra);
-      if(r.status==="booked")card.append(el("p","تاريخ الموعد المحجوز: "+(r.booked_date||"غير موثق تاريخيًا"),"success"));
-      if(r.status==="rejected"||r.status==="unable")card.append(el("p","سبب الرفض/التعذر: "+(r.rejection_reason||"غير مسجل"),"error"));
-      if(canManage&&!statusClosed(r.status))actionBox(r,card);
+      if(!requesterView&&r.status==="booked")card.append(el("p","تاريخ الموعد المحجوز: "+(r.booked_date||"غير موثق تاريخيًا"),"success"));
+      if(!requesterView&&(r.status==="rejected"||r.status==="unable"))card.append(el("p","سبب الرفض/التعذر: "+(r.rejection_reason||"غير مسجل"),"error"));
+      if(queueMode==="manage"&&canManage&&!statusClosed(r.status))actionBox(r,card);
       root.append(card);
     }
     if(queueHasMore){
@@ -424,9 +434,10 @@
   async function loadQueue(reset){
     if(queueBusy)return;queueBusy=true;
     if(reset){queueOffset=0;queueData=[];queueHasMore=true;}
-    const query=api.from("opd_appt_requests")
-      .select("id,kind,doctor_name,manual_fields,patient_name,patient_identifier,patient_dob,patient_mobile,mother_name,diagnosis_reason,request_note,source_facility,clinic_name,referring_doctor,requester_name,status,created_at,closed_at,booked_date,rejection_reason")
+    let query=api.from("opd_appt_requests")
+      .select("id,kind,requested_by,doctor_name,manual_fields,patient_name,patient_identifier,patient_dob,patient_mobile,mother_name,diagnosis_reason,request_note,source_facility,clinic_name,referring_doctor,requester_name,status,created_at,closed_at,booked_date,rejection_reason")
       .order("created_at",{ascending:false}).range(queueOffset,queueOffset+199);
+    if(queueMode==="mine")query=query.eq("requested_by",user.id);
     const r=await query;queueBusy=false;
     if(r.error)return feedback("queueMessage",r.error.message);
     queueData.push(...(r.data||[]));
@@ -515,7 +526,8 @@
     }
   }
   $("navNew").onclick=()=>panel("entry");
-  $("navQueue").onclick=()=>{panel("queue");loadQueue(true);};
+  $("navMine").onclick=()=>{queueMode="mine";panel("queue");loadQueue(true);};
+  $("navQueue").onclick=()=>{queueMode="manage";panel("queue");loadQueue(true);};
   $("navStats").onclick=()=>{panel("stats");stats();};
   $("navSettings").onclick=()=>{panel("settings");settingsPanel();};
   $("status").onchange=renderQueue;$("q").oninput=renderQueue;
