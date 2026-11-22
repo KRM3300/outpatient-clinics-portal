@@ -577,8 +577,41 @@
           return { el: btn, extra, value: () => value, error: () => "" };
         }
 
+        function appointmentEditor(initialClinic) {
+          const extra = node("div", null, "bar");
+          const clinic = node("select"); clinic.setAttribute("aria-label", "عيادة الموعد");
+          const choices = activeClinicNames();
+          clinic.append(new Option("العيادة", ""), ...choices.map((c) => new Option(c, c)), new Option("غير موجودة، أكتبها", OTHER));
+          const other = node("input"); other.placeholder = "اسم العيادة"; other.maxLength = 120; other.classList.add("hidden");
+          const d = node("input"); d.type = "date"; d.dir = "ltr"; d.min = todayISO(); d.setAttribute("aria-label", "تاريخ الموعد");
+          const t = node("input"); t.type = "time"; t.dir = "ltr"; t.min = "07:30"; t.max = "19:30"; t.setAttribute("aria-label", "وقت الموعد");
+          const preview = node("span", "", "muted");
+          const normalizedInitial = String(initialClinic || "").trim();
+          if (normalizedInitial) {
+            if (choices.includes(normalizedInitial)) clinic.value = normalizedInitial;
+            else { clinic.value = OTHER; other.value = normalizedInitial; other.classList.remove("hidden"); }
+          }
+          const clinicName = () => clinic.value === OTHER ? other.value.replace(/\s+/g, " ").trim() : clinic.value;
+          const upd = () => {
+            const e = apptError(clinicName(), d.value, t.value);
+            preview.textContent = e ? (d.value || t.value ? e : "") : apptText(clinicName(), d.value, t.value);
+            preview.style.color = e ? "var(--danger)" : "";
+            dirty = true;
+          };
+          clinic.onchange = () => { other.classList.toggle("hidden", clinic.value !== OTHER); upd(); };
+          other.oninput = d.oninput = t.oninput = upd;
+          const lc = node("label", "العيادة "), ld = node("label", "التاريخ "), lt = node("label", "الوقت ");
+          lc.append(clinic); ld.append(d); lt.append(t);
+          extra.append(lc, other, ld, lt, preview);
+          return {
+            extra,
+            value: () => apptError(clinicName(), d.value, t.value) ? "" : apptText(clinicName(), d.value, t.value),
+            error: () => apptError(clinicName(), d.value, t.value),
+          };
+        }
+
         function noteField(sheet, current) {
-          const opts = (data.noteOptions && data.noteOptions[sheet]) || [];
+          const opts = ((data.noteOptions && data.noteOptions[sheet]) || []).filter((o) => !isExistingAppointmentNote(o));
           const inquiry = sheet === "الاستعلام عن موعد";
           if (!opts.length && !inquiry) {
             const span = node("span", current ? "الملاحظة: " + current : "", "muted");
@@ -586,41 +619,14 @@
           }
           if (!inquiry) return notePicker(opts, current);
           const sel = node("select");
-          sel.setAttribute("aria-label", inquiry ? "الرد على الاستعلام" : "ملاحظة للمريض");
-          sel.append(new Option(inquiry ? "اختر الرد" : "اختر ملاحظة للمريض", ""));
-          if (inquiry) sel.append(new Option("يوجد موعد: العيادة والتاريخ والوقت", APPT_OPTION), new Option(NO_APPT, NO_APPT));
+          sel.setAttribute("aria-label", "الرد على الاستعلام");
+          sel.append(new Option("اختر الرد", ""));
+          sel.append(new Option("يوجد موعد: العيادة والتاريخ والوقت", APPT_OPTION), new Option(NO_APPT, NO_APPT));
           sel.append(...opts.filter((o) => o !== NO_APPT).map((o) => new Option(o, o)));
-          let extra = null, clinic = null, other = null, d = null, t = null;
-          if (inquiry) {
-            extra = node("div", null, "bar");
-            clinic = node("select"); clinic.setAttribute("aria-label", "عيادة الموعد");
-            const hipClinic = "الخلوع الولادية";
-            const clinicChoices = new Set((data.clinics || []).map((name) =>
-              /^(?:عيادة\s+)?(?:خلع الورك التطو(?:ي)?ري|الخلوع الولادية|DDH)$/i.test(name.trim()) ? hipClinic : name
-            ));
-            clinicChoices.add(hipClinic);
-            clinic.append(new Option("العيادة", ""), ...Array.from(clinicChoices).sort((a, b) => a.localeCompare(b, "ar")).map((c) => new Option(c, c)), new Option("غير موجودة، أكتبها", OTHER));
-            other = node("input"); other.placeholder = "اسم العيادة"; other.maxLength = 60; other.classList.add("hidden");
-            d = node("input"); d.type = "date"; d.dir = "ltr"; d.min = todayISO(); d.setAttribute("aria-label", "تاريخ الموعد");
-            t = node("input"); t.type = "time"; t.dir = "ltr"; t.min = "07:30"; t.max = "19:30"; t.setAttribute("aria-label", "وقت الموعد");
-            const preview = node("span", "", "muted");
-            const clinicName = () => (clinic.value === OTHER ? other.value.replace(/\s+/g, " ").trim() : clinic.value);
-            const upd = () => {
-              const e = apptError(clinicName(), d.value, t.value);
-              preview.textContent = e ? (d.value || t.value ? e : "") : apptText(clinicName(), d.value, t.value);
-              preview.style.color = e ? "var(--danger)" : "";
-              dirty = true;
-            };
-            clinic.onchange = () => { other.classList.toggle("hidden", clinic.value !== OTHER); upd(); };
-            other.oninput = d.oninput = t.oninput = upd;
-            const lc = node("label", "العيادة "), ld = node("label", "التاريخ "), lt = node("label", "الوقت ");
-            lc.append(clinic); ld.append(d); lt.append(t);
-            extra.append(lc, other, ld, lt, preview);
-            extra.classList.add("hidden");
-            sel.addEventListener("change", () => extra.classList.toggle("hidden", sel.value !== APPT_OPTION));
-            extra.clinicName = clinicName;
-          }
-          if (current && current !== NO_APPT && !opts.includes(current)) {
+          const editor = appointmentEditor("");
+          editor.extra.classList.add("hidden");
+          sel.addEventListener("change", () => editor.extra.classList.toggle("hidden", sel.value !== APPT_OPTION));
+          if (current && current !== NO_APPT && !opts.includes(current) && !isExistingAppointmentNote(current)) {
             const o = new Option(current.length > 90 ? current.slice(0, 90) + "…" : current, current);
             o.title = current;
             sel.append(o);
@@ -628,10 +634,28 @@
           sel.value = current || "";
           return {
             el: sel,
-            extra,
-            value: () => (sel.value === APPT_OPTION ? (apptError(extra.clinicName(), d.value, t.value) ? "" : apptText(extra.clinicName(), d.value, t.value)) : sel.value),
-            error: () => (sel.value === APPT_OPTION ? apptError(extra.clinicName(), d.value, t.value) : ""),
+            extra: editor.extra,
+            value: () => sel.value === APPT_OPTION ? editor.value() : sel.value,
+            error: () => sel.value === APPT_OPTION ? editor.error() : "",
           };
+        }
+
+        function existingAppointmentConversion(initialClinic) {
+          let active = false;
+          const wrap = node("div", null, "np-warn");
+          const btn = node("button", "يوجد موعد قائم — تحويل إلى استعلام عن موعد", "alt");
+          btn.type = "button";
+          const hint = node("span", "بدل إرسال اعتذار للمراجع، أدخل الموعد الموجود وسيتم تجهيز الرد كاستعلام عن موعد.", "muted");
+          const editor = appointmentEditor(initialClinic);
+          editor.extra.classList.add("hidden");
+          btn.onclick = () => {
+            active = !active;
+            editor.extra.classList.toggle("hidden", !active);
+            btn.textContent = active ? "إلغاء التحويل إلى استعلام" : "يوجد موعد قائم — تحويل إلى استعلام عن موعد";
+            dirty = true;
+          };
+          wrap.append(btn, hint, editor.extra);
+          return { el: wrap, active: () => active, value: editor.value, error: () => active ? editor.error() : "" };
         }
 
         function serviceItem(sheet, r) {
@@ -643,37 +667,49 @@
           head.append(node("span", pend ? (r.status ? "لم يتم بدون ملاحظة" : "معلق") + " · " + Math.round(h) + " ساعة" : r.status, "badge " + (pend ? (h > RED_H ? "danger" : h >= GREEN_H ? "warn" : "wait") : r.status === "تم" ? "" : "warn")));
           it.append(head);
           it.append(meta([["التاريخ", fmt(r.ts)], ["الهوية", r.nid], ["الميلاد", fmtDate(r.dob)], ["الجوال", r.mobile], ["العيادة", r.clinic], ["الفترة", r.period], ["الطبيب", r.doctor]]));
-          /* «أخرى» في سبب عدم الحضور: يظهر السبب اللي كتبه المريض بدل نص الخيار */
           const otherReason = sheet === "تجديد الموعد" && /^أخرى/.test(String(r.reason || ""));
           it.append(meta([
             [sheet === "تجديد الموعد" ? "سبب عدم الحضور" : "الغرض من التعديل", otherReason ? "أخرى" : r.reason],
             [otherReason ? "السبب الذي كتبه المريض" : "ملاحظات المريض", otherReason ? r.notes || "لم يكتب المريض السبب" : r.notes],
             ["تاريخ الموعد", fmtDate(r.apptDate)],
           ]));
+
           const act = node("div", null, "act");
           const st = node("select");
-          st.append(new Option("الحالة", ""), ...data.statuses.map((s) => new Option(s, s)));
+          st.append(new Option("الحالة", ""), ...data.statuses.map((x) => new Option(x, x)));
           st.value = r.status;
           const nt = noteField(sheet, r.staffNote || "");
+          const convertible = ["تجديد الموعد", "تعديل الموعد"].includes(sheet);
+          const conv = convertible ? existingAppointmentConversion(r.clinic) : null;
           const sv = node("button", "حفظ"); sv.type = "button";
           st.oninput = () => (dirty = true);
           nt.el.addEventListener("input", () => (dirty = true));
           nt.el.addEventListener("change", () => (dirty = true));
+
           sv.onclick = async () => {
-            if (nt.error()) return msg(nt.error());
-            if (MSG_SOURCES.includes(sheet) && st.value === "لم يتم" && !nt.value()) return msg("اختر ملاحظة للمريض: «لم يتم» مع ملاحظة ينتقل لسجل الرسائل.");
+            const converted = !!conv?.active();
+            if (converted && conv.error()) return msg(conv.error());
+            if (!converted && nt.error()) return msg(nt.error());
+            const finalStatus = converted ? "لم يتم" : st.value;
+            const finalNote = converted ? conv.value() : nt.value();
+            if (MSG_SOURCES.includes(sheet) && finalStatus === "لم يتم" && !finalNote)
+              return msg("اختر ملاحظة للمريض: «لم يتم» مع ملاحظة ينتقل لسجل الرسائل.");
             sv.disabled = true; msg("جاري الحفظ…");
             try {
-              await call({ action: "update", sheet, row: r.row, raw: r.raw, status: st.value, staffNote: nt.value() });
+              await call({ action: "update", sheet, row: r.row, raw: r.raw, status: finalStatus, staffNote: finalNote });
               dirty = false;
-              const toMsg = MSG_SOURCES.includes(sheet) && nt.value() && (st.value === "لم يتم" || (sheet === "الاستعلام عن موعد" && st.value === "تم"));
-              msg(toMsg ? "تم الحفظ، وانتقل الطلب لسجل الرسائل." : "تم الحفظ.");
+              const toMsg = MSG_SOURCES.includes(sheet) && finalNote && (finalStatus === "لم يتم" || (sheet === "الاستعلام عن موعد" && finalStatus === "تم"));
+              msg(converted
+                ? "تم تحويل النتيجة إلى استعلام عن موعد، وأُضيفت تفاصيل الموعد لسجل الرسائل."
+                : (toMsg ? "تم الحفظ، وانتقل الطلب لسجل الرسائل." : "تم الحفظ."));
               await refresh(false); draw();
             } catch (e) { msg(e.message); sv.disabled = false; }
           };
+
           act.append(st, nt.el, sv);
           it.append(act);
           if (nt.extra) it.append(nt.extra);
+          if (conv) it.append(conv.el);
           if (r.employee) it.append(node("div", "آخر تعديل: " + r.employee + (r.changed ? " · " + fmt(r.changed) : ""), "muted"));
           return it;
         }
@@ -696,18 +732,20 @@
           if (!rows.length) return v.append(node("p", onlyOpen ? "كل الرسائل مرسلة." : "لا توجد رسائل.", "empty"));
           rows.forEach((m) => {
             const h = hoursSince(m.copied);
+            const convertedInquiry = ["تجديد الموعد","تعديل الموعد"].includes(m.service) && /^موعدكم في عيادة\s+/.test(String(m.note || ""));
+            const displayService = convertedInquiry ? "الاستعلام عن موعد" : m.service;
             const it = node("div", null, "item " + (m.status === "تم" ? "done" : m.status ? "fail" : h > RED_H ? "age-red" : h >= GREEN_H ? "age-mid" : "age-ok"));
             it.dataset.row = m.row; it.tabIndex = -1;
             const head = node("div", null, "rec-head");
             head.append(node("strong", m.name || "بدون اسم"));
             head.append(node("span", m.status || "لم تُرسل · " + Math.round(h) + " ساعة", "badge " + (m.status === "تم" ? "" : m.status ? "warn" : h > RED_H ? "danger" : h >= GREEN_H ? "warn" : "wait")));
             it.append(head);
-            it.append(meta([["الخدمة", m.service], ["الجوال", m.mobile], ["العيادة", m.clinic], ["دخل السجل", fmt(m.copied)], ["وقت الإرسال", fmt(m.sentAt)], ["SLA (ساعة)", m.sla], ["الموظف", m.employee]]));
-            it.append(node("div", waText(m.service, m.clinic, m.note), "preview"));
+            it.append(meta([["الخدمة", displayService], ["الجوال", m.mobile], ["العيادة", m.clinic], ["دخل السجل", fmt(m.copied)], ["وقت الإرسال", fmt(m.sentAt)], ["SLA (ساعة)", m.sla], ["الموظف", m.employee]]));
+            it.append(node("div", waText(displayService, m.clinic, m.note), "preview"));
             const act = node("div", null, "act");
             act.style.gridTemplateColumns = "auto 260px auto";
             let send;
-            if (m.phone && m.note) { send = node("a", "إرسال 📲", "wa"); send.href = "https://wa.me/" + m.phone + "?text=" + encodeURIComponent(waText(m.service, m.clinic, m.note)); send.target = "_blank"; send.rel = "noopener"; }
+            if (m.phone && m.note) { send = node("a", "إرسال 📲", "wa"); send.href = "https://wa.me/" + m.phone + "?text=" + encodeURIComponent(waText(displayService, m.clinic, m.note)); send.target = "_blank"; send.rel = "noopener"; }
             else send = node("span", m.badPhone ? "رقم الجوال غير صحيح" : "لا توجد ملاحظة", "badge danger");
             const st = node("select");
             st.append(new Option("حالة الرسالة", ""), ...data.msgStatuses.map((s) => new Option(s, s)));
