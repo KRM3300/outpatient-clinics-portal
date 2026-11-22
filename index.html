@@ -409,6 +409,7 @@
         <div id="auth-onboard" class="hidden">
           <h3>تسجيل مستخدم جديد</h3>
           <p class="page-note">أكمل بياناتك ليتعرف عليك المدير ويعطيك الصلاحية المناسبة.</p>
+          <p class="perm-req"><strong>تنبيه:</strong> قبل التسجيل تأكد أنك لم تسجل سابقًا في المنصة. إذا كان لديك حساب سابق، استخدمه ولا تنشئ حسابًا جديدًا. وإذا تغيّر بريدك أو تعذر دخولك للحساب السابق، راجع مدير النظام.</p>
           <div class="grid">
             <label><span>الاسم الكامل</span><input id="auth-name" maxlength="120" autocomplete="name" /></label>
             <label><span>الرقم الوظيفي</span><input id="auth-empno" maxlength="20" inputmode="numeric" dir="ltr" /></label>
@@ -446,6 +447,40 @@
           <div class="toolbar">
             <p id="auth-user-status" style="margin: 0"></p>
             <button id="auth-logout" class="alt" type="button">تسجيل الخروج</button>
+          </div>
+          <div id="auth-rejected" class="hidden" style="margin:10px 0 14px">
+            <div id="auth-rejection-info" class="perm-req"></div>
+            <details id="auth-resubmit-box">
+              <summary>تصحيح البيانات وإعادة إرسال الطلب</summary>
+              <div class="grid" style="margin-top:10px">
+                <label><span>الاسم الكامل</span><input id="auth-resubmit-name" maxlength="120" autocomplete="name" /></label>
+                <label><span>الرقم الوظيفي</span><input id="auth-resubmit-empno" maxlength="20" inputmode="numeric" dir="ltr" /></label>
+                <label><span>الوظيفة</span>
+                  <select id="auth-resubmit-job">
+                    <option value="">اختر الوظيفة</option>
+                    <option value="doctor">طبيب</option>
+                    <option value="phc_doctor">طبيب مركز صحي</option>
+                    <option value="nurse">تمريض</option>
+                    <option value="reception">موظف عيادات (خدمة المراجعين)</option>
+                    <option value="carelink">كير لينك</option>
+                    <option value="tech_supervisor">مشرف فني</option>
+                    <option value="pharmacy">صيدلية</option>
+                    <option value="radiology">أشعة</option>
+                    <option value="lab">مختبر</option>
+                    <option value="physio">علاج طبيعي</option>
+                    <option value="scheduler">موظف مواعيد</option>
+                    <option value="pe_agent">موظف تجربة المريض</option>
+                    <option value="supervisor">مشرف</option>
+                    <option value="other">أخرى</option>
+                  </select>
+                </label>
+                <label><span>القسم أو العيادة</span><input id="auth-resubmit-dept" maxlength="120" /></label>
+                <label><span>رقم الجوال (اختياري)</span><input id="auth-resubmit-phone" maxlength="20" inputmode="tel" dir="ltr" /></label>
+              </div>
+              <h3 style="margin-top:16px">الصلاحيات المطلوبة</h3>
+              <div id="auth-resubmit-perms" class="perm-grid"></div>
+              <button id="auth-resubmit-send" type="button">إعادة إرسال الطلب</button>
+            </details>
           </div>
           <div id="auth-profile" class="line hidden" style="margin: 10px 0 14px">
             <label><span>الوظيفة</span>
@@ -778,7 +813,15 @@
             supervisor: "مشرف",
             other: "أخرى",
           },
-          statusNames = { pending: "بانتظار الاعتماد", approved: "معتمد", rejected: "مرفوض", suspended: "موقوف" };
+          statusNames = { pending: "بانتظار الاعتماد", approved: "معتمد", rejected: "مرفوض", suspended: "موقوف" },
+          rejectionReasons = {
+            existing_account: "يوجد حساب سابق",
+            incomplete_data: "البيانات غير مكتملة أو غير صحيحة",
+            invalid_email: "البريد الإلكتروني غير معتمد",
+            invalid_employee_no: "الرقم الوظيفي غير صحيح",
+            outside_scope: "المستخدم غير تابع للجهة أو الخدمة",
+            other: "أخرى",
+          };
         const translations = {
           "خدمة معتمدة": "Approved service",
           "سجّل الدخول بحساب معتمد لعرض هذه الخدمات.": "Sign in with an approved account to view these services.",
@@ -1199,6 +1242,14 @@
             byId(problem[0]).focus();
             return;
           }
+          const dup = await api.rpc("opd_member_duplicate_employee", { p_employee_no: empNo });
+          if (dup.error) return (msg.textContent = dup.error.message);
+          if (dup.data) {
+            byId("auth-empno").classList.add("invalid");
+            byId("auth-empno").focus();
+            msg.textContent = "يوجد حساب سابق بهذا الرقم الوظيفي. استخدم حسابك السابق أو راجع مدير النظام بدل إنشاء حساب جديد.";
+            return;
+          }
           const { error } = await api.from("opd_appt_members").insert({
             user_id: currentUser.id,
             full_name: name,
@@ -1314,6 +1365,51 @@
         byId("auth-job").addEventListener("change", (e) =>
           drawPerms(byId("auth-perms"), JOB_DEFAULTS[e.target.value] || [], { requestable: true }),
         );
+        byId("auth-resubmit-job").addEventListener("change", (e) =>
+          drawPerms(byId("auth-resubmit-perms"), JOB_DEFAULTS[e.target.value] || [], { requestable: true }),
+        );
+        byId("auth-resubmit-send").onclick = async () => {
+          if (!currentUser) return;
+          const name = byId("auth-resubmit-name").value.trim(),
+            empNo = byId("auth-resubmit-empno").value.trim(),
+            job = byId("auth-resubmit-job").value,
+            dept = byId("auth-resubmit-dept").value.trim(),
+            phone = byId("auth-resubmit-phone").value.trim();
+          const problem =
+            name.length < 3
+              ? ["auth-resubmit-name", "اكتب الاسم الكامل"]
+              : !/^\d{4,12}$/.test(empNo)
+                ? ["auth-resubmit-empno", "اكتب الرقم الوظيفي (أرقام فقط)"]
+                : !job
+                  ? ["auth-resubmit-job", "اختر الوظيفة"]
+                  : dept.length < 2
+                    ? ["auth-resubmit-dept", "اكتب القسم أو العيادة"]
+                    : phone && !/^\+?\d{9,15}$/.test(phone)
+                      ? ["auth-resubmit-phone", "رقم الجوال غير صحيح"]
+                      : null;
+          if (problem) {
+            msg.textContent = problem[1];
+            byId(problem[0]).classList.add("invalid");
+            byId(problem[0]).focus();
+            return;
+          }
+          const b = byId("auth-resubmit-send");
+          b.disabled = true;
+          const { error } = await api.rpc("opd_member_resubmit", {
+            p_full_name: name,
+            p_employee_no: empNo,
+            p_job_title: job,
+            p_department: dept,
+            p_phone: phone || null,
+            p_perms: checkedPerms(byId("auth-resubmit-perms")),
+          });
+          b.disabled = false;
+          msg.textContent = error ? error.message : "تمت إعادة إرسال طلبك للمدير";
+          if (!error) {
+            byId("auth-resubmit-box").open = false;
+            await check();
+          }
+        };
         byId("auth-profile-save").onclick = async () => {
           const b = byId("auth-profile-save");
           b.disabled = true;
@@ -1329,7 +1425,7 @@
           root.replaceChildren();
           const [p, r] = await Promise.all([
             api.from("opd_user_perms").select("perm").eq("user_id", currentUser.id),
-            api.from("opd_perm_requests").select("perms,status,created_at").eq("user_id", currentUser.id).order("created_at", { ascending: false }).limit(1),
+            api.from("opd_perm_requests").select("perms,status,created_at,rejection_reason,decision_note").eq("user_id", currentUser.id).order("created_at", { ascending: false }).limit(1),
           ]);
           const mine = (p.data || []).map((x) => x.perm);
           const last = r.data?.[0];
@@ -1345,7 +1441,15 @@
             add("p", "طلبك قيد المراجعة: " + (last.perms.map((k) => PERM_NAME[k] || k).join("، ") || "اعتماد الحساب"), "perm-req");
             return;
           }
-          if (last?.status === "rejected") add("p", "تم رفض طلبك السابق، وتقدر ترسل طلب جديد.", "perm-req");
+          if (last?.status === "rejected") {
+            const reason = rejectionReasons[last.rejection_reason] || "غير محدد";
+            const detail = "تم رفض الطلب — السبب: " + reason + (last.decision_note ? " — ملاحظة المدير: " + last.decision_note : "");
+            add("p", detail, "perm-req");
+            if (status === "rejected") {
+              byId("auth-rejection-info").textContent = detail + " يمكنك تصحيح بياناتك وإعادة إرسال نفس الحساب للمراجعة.";
+              drawPerms(byId("auth-resubmit-perms"), last.perms || JOB_DEFAULTS[byId("auth-resubmit-job").value] || [], { requestable: true });
+            }
+          }
           if (status === "suspended") return;
           const rest = PERMS.filter((x) => !x[4] && !mine.includes(x[1])).map((x) => x[1]);
           if (!rest.length) return;
@@ -1554,6 +1658,21 @@
             grid.className = "perm-grid";
             drawPerms(grid, start);
             line.append(grid);
+            let rejectReason = null, rejectNote = null;
+            if (pending) {
+              const rejectBox = document.createElement("div");
+              rejectBox.className = "line";
+              rejectReason = document.createElement("select");
+              rejectReason.setAttribute("aria-label", "سبب الرفض");
+              rejectReason.add(new Option("— اختر سبب الرفض —", ""));
+              for (const [key, labelText] of Object.entries(rejectionReasons)) rejectReason.add(new Option(labelText, key));
+              rejectNote = document.createElement("input");
+              rejectNote.maxLength = 500;
+              rejectNote.placeholder = "ملاحظة للموظف (اختياري)";
+              rejectNote.setAttribute("aria-label", "ملاحظة الرفض للموظف");
+              rejectBox.append(rejectReason, rejectNote);
+              line.append(rejectBox);
+            }
             /* الحفظ يحدّث بطاقة هذا الموظف فقط: لا تنقفل المجموعات ولا ترجع الصفحة لأعلى، والتأكيد يظهر تحت الموظف نفسه */
             const buttons = [];
             const note = document.createElement("p");
@@ -1587,11 +1706,21 @@
               }
             };
             const save = async (decision, b) => {
+              if (decision === "rejected" && !rejectReason?.value) {
+                rejectReason?.focus();
+                return done("اختر سبب الرفض أولاً", false);
+              }
               busy(b, true);
-              const { error } = await api.rpc("opd_perm_save", { p_user: m.user_id, p_perms: checkedPerms(grid), p_decision: decision });
+              const result = decision === "rejected"
+                ? await api.rpc("opd_perm_reject", {
+                    p_user: m.user_id,
+                    p_reason: rejectReason.value,
+                    p_note: rejectNote?.value.trim() || null,
+                  })
+                : await api.rpc("opd_perm_save", { p_user: m.user_id, p_perms: checkedPerms(grid), p_decision: decision });
               busy(b, false);
-              if (error) return done(error.message, false);
-              await done(decision === "rejected" ? "تم رفض الطلب" : pending ? "تم الاعتماد" : "تم حفظ الصلاحيات", true, pending);
+              if (result.error) return done(result.error.message, false);
+              await done(decision === "rejected" ? "تم رفض الطلب وحفظ السبب" : pending ? "تم الاعتماد" : "تم حفظ الصلاحيات", true, pending);
             };
             const btn = (text, fn, alt) => {
               const b = document.createElement("button");
@@ -1720,7 +1849,7 @@
               render();
               return;
             }
-            const { data, error } = await api.from("opd_appt_members").select("role,status,job_title,outpatient_staff").eq("user_id", user.id).maybeSingle();
+            const { data, error } = await api.from("opd_appt_members").select("role,status,job_title,outpatient_staff,full_name,employee_no,department,phone").eq("user_id", user.id).maybeSingle();
             if (error) {
               msg.textContent = error.message;
               return;
@@ -1740,6 +1869,15 @@
             isAdmin = data.role === "admin" && accountApproved;
             byId("auth-user-status").textContent =
               user.email + " — " + (data.status === "approved" ? "معتمد" : "بانتظار الاعتماد / " + data.status);
+            byId("auth-rejected").classList.toggle("hidden", data.status !== "rejected");
+            if (data.status === "rejected") {
+              byId("auth-resubmit-name").value = data.full_name || "";
+              byId("auth-resubmit-empno").value = data.employee_no || "";
+              byId("auth-resubmit-job").value = data.job_title || "";
+              byId("auth-resubmit-dept").value = data.department || "";
+              byId("auth-resubmit-phone").value = data.phone || "";
+              drawPerms(byId("auth-resubmit-perms"), JOB_DEFAULTS[data.job_title] || [], { requestable: true });
+            }
             byId("auth-profile").classList.toggle("hidden", !accountApproved);
             if (accountApproved) {
               byId("auth-profile-job").value = data.job_title || "other";
@@ -1759,7 +1897,14 @@
               await checkDriveFreshness();
             } else {
               title.textContent = "حساب المستخدم";
-              info.textContent = data.status === "approved" ? "تم تسجيل الدخول" : "حسابك بانتظار الاعتماد";
+              info.textContent =
+                data.status === "approved"
+                  ? "تم تسجيل الدخول"
+                  : data.status === "rejected"
+                    ? "تم رفض طلب الحساب — يمكنك تصحيح البيانات وإعادة إرساله"
+                    : data.status === "suspended"
+                      ? "الحساب موقوف"
+                      : "حسابك بانتظار الاعتماد";
               await myPerms(data.status);
             }
             if (!isAdmin) await services();
