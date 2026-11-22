@@ -70,29 +70,24 @@
   const rejectedReasons=["عدم توفر موعد","بيانات ناقصة","عدم انطباق ضوابط المسار",
     "طلب مكرر","توجيه لجهة أخرى","سبب آخر"];
   let user=null,member=null,perms=new Set(),settings={emergency:false,phc_triage:false};
-  // VIDA doctor list is read from Supabase after approved sign-in.
-  // Local window.OPD_VIDA_DOCTORS stays an unchanged read-only fallback.
+  // قائمة الأطباء المحلية تظهر فورًا، ويُحدّث فقط تخصص العيادة المختارة من Supabase عند الحاجة.
+  // هذا يمنع تحميل جميع الأطباء عند كل دخول للصفحة.
   let vidaDoctorsMap=window.OPD_VIDA_DOCTORS||{};
-  async function refreshVidaDoctors(){
+  const vidaDoctorsLoaded=new Set();
+  async function refreshVidaDoctors(clinic){
+    clinic=String(clinic||"").trim();
+    if(!clinic||clinic===OTHER||vidaDoctorsLoaded.has(clinic))return;
+    vidaDoctorsLoaded.add(clinic);
     try{
       const {data,error}=await api.from("opd_vida_doctors")
-        .select("clinic,full_name").order("clinic").order("full_name").limit(2500);
-      if(error || !Array.isArray(data) || !data.length){
-        vidaDoctorsMap=window.OPD_VIDA_DOCTORS||{};
-        return;
+        .select("full_name").eq("clinic",clinic).order("full_name").limit(200);
+      if(error)throw error;
+      if(Array.isArray(data)&&data.length){
+        vidaDoctorsMap[clinic]=[...new Set(data.map(x=>String(x.full_name||"").trim()).filter(Boolean))];
       }
-      const map=Object.create(null);
-      for(const entry of data){
-        const clinic=String(entry.clinic||"").trim();
-        const fullName=String(entry.full_name||"").trim();
-        if(!clinic||!fullName||["__proto__","constructor","prototype"].includes(clinic))continue;
-        if(!map[clinic])map[clinic]=[];
-        if(!map[clinic].includes(fullName))map[clinic].push(fullName);
-      }
-      for(const list of Object.values(map))list.sort((a,b)=>a.localeCompare(b,"ar"));
-      vidaDoctorsMap=Object.keys(map).length?map:(window.OPD_VIDA_DOCTORS||{});
     }catch(_error){
-      vidaDoctorsMap=window.OPD_VIDA_DOCTORS||{};
+      // عند تعذر الشبكة تبقى القائمة المحلية المتاحة فورًا، ويمكن إعادة المحاولة لاحقًا.
+      vidaDoctorsLoaded.delete(clinic);
     }
   }
 
@@ -153,13 +148,18 @@
     $("expectedDateWrap").classList.toggle("hidden",!["followup","emergency"].includes(k));
     $("periodWrap").classList.toggle("hidden",!["followup","emergency"].includes(k));
   }
-  function drawDoctors(){
+  function drawDoctors(skipRefresh=false){
     const k=currentKind(),clinic=$("clinic").value,need=doctorRoutes.includes(k);
     const list=clinic&&clinic!==OTHER?(vidaDoctorsMap[clinic]||[]):[];
     setupSelect("doctorSel",[...list.map(n=>[n,n]),...(clinic?[[OTHER,OTHER_LABEL]]:[])],clinic?"اختر الطبيب":"اختر العيادة أولًا");
     if(need&&clinic&&!list.length)$("doctorSel").value=OTHER;
     $("doctorSel").required=need;
     toggleDoctorOther();
+    if(!skipRefresh&&need&&clinic&&clinic!==OTHER){
+      refreshVidaDoctors(clinic).then(()=>{
+        if(currentKind()===k&&$("clinic").value===clinic)drawDoctors(true);
+      });
+    }
   }
   function toggleDoctorOther(){
     const on=doctorRoutes.includes(currentKind())&&$("doctorSel").value===OTHER;
@@ -176,15 +176,22 @@
     for(const id of ["auth","onboard","waiting","app"])$(id).classList.toggle("hidden",id!==name);
   }
   async function load(){
-    const auth=await api.auth.getUser();
-    user=auth.data?.user||null;
+    const auth=await api.auth.getSession();
+    if(auth.error){
+      feedback("authMessage","تعذر قراءة جلسة الدخول. تحقق من الاتصال ثم أعد المحاولة.");
+      return;
+    }
+    user=auth.data?.session?.user||null;
     if(!user){member=null;showState("auth");return;}
     const [m,p,c]=await Promise.all([
-      api.from("opd_appt_members").select("*").eq("user_id",user.id).maybeSingle(),
+      api.from("opd_appt_members").select("user_id,full_name,employee_no,job_title,department,role,status").eq("user_id",user.id).maybeSingle(),
       api.from("opd_user_perms").select("perm").eq("user_id",user.id),
       api.from("opd_booking_route_settings").select("kind,enabled")
     ]);
-    if(m.error||p.error){feedback("authMessage","تعذر قراءة العضوية أو الصلاحيات؛ راجع الإدارة.");return;}
+    if(m.error||p.error){
+      feedback("authMessage","تعذر تحميل الحساب مؤقتًا. جلسة الدخول ما زالت محفوظة؛ حدّث الصفحة أو حاول مرة أخرى.");
+      return;
+    }
     member=m.data;
     if(!member){showState("onboard");return;}
     if(member.status!=="approved"){
@@ -194,13 +201,23 @@
     }
     perms=new Set((p.data||[]).map(v=>v.perm));
     if(!c.error)for(const s of c.data||[])settings[s.kind]=s.enabled;
-    await refreshVidaDoctors();
     $("identity").textContent=member.full_name+" — "+(member.department||"");
     showState("app");
     $("navSettings").classList.toggle("hidden",!admin());
-    if(admin())manualAlerts();
     $("navStats").classList.toggle("hidden",!handler());
     $("navQueue").classList.remove("hidden");
+    $("navQueue").textContent=handler()?"الطلبات":"طلباتي";
+    const queueTitle=document.querySelector("#queue h2");
+    if(queueTitle)queueTitle.textContent=handler()?"طلبات الحجز":"طلباتي";
+    const st=$("status");
+    if(st?.options?.length>=3){
+      st.options[1].textContent=handler()?"المفتوحة":"لم يتم";
+      st.options[2].textContent=handler()?"المقفلة":"تم";
+    }
+    const qh=$("queueHint");
+    if(qh)qh.textContent=handler()
+      ?"المعيار التشغيلي 24 ساعة من وقت رفع الطلب. الإغلاق يتطلب موعدًا محجوزًا أو سبب رفض موثقًا."
+      :"تعرض «طلباتي» الطلبات التي رفعتها أنت فقط. الحالة «تم» عند حجز الموعد، و«لم يتم» حتى يتم الحجز.";
     $("navNew").classList.toggle("hidden",!allowedKinds().length);
     drawForm();
     panel(allowedKinds().length?"entry":"queue");
@@ -218,7 +235,7 @@
     await load();
   };
   async function logout(){
-    await api.auth.signOut();user=null;member=null;perms=new Set();await load();
+    await api.auth.signOut({scope:"local"});user=null;member=null;perms=new Set();await load();
   }
   for(const id of ["logout","joinLogout","waitLogout"])$(id).onclick=logout;
   $("checkApproval").onclick=load;
@@ -363,9 +380,12 @@
     const root=$("requestList");clear(root);buildTabs();
     const term=$("q").value.trim().toLowerCase();
     const status=$("status").value;
+    const requesterView=!handler();
     const rows=queueData.filter(r=>
       (queueKind==="all"||r.kind===queueKind)&&
-      (status==="all"||(status==="open"?!statusClosed(r.status):statusClosed(r.status)))&&
+      (status==="all"||(requesterView
+        ?(status==="open"?r.status!=="booked":r.status==="booked")
+        :(status==="open"?!statusClosed(r.status):statusClosed(r.status))))&&
       (!term||[r.patient_name,r.patient_identifier,r.source_facility,r.clinic_name,r.id].some(x=>String(x||"").toLowerCase().includes(term)))
     );
     if(!rows.length)root.append(el("p","لا توجد طلبات مطابقة.", "muted"));
@@ -374,7 +394,10 @@
       const card=el("article",undefined,"request"),top=el("div",undefined,"top");
       const heading=el("strong",(names[r.kind]||r.kind)+" — "+r.patient_name);
       const late=!statusClosed(r.status)&&hoursUntilNow(r.created_at)>24;
-      top.append(heading,el("span",(statuses[r.status]||r.status)+(late?" — متأخر":""),"chip"+(late?" late":"")));
+      const requesterView=!handler();
+      const statusText=requesterView?(r.status==="booked"?"تم":"لم يتم"):(statuses[r.status]||r.status)+(late?" — متأخر":"");
+      const statusClass=requesterView?(r.status==="booked"?"chip done":"chip notdone"):"chip"+(late?" late":"");
+      top.append(heading,el("span",statusText,statusClass));
       card.append(top);
       card.append(el("p","الجهة: "+(r.source_facility||"غير محددة")+
         " | العيادة: "+r.clinic_name+(r.doctor_name?" | الطبيب: "+r.doctor_name:"")+" | الطبيب الطالب: "+(r.referring_doctor||r.requester_name||"—"),"muted"));
@@ -529,5 +552,11 @@
   const date=new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Riyadh"});
   $("statsTo").value=date;$("statsFrom").value=date.slice(0,8)+"01";
   load();
-  api.auth.onAuthStateChange((event,session)=>{if(!session){user=null;member=null;showState("auth");}});
+  api.auth.onAuthStateChange((event,session)=>{
+    if(event==="SIGNED_OUT"){
+      user=null;member=null;perms=new Set();showState("auth");
+      return;
+    }
+    if(session&&!user)setTimeout(load,0);
+  });
 })();
