@@ -17,7 +17,7 @@ textarea{min-height:76px}.hint{font-size:.83rem;color:#536873}.error{color:#a51d
 .stat{border:1px solid #dbe5e8;background:#f8fbfc;border-radius:10px;padding:14px;min-width:160px;flex:1}
 .stat b{font-size:1.5rem;display:block}.request{padding:13px;border:1px solid #dbe5e8;border-radius:10px;margin:9px 0}
 .request .top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.muted{color:#526b73;font-size:.86rem}
-.chip{padding:4px 9px;border-radius:20px;background:#e8eef0;font-size:.83rem}.chip.late{background:#ffe4df;color:#952d20}
+.chip{padding:4px 9px;border-radius:20px;background:#e8eef0;font-size:.83rem}.chip.late{background:#ffe4df;color:#952d20}.chip.done{background:#e4f4e8;color:#176b35}.chip.notdone{background:#fff3d9;color:#855d00}
 .notice{background:#fff8e5;border-right:3px solid #c28a12;padding:10px 14px;border-radius:6px}
 @media(max-width:600px){main{padding:12px}.panel{padding:12px}}
 </style>
@@ -91,7 +91,7 @@ textarea{min-height:76px}.hint{font-size:.83rem;color:#536873}.error{color:#a51d
 <label>الحالة<select id="status"><option value="all">الكل</option><option value="open">المفتوحة</option><option value="closed">المقفلة</option></select></label>
 <label>بحث<input id="q" placeholder="رقم الطلب، المراجع، الجهة، العيادة"></label>
 <button id="refresh" class="alt">تحديث</button>
-</div><p class="hint">المعيار التشغيلي 24 ساعة من وقت رفع الطلب. الإغلاق يتطلب موعدًا محجوزًا أو سبب رفض موثقًا.</p>
+</div><p id="queueHint" class="hint">المعيار التشغيلي 24 ساعة من وقت رفع الطلب. الإغلاق يتطلب موعدًا محجوزًا أو سبب رفض موثقًا.</p>
 <div id="requestList"></div><p id="queueMessage" role="status"></p>
 </section>
 <section id="stats" class="panel hidden"><h2>مؤشرات طلبات الحجز</h2>
@@ -103,4 +103,4 @@ textarea{min-height:76px}.hint{font-size:.83rem;color:#536873}.error{color:#a51d
 <p class="hint">تفعيل الطوارئ أو الفرز يظهر مسار الطلب للمستخدمين المخولين. الإيقاف يمنع الطلبات الجديدة فقط، ولا يحذف الطلبات المفتوحة أو إحصاءاتها.</p><div id="settingRows"></div><p id="settingsMessage" role="status"></p>
 <div id="manualBox" class="hidden"><h2 style="margin-top:22px">تنبيهات الإدخال اليدوي</h2><p class="hint">طلبات كُتب فيها اسم جهة أو عيادة أو طبيب غير موجود في القوائم. راجعها وأضف الاسم الصحيح لتبويب Staff Names أو لقائمة الجهات، ثم اضغط «تمت المراجعة».</p><div id="manualAlerts"></div></div></section>
 </section>
-</main><script src="../assets/opd-aggregate-export.js"></script><script src="../assets/vida-doctors.js?v=1"></script><script src="./unified.js?v=2"></script></body></html>
+</main><script src="../assets/opd-aggregate-export.js"></script><script src="../assets/vida-doctors.js?v=1"></script><script src="./unified.js?v=3"></script></body></html>
