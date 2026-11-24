@@ -339,40 +339,45 @@
   function hoursUntilNow(date){
     return (Date.now()-new Date(date).getTime())/3600000;
   }
-  async function closeRequest(id,type,extra){
-    const params={p_id:id,p_outcome:type,p_booked_date:extra.date||null,
-      p_rejection_reason:extra.reason||null,p_booking_reference:extra.ref||null};
-    const r=await api.rpc("opd_booking_close",params);
+  const DONE_NOTES=["تم الحجز وإبلاغ المراجع","تم الحجز في أقرب موعد متاح","تم الحجز مع الطبيب المطلوب","تم الحجز مع طبيب آخر بنفس التخصص"];
+  const NOT_DONE_NOTES=["لا يوجد موعد متاح حالياً","بانتظار فتح جدول الطبيب","تعذّر التواصل مع المراجع","بيانات المراجع ناقصة أو غير صحيحة","لا تنطبق عليه ضوابط المسار","طلب مكرر","يحتاج تحويل لجهة أخرى"];
+  const CLOSING_NOTES=["طلب مكرر","لا تنطبق عليه ضوابط المسار"];
+  const NOTE_OTHER="أخرى";
+  async function saveStatus(id,done,note,btn){
+    btn.disabled=true;
+    const r=await api.rpc("opd_booking_set",{p_id:id,p_done:done,p_note:note});
+    btn.disabled=false;
     if(r.error){feedback("queueMessage",r.error.message);return;}
-    feedback("queueMessage","حُفظت نتيجة الطلب في سجل المعالجة.",true);
+    feedback("queueMessage",r.data==="processing"?"حُفظت الملاحظة، والطلب ما زال مفتوحاً.":"حُفظت الحالة وأُقفل الطلب.",true);
     await loadQueue(true);
   }
+  // معالجة الطلب: تم / لم يتم + ملاحظة من قائمة (مع «أخرى») — مثل الخدمات الإلكترونية
   function actionBox(r,container){
     const wrap=el("div",undefined,"actions");
-    const bookingBtn=el("button","حجز");const rejectBtn=el("button","رفض","alt");
-    bookingBtn.onclick=()=>{
-      clear(wrap);
-      const date=el("input");date.type="date";date.required=true;
-      const reference=el("input");reference.placeholder="رقم الموعد (اختياري)";
-      const save=el("button","تأكيد الحجز");
-      save.onclick=()=>{if(!date.value)return feedback("queueMessage","أدخل تاريخ الموعد المحجوز.");closeRequest(r.id,"booked",{date:date.value,ref:reference.value});};
-      wrap.append(date,reference,save);
+    const st=el("select");st.style.maxWidth="140px";
+    st.add(new Option("الحالة",""));st.add(new Option("تم","done"));st.add(new Option("لم يتم","not"));
+    const note=el("select");note.style.maxWidth="320px";note.disabled=true;
+    const other=el("input");other.placeholder="اكتب الملاحظة";other.maxLength=300;other.classList.add("hidden");other.style.maxWidth="320px";
+    const save=el("button","حفظ");
+    const fill=()=>{
+      while(note.options.length)note.remove(0);
+      const list=st.value==="done"?DONE_NOTES:st.value==="not"?NOT_DONE_NOTES:[];
+      note.add(new Option(list.length?"اختر الملاحظة":"اختر الحالة أولاً",""));
+      for(const n of list)note.add(new Option(n+(CLOSING_NOTES.includes(n)?" (يُقفل الطلب)":""),n));
+      if(list.length)note.add(new Option(NOTE_OTHER,NOTE_OTHER));
+      note.disabled=!list.length;other.classList.add("hidden");other.value="";
     };
-    rejectBtn.onclick=()=>{
-      clear(wrap);
-      const reason=el("select");reason.add(new Option("اختر سبب الرفض",""));
-      for(const s of rejectedReasons)reason.add(new Option(s,s));
-      const note=el("input");note.placeholder="توضيح إضافي عند الحاجة";
-      const save=el("button","اعتماد الرفض");
-      save.onclick=()=>{
-        if(!reason.value)return feedback("queueMessage","اختر سبب الرفض.");
-        if(reason.value==="سبب آخر"&&!note.value.trim())
-          return feedback("queueMessage","دوّن سبب الرفض الآخر.");
-        closeRequest(r.id,"rejected",{reason:reason.value+(note.value.trim()?" — "+note.value.trim():"")});
-      };
-      wrap.append(reason,note,save);
+    fill();
+    st.onchange=fill;
+    note.onchange=()=>other.classList.toggle("hidden",note.value!==NOTE_OTHER);
+    save.onclick=()=>{
+      if(!st.value)return feedback("queueMessage","اختر الحالة: تم أو لم يتم.");
+      if(!note.value)return feedback("queueMessage","اختر الملاحظة.");
+      const text=note.value===NOTE_OTHER?other.value.trim():note.value;
+      if(!text)return feedback("queueMessage","اكتب الملاحظة في خانة «أخرى».");
+      saveStatus(r.id,st.value==="done",text,save);
     };
-    wrap.append(bookingBtn,rejectBtn);container.append(wrap);
+    wrap.append(st,note,other,save);container.append(wrap);
   }
   function renderQueue(){
     const root=$("requestList");clear(root);buildTabs();
@@ -387,7 +392,7 @@
     const qh=$("queueHint");
     if(qh)qh.textContent=requesterView
       ?"تعرض «طلباتي» الطلبات التي رفعتها أنت فقط. الحالة «تم» عند حجز الموعد، و«لم يتم» حتى يتم الحجز."
-      :"المعيار التشغيلي 24 ساعة من وقت رفع الطلب. الإغلاق يتطلب موعدًا محجوزًا أو سبب رفض موثقًا.";
+      :"المعيار التشغيلي 24 ساعة من وقت رفع الطلب. اختر «تم» أو «لم يتم» مع الملاحظة. «تم» يُقفل الطلب، و«لم يتم» يبقيه مفتوحاً إلا «طلب مكرر» و«لا تنطبق عليه ضوابط المسار».";
     const term=$("q").value.trim().toLowerCase();
     const status=$("status").value;
     const rows=queueData.filter(r=>
@@ -405,8 +410,9 @@
       const heading=el("strong",(names[r.kind]||r.kind)+" — "+r.patient_name);
       const late=!statusClosed(r.status)&&hoursUntilNow(r.created_at)>24;
       const requesterView=queueMode==="mine";
-      const statusText=requesterView?(r.status==="booked"?"تم":"لم يتم"):(statuses[r.status]||r.status)+(late?" — متأخر":"");
-      const statusClass=requesterView?(r.status==="booked"?"chip done":"chip notdone"):"chip"+(late?" late":"");
+      const isDone=r.status==="booked";
+      const statusText=(isDone?"تم":"لم يتم")+(!requesterView&&late?" — متأخر":"");
+      const statusClass=(isDone?"chip done":"chip notdone")+(!requesterView&&late?" late":"");
       top.append(heading,el("span",statusText,statusClass));
       card.append(top);
       card.append(el("p","الجهة: "+(r.source_facility||"غير محددة")+
@@ -421,8 +427,11 @@
         ["السبب/التشخيص",r.diagnosis_reason],["الملاحظات",r.request_note]
       ])if(value)extra.append(el("p",caption+": "+value,"muted"));
       card.append(extra);
-      if(!requesterView&&r.status==="booked")card.append(el("p","تاريخ الموعد المحجوز: "+(r.booked_date||"غير موثق تاريخيًا"),"success"));
-      if(!requesterView&&(r.status==="rejected"||r.status==="unable"))card.append(el("p","سبب الرفض/التعذر: "+(r.rejection_reason||"غير مسجل"),"error"));
+      if(!requesterView){
+        const n=r.handler_note||r.rejection_reason||(isDone&&r.booked_date?"تاريخ الموعد: "+r.booked_date:"");
+        if(n)card.append(el("p","الملاحظة: "+n,isDone?"success":"muted"));
+        if(statusClosed(r.status)&&!isDone)card.append(el("p","الطلب مُقفل.","hint"));
+      }
       if(queueMode==="manage"&&canManage&&!statusClosed(r.status))actionBox(r,card);
       root.append(card);
     }
@@ -431,14 +440,19 @@
     }
     if(queueData.length>=200)root.append(el("p","للتحقق من النتائج القديمة استخدم التصفية ثم «عرض المزيد».","hint"));
   }
+  let queueSeq=0;
   async function loadQueue(reset){
-    if(queueBusy)return;queueBusy=true;
+    if(queueBusy&&!reset)return;queueBusy=true;
+    const seq=++queueSeq,mode=queueMode;
     if(reset){queueOffset=0;queueData=[];queueHasMore=true;}
     let query=api.from("opd_appt_requests")
-      .select("id,kind,requested_by,doctor_name,manual_fields,patient_name,patient_identifier,patient_dob,patient_mobile,mother_name,diagnosis_reason,request_note,source_facility,clinic_name,referring_doctor,requester_name,status,created_at,closed_at,booked_date,rejection_reason")
+      .select("id,kind,requested_by,doctor_name,manual_fields,patient_name,patient_identifier,patient_dob,patient_mobile,mother_name,diagnosis_reason,request_note,source_facility,clinic_name,referring_doctor,requester_name,status,created_at,closed_at,booked_date,rejection_reason,handler_note")
       .order("created_at",{ascending:false}).range(queueOffset,queueOffset+199);
     if(queueMode==="mine")query=query.eq("requested_by",user.id);
-    const r=await query;queueBusy=false;
+    const r=await query;
+    // نتيجة متأخرة من قسم سابق (طلباتي/المعالجة) تُتجاهل حتى لا تختلط الواجهتان
+    if(seq!==queueSeq||mode!==queueMode)return;
+    queueBusy=false;
     if(r.error)return feedback("queueMessage",r.error.message);
     queueData.push(...(r.data||[]));
     queueOffset+=r.data?.length||0;
