@@ -22,7 +22,9 @@ label{display:grid;gap:5px;font-size:.87rem;font-weight:600}
 input{font:inherit;padding:10px;border:1px solid #b4cbd0;border-radius:8px;width:100%;box-sizing:border-box}
 button{font:inherit;border:0;border-radius:8px;padding:10px 16px;cursor:pointer;background:#0b6075;color:#fff}
 button.alt{background:#e7f0f3;color:#15495a}.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px;align-items:center}
-.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:930px}
+.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:1100px}
+tr.group td{background:var(--surface-alt,#f7fafc);font-weight:700;color:var(--header,#0f3a57);font-size:.92rem}
+td.tip{color:var(--ok-ink,#17663f);font-size:.85rem;min-width:200px}
 th,td{text-align:right;padding:12px 9px;border-bottom:1px solid #e1eaee;font-size:.88rem;vertical-align:top}
 th{background:#eaf3f5;color:#134455}td a{color:#126a83}td small{display:block;color:var(--ink-soft,#5d777e);margin-top:4px}
 .tag{display:inline-block;padding:4px 9px;font-size:.78rem;font-weight:700;border-radius:999px;background:#e7ecee;color:#50636c}
@@ -55,17 +57,18 @@ footer{padding:25px 18px;text-align:center;border-top:1px solid #dce7eb;font-siz
 </section>
 <div id="admin" class="hidden">
 <section class="panel">
-<div class="actions" style="justify-content:space-between;margin-top:0"><h2>حالة مصادر البيانات</h2>
+<div class="actions" style="justify-content:space-between;margin-top:0"><h2>جرد مصادر البيانات والمؤشرات والتقارير</h2>
 <div class="actions" style="margin-top:0"><button id="reload" type="button" class="alt">تحديث الحالات</button><button id="logout" type="button" class="alt">خروج</button></div></div>
 <p class="muted">تُحتسب حالة المزامنة اليومية من آخر نجاح وآخر خطأ. للمصادر الخارجية التي لا تسجل وقت تشغيل في المنصة، تظهر «غير متاح» بدلاً من افتراض نجاحها.</p>
 <div class="table-wrap"><table>
-<thead><tr><th>المصدر</th><th>الطريقة</th><th>التكرار</th><th>ما يُحفظ</th><th>آخر تحديث / الحالة</th><th>مكان الكود</th></tr></thead>
+<thead><tr><th>المصدر</th><th>طريقة التحديث</th><th>متى يتحدث</th><th>ما يُحفظ</th><th>آخر تحديث / الحالة</th><th>مقترح التخفيف والتسريع</th><th>الكود / الرابط</th></tr></thead>
 <tbody id="sources"></tbody>
 </table></div>
 <p id="statusMessage" role="status"></p>
 </section>
 <section class="panel">
 <h2>سجل التعديلات</h2>
+<div class="log"><strong>24 نوفمبر 2026</strong> — الصفحة صارت جردًا كاملاً لكل المصادر (سكربتات، مهام Claude، ChatGPT، المنصة) مع التوقيت ومقترح التخفيف. ربط نموذج المستشفيات التابعة بطلبات الحجز بسكربت فوري. طلبات الحجز: المعالجة بـ تم / لم يتم مع ملاحظة.</div>
 <div class="log"><strong>20 نوفمبر 2026</strong> — جدول العيادات: تحديث أسبوعي إضافي كل خميس قرابة 8:15 م بعد سكربت الشيت (7:30 م)، مع بقاء التحديث اليومي 5 فجراً.</div>
 <div class="log"><strong>18 نوفمبر 2026</strong> — إضافة نموذج مزامنة Drive اليومي الآمن، وسجل محاولات المزامنة، وقائمة أطباء VIDA، ولوحة مصادر البيانات.</div>
 <div class="log"><strong>18 نوفمبر 2026</strong> — إضافة رابط لوحة المصادر وتنبيه تجاوز 26 ساعة في لوحة المدير، مع أولوية قراءة أسماء الأطباء من Supabase والرجوع للقائمة المحلية عند تعذرها.</div>
@@ -89,25 +92,41 @@ const api=window.supabase.createClient(
  "sb_publishable_f3IjPvIbMruO9jGb4SmT7Q_NOqgEbXs");
 let signed=null,active=false;
 const definitions=[
- {id:"drive_kpi",name:"مؤشرات Google Drive",method:"Apps Script → Supabase",frequency:"يوميًا قرابة 5 صباحًا",saves:"الطلبات، رضا المرضى، إشغال العيادات؛ أرقام مجمّعة",code:"../docs/apps-script/drive-sync.gs",codeText:"drive-sync.gs",type:"sync",maxH:26},
- {id:"vida_doctors",name:"قائمة أطباء VIDA",method:"نفس سكربت المزامنة",frequency:"يوميًا قرابة 5 صباحًا",saves:"اسم الطبيب الكامل والعيادة",code:"../docs/drive-sync.sql",codeText:"drive-sync.sql",type:"sync",maxH:26},
- {id:"mawid",name:"تقارير موعد",method:"مهمة Claude المسائية",frequency:"مسائيًا",saves:"تقارير الإحالات ومؤشرات موعد",code:"../kpis/",codeText:"لوحة الأداء",type:"kpi_report",reportType:"referrals_daily",maxH:52},
- {id:"adaa",name:"أداء الأسبوعي",method:"مهمة Claude — موقوفة",frequency:"موقوف",saves:"تقارير الأداء الأسبوعية السابقة",code:"../kpis/",codeText:"تقارير الأداء",type:"paused"},
- {id:"employees",name:"إدخالات الموظفين",method:"منصات الموظفين",frequency:"عند كل إدخال",saves:"تجربة المريض، عدم الالتزام، إجازات الموظفين، طلبات الحجز",code:"../",codeText:"بوابة العيادات",type:"employee"},
- {id:"doctor_leaves",name:"إجازات الأطباء",method:"Claude → Google Sheet",frequency:"وفق مهمة Claude",saves:"إجازات الأطباء في OPD Schedule",code:"https://docs.google.com/spreadsheets/d/1htAUP32cClYWToDntdR1Pcdi_U7y0Bdy_Kz3r-wgt1Y/edit#gid=304595282",codeText:"شيت الإجازات",type:"external"},
- {id:"eservices",name:"الخدمات الإلكترونية (طلبات المرضى)",method:"صفحة المنصة → دالة Supabase الوسيطة eservices → سكربت شيت OPD Services Responses",frequency:"مباشر عند فتح الصفحة (تحديث كل دقيقتين وهي مفتوحة)",saves:"لا يُخزَّن شيء في Supabase؛ القراءة والكتابة في الشيت نفسه. اسم الموظف من حسابه. الإيقاف: أرشفة نشر «Portal API» في Apps Script (لا تلمس نشر صفحة المريض). الإرجاع: نشر جديد + تحديث script_url في opd_eservices_link",code:"../docs/apps-script/eservices-portal-api.gs",codeText:"eservices-portal-api.gs"},
- {id:"clinic_schedule",name:"جدول الأطباء في الدليل وصفحة الجدول",method:"Apps Script → Supabase (OPD Schedule + سجل الإجازات + Staff Names)",frequency:"يوميًا قرابة 5 صباحًا + كل خميس قرابة 8:15 مساءً (بعد تجهيز جدول الأسبوع الجديد)",saves:"جدول الأسبوع، الغرف، الإجازات بتاريخ البداية والنهاية، الاسم الكامل",code:"../docs/clinic-schedule-sync.sql",codeText:"clinic-schedule-sync.sql"}
+ // ===== سكربتات Google Apps Script =====
+ {g:"سكربتات Google (مجانية وتلقائية)",id:"drive_kpi",name:"مؤشرات Google Drive",method:"سكربت OPD Drive Sync → دالة opd_drive_ingest",frequency:"يوميًا قرابة 5:00 ص",saves:"طلبات التجديد والتعديل، رضا المرضى، إشغال العيادات — أرقام مجمّعة فقط",tip:"خفيف ومجاني ويرسل بريدًا عند الفشل. أي بيانات جديدة في Drive تُضاف لنفس السكربت بدل مهمة جديدة.",code:"../docs/apps-script/drive-sync.gs",codeText:"drive-sync.gs",type:"sync"},
+ {g:"سكربتات Google (مجانية وتلقائية)",id:"vida_doctors",name:"قائمة أطباء VIDA",method:"نفس سكربت المزامنة (تبويب Staff Names)",frequency:"يوميًا قرابة 5:00 ص",saves:"اسم الطبيب الكامل والعيادة والرقم الوظيفي",tip:"أسماء الأطباء مكررة في Staff Names ودليل الأطباء وقائمة VIDA. اعتماد Staff Names مرجعًا واحدًا يمنع اختلاف الأسماء.",code:"../docs/drive-sync.sql",codeText:"drive-sync.sql",type:"sync"},
+ {g:"سكربتات Google (مجانية وتلقائية)",id:"clinic_schedule",name:"جدول الأطباء (الدليل وصفحة الجدول)",method:"نفس سكربت المزامنة (OPD Schedule + سجل الإجازات + Staff Names)",frequency:"يوميًا 5:00 ص + كل خميس قرابة 8:15 م",saves:"جدول الأسبوع، الغرف، الإجازات بتاريخ البداية والنهاية",tip:"مضبوط. التحديث الأسبوعي يأتي بعد سكربت الشيت (7:30 م) مباشرة.",code:"../docs/clinic-schedule-sync.sql",codeText:"clinic-schedule-sync.sql",type:"sync"},
+ {g:"سكربتات Google (مجانية وتلقائية)",id:"sheet_week",name:"تجهيز الجدول الأسبوعي في الشيت",method:"سكربت داخل شيت OPD Schedule",frequency:"كل خميس 7:30 م",saves:"جدول الأسبوع الجديد وتسجيل الإجازات في الشيت",tip:"بدون تغيير.",code:"https://docs.google.com/spreadsheets/d/1htAUP32cClYWToDntdR1Pcdi_U7y0Bdy_Kz3r-wgt1Y/edit",codeText:"شيت OPD Schedule",type:"external"},
+ {g:"سكربتات Google (مجانية وتلقائية)",id:"affiliate",name:"طلبات المستشفيات التابعة (نموذج Google)",method:"سكربت Affiliate.gs في OPD Drive Sync → دالة opd_booking_ingest",frequency:"فوري عند إرسال النموذج + مراجعة يومية 5:30 ص",saves:"كل طلب جديد (من 16 نوفمبر) يدخل «معالجة الطلبات» بحالة لم يتم. لا يكتب في الشيت ولا ينقل الرقم السري للطبيب",tip:"إذا ثبت الاستخدام: رابط عام في المنصة بدل النموذج يلغي السكربت والشيت معًا.",code:"../docs/apps-script/affiliate-sync.gs",codeText:"affiliate-sync.gs",type:"affiliate"},
+ {g:"سكربتات Google (مجانية وتلقائية)",id:"eservices",name:"الخدمات الإلكترونية (طلبات المرضى)",method:"صفحة المريض (سكربت الشيت) + صفحة الموظفين ← دالة eservices ← نشر «Portal API»",frequency:"مباشر؛ صفحة الموظفين تتحدث كل دقيقتين وهي مفتوحة؛ إخفاء المنجز كل 8 ساعات",saves:"لا يُخزَّن شيء في Supabase؛ الشيت OPD Services Responses هو الأساس. اسم الموظف من حسابه",tip:"حسب القرار: بيانات المرضى تبقى في الشيت. الإيقاف: أرشفة نشر «Portal API» فقط (لا تلمس نشر صفحة المريض).",code:"../docs/apps-script/eservices-portal-api.gs",codeText:"eservices-portal-api.gs",type:"live"},
+ // ===== مهام Claude =====
+ {g:"مهام Claude المجدولة (الأثقل — تحتاج جهازًا شغالًا)",id:"mawid",name:"تقارير موعد (الإحالات + الإحالة العكسية)",method:"مهمة Claude على متصفح جهاز البيت → ملفات إكسل من موعد → PDF للواتساب + أرقام للمنصة",frequency:"الأحد–الخميس 7:22 م",saves:"أرقام التقارير في «الأداء والمؤشرات» (بدون PDF)",tip:"الأثقل في المنظومة، وموعد بلا ربط برمجي فلا بديل لها. المطلوب فقط: جهاز البيت شغال 7:22 م. الأيام الفائتة تُعوَّض تلقائيًا.",code:"../kpis/",codeText:"الأداء والمؤشرات",type:"kpi_report",reportType:"referrals_daily"},
+ {g:"مهام Claude المجدولة (الأثقل — تحتاج جهازًا شغالًا)",id:"doctor_leaves",name:"إقفال إجازات الأطباء في Vida",method:"مهمة Claude: شيت الإجازات (جهاز البيت) → Vida (جهاز المستشفى)",frequency:"الأحد–الخميس 10:52 ص",saves:"حالة الإقفال في شيت الإجازات + رسالة رئيس القسم عند وجود مواعيد",tip:"تعتمد على جلسة Vida في جهاز المستشفى. إذا ما فيه طلبات جديدة تنتهي بسرعة بدون تكلفة تُذكر.",code:"https://docs.google.com/spreadsheets/d/1htAUP32cClYWToDntdR1Pcdi_U7y0Bdy_Kz3r-wgt1Y/edit#gid=304595282",codeText:"شيت الإجازات",type:"external"},
+ {g:"مهام Claude المجدولة (الأثقل — تحتاج جهازًا شغالًا)",id:"adaa",name:"أداء الأسبوعي",method:"مهمة Claude — موقوفة",frequency:"موقوف",saves:"تقارير الأداء الأسبوعية السابقة",tip:"موقوفة حسب القرار.",code:"../kpis/",codeText:"تقارير الأداء",type:"paused"},
+ // ===== ChatGPT =====
+ {g:"مهام ChatGPT",id:"circulars",name:"التعاميم والتنبيهات في دليل الموظف",method:"ChatGPT (مربوط بـ GitHub)",frequency:"عند الطلب + مراجعة يومية قرابة 9:52 ص للتعاميم المنتهية",saves:"صفحات الدليل في مستودع opd-smart-guide",tip:"بدون تغيير. المراجعة اليومية تقرير فقط ولا تعدّل.",code:"https://github.com/KRM3300/opd-smart-guide",codeText:"opd-smart-guide",type:"external"},
+ // ===== المنصة نفسها =====
+ {g:"من المنصة نفسها (لحظي — بدون مزامنة)",id:"booking",name:"طلبات الحجز الموحّدة",method:"إدخال الموظفين في المنصة + معالجة تم / لم يتم",frequency:"لحظي",saves:"الطلبات وحالتها والملاحظة واسم المعالج من حسابه؛ مؤشرات الحجز تُحسب منها مباشرة",tip:"الأخف والأدق: كل ما يُدخل هنا لا يحتاج سكربت ولا مهمة.",code:"../appointment-requests-v2/",codeText:"طلبات الحجز",type:"table",table:"opd_appt_requests"},
+ {g:"من المنصة نفسها (لحظي — بدون مزامنة)",id:"booking_history",name:"سجل الحجز التاريخي",method:"نقل لمرة واحدة من نماذج Google",frequency:"ثابت (لا يتحدث)",saves:"1,881 طلب مستشفيات تابعة + 1,688 فرز مراكز صحية — للإحصائيات فقط",tip:"لا يحتاج شيئًا.",code:"../appointment-requests-v2/",codeText:"مؤشرات الحجز",type:"static"},
+ {g:"من المنصة نفسها (لحظي — بدون مزامنة)",id:"pe",name:"تجربة المريض",method:"إدخال الموظفين في المنصة",frequency:"لحظي",saves:"حالات تجربة المريض ومتابعتها",tip:"بعد إيقاف شيت سجل تجربة المريض يصبح هذا المصدر الوحيد.",code:"../patient-experience/",codeText:"تجربة المريض",type:"table",table:"opd_pe_cases"},
+ {g:"من المنصة نفسها (لحظي — بدون مزامنة)",id:"nc",name:"تقرير عدم الالتزام",method:"إدخال الموظفين في المنصة",frequency:"لحظي",saves:"تقارير عدم الالتزام",tip:"بدون تغيير.",code:"../compliance/",codeText:"عدم الالتزام",type:"table",table:"opd_nc_reports"},
+ {g:"من المنصة نفسها (لحظي — بدون مزامنة)",id:"perf",name:"تقييم الأداء (التقارير الداخلية والمبادرات)",method:"إدخال من تختارهم في المنصة",frequency:"لحظي",saves:"التقارير الداخلية والمبادرات ودرجات الجدارات",tip:"بدون تغيير.",code:"../performance/",codeText:"تقييم الأداء",type:"live"},
+ {g:"من المنصة نفسها (لحظي — بدون مزامنة)",id:"productivity",name:"إنتاجية الموظفين",method:"تُحسب من سجلات المنصة (دالة opd_productivity)",frequency:"لحظي عند فتح الصفحة",saves:"لا تُخزّن؛ تُحسب من الحالات والطلبات والتقارير",tip:"بدون تغيير.",code:"../productivity/",codeText:"الإنتاجية",type:"live"},
+ {g:"من المنصة نفسها (لحظي — بدون مزامنة)",id:"staff",name:"جدول الموظفين وإجازاتهم",method:"إدخال في دليل الموظف/المنصة",frequency:"لحظي",saves:"الورديات والإجازات وطلباتها",tip:"بدون تغيير.",code:"../staff/",codeText:"جدول الموظفين",type:"live"},
+ {g:"من المنصة نفسها (لحظي — بدون مزامنة)",id:"ext",name:"الأنظمة والخدمات الإلكترونية",method:"صفحة ثابتة عامة",frequency:"عند التعديل فقط",saves:"63 رابطًا والشعارات في حاوية external-logos",tip:"بدون تغيير.",code:"../external-services/",codeText:"الأنظمة والخدمات",type:"static"}
 ];
 function stamp(value){if(!value)return"لا يوجد سجل";const d=new Date(value);return Number.isFinite(d.getTime())?d.toLocaleString("ar-SA",{timeZone:"Asia/Riyadh",year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"غير متاح";}
 function hours(value){const t=Date.parse(value||"");return Number.isFinite(t)?(Date.now()-t)/3600000:Infinity;}
 function node(name,text,cls){const n=document.createElement(name);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
 function flag(label,cls){return node("span",label,"tag "+cls);}
-function layout(){const root=$("sources");root.replaceChildren();for(const def of definitions){
+function layout(){const root=$("sources");root.replaceChildren();let group="";for(const def of definitions){
+ if(def.g!==group){group=def.g;const gr=node("tr","", "group");const gc=node("td",group);gc.colSpan=7;gr.append(gc);root.append(gr);}
  const tr=node("tr"),link=node("a",def.codeText);link.href=def.code;
  if(/^https?:\/\//.test(def.code)){link.target="_blank";link.rel="noopener noreferrer";}
  const meta=node("td");const status=node("div","جارٍ التحقق...");status.id="status-"+def.id;meta.append(status);
- for(const cell of [def.name,def.method,def.frequency,def.saves])tr.append(node("td",cell));
- tr.append(meta);const source=node("td");source.append(link);tr.append(source);root.append(tr);
+ const name=node("td");name.append(node("strong",def.name));tr.append(name);
+ for(const cell of [def.method,def.frequency,def.saves])tr.append(node("td",cell));
+ tr.append(meta);tr.append(node("td",def.tip||"","tip"));const source=node("td");source.append(link);tr.append(source);root.append(tr);
 }}
 function update(id,status,label,date,note){
  const el=$("status-"+id);if(!el)return;el.replaceChildren(flag(label,status));
@@ -146,17 +165,22 @@ async function load(){
   latest("opd_kpi_reports",["report_type","adaa_weekly"]),
   latest("opd_pe_cases"),
   latest("opd_nc_reports"),
-  latest("opd_appt_requests")
+  latest("opd_appt_requests"),
+  latest("opd_appt_requests",["external_source","affiliate_google_form"])
  ]);
  const val=i=>info[i]?.status==="fulfilled"?info[i].value:null;
  const maw=val(0);
  update("mawid",maw&&hours(maw)<=52?"good":"bad",maw?"آخر تقرير مسجل":"لا تقرير",maw,
-   maw&&hours(maw)>52?"آخر إدخال تجاوز 52 ساعة":"يعكس سجل تقارير موعد، ولا يؤكد نجاح مهمة Claude");
+   maw&&hours(maw)>52?"آخر إدخال تجاوز 52 ساعة — تأكد أن جهاز البيت شغال":"يعكس سجل التقارير، ولا يؤكد نجاح المهمة");
  update("adaa","paused","موقوف",val(1),"آخر تقرير محفوظ إن وجد");
- const lastEmp=[val(2),val(3),val(4)].filter(Boolean).sort((a,b)=>new Date(b)-new Date(a))[0];
- update("employees",lastEmp?"good":"unknown",lastEmp?"يوجد إدخال":"لا سجل متاح",lastEmp,
-    "إجازات الموظفين لا تتضمن طابع إنشاء موحّدًا قابلًا للتحقق هنا");
- update("doctor_leaves","unknown","لا يوجد سجل آلي",null,"تُراجع حالة الشيت في مصدرها؛ لا يُفترض نجاح مهمة Claude");
+ const live=(id,v,label)=>update(id,v?"good":"unknown",v?label:"لا سجل بعد",v);
+ live("booking",val(4),"آخر طلب");live("pe",val(2),"آخر حالة");live("nc",val(3),"آخر تقرير");
+ update("affiliate",val(5)?"good":"unknown",val(5)?"آخر طلب وصل من النموذج":"لا طلبات بعد",val(5),"وقت الطلب في النموذج نفسه");
+ for(const id of ["perf","productivity","staff"])update(id,"good","مباشر",null,"يُقرأ لحظيًا من المنصة");
+ for(const id of ["booking_history","ext"])update(id,"paused","ثابت",null);
+ update("sheet_week","unknown","خارج المنصة",null,"يظهر أثره في «جدول الأطباء» بعد 8:15 م الخميس");
+ update("circulars","unknown","خارج المنصة",null,"تقارير ChatGPT تصلك مباشرة");
+ update("doctor_leaves","unknown","لا يوجد سجل آلي",null,"الحالة في شيت الإجازات وفي ملخص المهمة");
 }
 async function check(){
  const auth=await api.auth.getUser();signed=auth.data?.user||null;
