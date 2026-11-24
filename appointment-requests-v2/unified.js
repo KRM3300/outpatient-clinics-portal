@@ -343,11 +343,11 @@
   const NOT_DONE_NOTES=["لا يوجد موعد متاح حالياً","بانتظار فتح جدول الطبيب","تعذّر التواصل مع المراجع","بيانات المراجع ناقصة أو غير صحيحة","لا تنطبق عليه ضوابط المسار","طلب مكرر","يحتاج تحويل لجهة أخرى"];
   const CLOSING_NOTES=["طلب مكرر","لا تنطبق عليه ضوابط المسار"];
   const NOTE_OTHER="أخرى";
-  async function saveStatus(id,done,note,btn){
-    btn.disabled=true;
+  async function saveStatus(id,done,note,btn,msg){
+    btn.disabled=true;msg.className="save-msg hint";msg.textContent="جارٍ الحفظ…";
     const r=await api.rpc("opd_booking_set",{p_id:id,p_done:done,p_note:note});
     btn.disabled=false;
-    if(r.error){feedback("queueMessage",r.error.message);return;}
+    if(r.error){msg.className="save-msg error";msg.textContent="لم يُحفظ: "+r.error.message;return;}
     feedback("queueMessage",r.data==="processing"?"حُفظت الملاحظة، والطلب ما زال مفتوحاً.":"حُفظت الحالة وأُقفل الطلب.",true);
     await loadQueue(true);
   }
@@ -370,14 +370,17 @@
     fill();
     st.onchange=fill;
     note.onchange=()=>other.classList.toggle("hidden",note.value!==NOTE_OTHER);
+    // رسالة الحفظ داخل بطاقة الطلب نفسها حتى تظهر للموظف مباشرة
+    const msg=el("p","","save-msg");
+    const warn=t=>{msg.className="save-msg error";msg.textContent=t;};
     save.onclick=()=>{
-      if(!st.value)return feedback("queueMessage","اختر الحالة: تم أو لم يتم.");
-      if(!note.value)return feedback("queueMessage","اختر الملاحظة.");
+      if(!st.value)return warn("اختر الحالة: تم أو لم يتم.");
+      if(!note.value)return warn("اختر الملاحظة من القائمة.");
       const text=note.value===NOTE_OTHER?other.value.trim():note.value;
-      if(!text)return feedback("queueMessage","اكتب الملاحظة في خانة «أخرى».");
-      saveStatus(r.id,st.value==="done",text,save);
+      if(!text)return warn("اكتب الملاحظة في خانة «أخرى».");
+      saveStatus(r.id,st.value==="done",text,save,msg);
     };
-    wrap.append(st,note,other,save);container.append(wrap);
+    wrap.append(st,note,other,save);container.append(wrap,msg);
   }
   function renderQueue(){
     const root=$("requestList");clear(root);buildTabs();
