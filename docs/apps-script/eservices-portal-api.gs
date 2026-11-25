@@ -14,7 +14,7 @@ const PORTAL_API = {
   CACHE_SEC: 60,
   STATS_SEC: 300,
   TAIL_ROWS: 1000, // يقرأ آخر 1000 صف من كل تبويب فقط (الأقدم منتهٍ ومخفي)
-  SERVICE_SHEETS: ['تجديد الموعد', 'تعديل الموعد', 'إلغاء الموعد', 'الاستعلام عن موعد']
+  SERVICE_SHEETS: ['تجديد الموعد', 'تعديل الموعد', 'إلغاء الموعد', 'الاستعلام عن موعد', 'إثبات المراجعة']
 };
 
 function doPost(e) {
@@ -100,7 +100,8 @@ function portalList_() {
         name: c('الإسم رباعي'), nid: c('رقم الهوية'), dob: c('تاريخ الميلاد'), mobile: c('رقم الجوال'),
         clinic: c('العيادة'), period: c('الفترة'), doctor: c('الطبيب'),
         status: c('حالة الطلب'), employee: c('اسم الموظف'), staffNote: c('ملاحظات موظف الاستقبال'),
-        raw: c(OPD.TECH_RAW_ROW), changed: c(OPD.TECH_STATUS_CHANGED_AT)
+        raw: c(OPD.TECH_RAW_ROW), changed: c(OPD.TECH_STATUS_CHANGED_AT),
+      employer: c('جهة العمل'), visitDate: c('تاريخ المراجعة'), arrival: c('وقت تسجيل الوصول'), endTime: c('وقت نهاية الموعد')
       };
       // أعمدة أسماؤها تختلف بين التبويبات (حروف مخفية أو اسم مختصر): نقرأ أول قيمة غير فارغة
       const multi = {
@@ -108,7 +109,8 @@ function portalList_() {
         notes: cs('ملاحظات أو طلبات خاصة', 'ملاحظات'),
         apptDate: cs('تاريخ الموعد المراد تعديله', 'تاريخ الموعد المراد إلغاؤه', 'تاريخ الموعد')
       };
-      if (!col.noShow) col.noShow = portalCols_(t.headers, ['سبب عدم الحضور'])[0] || 0;
+      if (!col.doctor) col.doctor = c('اسم الطبيب');
+    if (!col.noShow) col.noShow = portalCols_(t.headers, ['سبب عدم الحضور'])[0] || 0;
       t.data.forEach((r, i) => {
         const rowNo = t.start + i;
         if (!col.ts || !hasValue_(r[col.ts - 1])) return;
@@ -121,7 +123,8 @@ function portalList_() {
           reason: g('noShow') || gm('purpose'), name: g('name'), nid: String(g('nid')).replace(/^'/, ''),
           dob: String(g('dob')).replace(/^'/, ''), mobile: g('mobile'), clinic: g('clinic'), period: g('period'),
           apptDate: gm('apptDate'), doctor: g('doctor'), notes: gm('notes'),
-          status: String(g('status')).trim(), employee: g('employee'), staffNote: g('staffNote'), changed: g('changed')
+          status: String(g('status')).trim(), employee: g('employee'), staffNote: g('staffNote'), changed: g('changed'),
+          employer: g('employer'), visitDate: String(g('visitDate')).replace(/^'/, ''), arrival: String(g('arrival')).replace(/^'/, ''), endTime: String(g('endTime')).replace(/^'/, '')
         });
       });
     }

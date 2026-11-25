@@ -136,8 +136,8 @@
 
         /* نفس قواعد الشيت */
         const GREEN_H = 8, RED_H = 24, HIDE_H = 24;
-        const SERVICES = ["تجديد الموعد", "تعديل الموعد", "إلغاء الموعد", "الاستعلام عن موعد"];
-        const MSG_SOURCES = ["تجديد الموعد", "تعديل الموعد", "الاستعلام عن موعد"];
+        const SERVICES = ["تجديد الموعد", "تعديل الموعد", "إلغاء الموعد", "الاستعلام عن موعد", "إثبات المراجعة"];
+        const MSG_SOURCES = ["تجديد الموعد", "تعديل الموعد", "الاستعلام عن موعد", "إثبات المراجعة"];
         const TABS = [["alerts", "التنبيهات"], ...SERVICES.map((s) => [s, s]), ["messages", "سجل الرسائل"], ["search", "بحث"], ["stats", "الإحصائية والمؤشرات"]];
         const hoursSince = (iso) => { const t = new Date(iso).getTime(); return isNaN(t) ? 0 : (Date.now() - t) / 36e5; };
         const fmt = (iso) => {
@@ -160,6 +160,7 @@
           else if (s.includes("تعديل")) svc = "تعديل موعد";
           else if (s.includes("إلغاء")) svc = "إلغاء موعد";
           else if (s.includes("استعلام")) svc = "الاستعلام عن موعد";
+          else if (s.includes("إثبات")) svc = "إثبات مراجعة";
           let n = String(note || "").replace(/\s+/g, " ").trim();
           if (n && !/[.!؟?]$/.test(n)) n += ".";
           const clinicPart = clinic ? " عيادة " + String(clinic).trim() : "";
@@ -666,6 +667,11 @@
           head.append(node("strong", r.name || "بدون اسم"));
           head.append(node("span", pend ? (r.status ? "لم يتم بدون ملاحظة" : "معلق") + " · " + Math.round(h) + " ساعة" : r.status, "badge " + (pend ? (h > RED_H ? "danger" : h >= GREEN_H ? "warn" : "wait") : r.status === "تم" ? "" : "warn")));
           it.append(head);
+          if (sheet === "إثبات المراجعة") {
+            // إثبات المراجعة: «تم» نهائية بدون رسالة (يصل المراجع إشعار نصي ويظهر في صحتي)، و«لم يتم» + ملاحظة ← سجل الرسائل
+            it.append(meta([["التاريخ", fmt(r.ts)], ["الهوية", r.nid], ["الميلاد", fmtDate(r.dob)], ["الجوال", r.mobile], ["العيادة", r.clinic], ["الطبيب", r.doctor]]));
+            it.append(meta([["جهة العمل", r.employer], ["تاريخ المراجعة", fmtDate(r.visitDate)], ["وقت تسجيل الوصول", r.arrival], ["وقت نهاية الموعد", r.endTime]]));
+          } else {
           it.append(meta([["التاريخ", fmt(r.ts)], ["الهوية", r.nid], ["الميلاد", fmtDate(r.dob)], ["الجوال", r.mobile], ["العيادة", r.clinic], ["الفترة", r.period], ["الطبيب", r.doctor]]));
           const otherReason = sheet === "تجديد الموعد" && /^أخرى/.test(String(r.reason || ""));
           it.append(meta([
@@ -673,6 +679,7 @@
             [otherReason ? "السبب الذي كتبه المريض" : "ملاحظات المريض", otherReason ? r.notes || "لم يكتب المريض السبب" : r.notes],
             ["تاريخ الموعد", fmtDate(r.apptDate)],
           ]));
+          }
 
           const act = node("div", null, "act");
           const st = node("select");
