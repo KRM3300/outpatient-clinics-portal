@@ -267,7 +267,8 @@ function portalUpdate_(req) {
   const name = String(req.sheet || '');
   if (PORTAL_API.SERVICE_SHEETS.indexOf(name) === -1) throw new Error('تبويب غير معروف');
   const status = portalClean_(req.status, 20);
-  if (status && OPD.STATUS_LIST.indexOf(status) === -1) throw new Error('حالة غير صحيحة');
+  if (!status) throw new Error('اختر الحالة: تم أو لم يتم');
+  if (OPD.STATUS_LIST.indexOf(status) === -1) throw new Error('حالة غير صحيحة');
   const employee = portalActor_(req.actor);
   const note = portalClean_(req.staffNote, 500);
   const row = Number(req.row);

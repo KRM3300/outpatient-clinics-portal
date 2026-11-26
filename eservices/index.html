@@ -13,6 +13,7 @@
     <style>
       .muted { color: var(--ink-soft); font-size: 13px; }
       .tabs button .n { display: inline-block; min-width: 20px; margin-inline-start: 6px; padding: 0 6px; border-radius: 999px; background: var(--wait-bg); color: var(--wait-ink); font-size: 12px; }
+      .save-warn { margin: 8px 0 0; padding: 8px 12px; border-radius: var(--radius); background: #fde8e6; color: var(--danger); font-weight: 700; font-size: 14px; }
       .tabs button .n.red { background: #fde8e6; color: var(--danger); }
       .bar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 4px 0 8px; }
       .bar label { display: flex; gap: 6px; align-items: center; font-weight: 400; margin: 0; }
@@ -699,8 +700,11 @@
             if (!converted && nt.error()) return msg(nt.error());
             const finalStatus = converted ? "لم يتم" : st.value;
             const finalNote = converted ? conv.value() : nt.value();
+            // تنبيه واضح داخل بطاقة الطلب نفسها (لا يُحفظ طلب بدون حالة، ولا «لم يتم» بدون ملاحظة)
+            if (!finalStatus) { st.focus(); return warn("اختر الحالة أولاً: «تم» أو «لم يتم»، ثم اضغط حفظ."); }
             if (MSG_SOURCES.includes(sheet) && finalStatus === "لم يتم" && !finalNote)
-              return msg("اختر ملاحظة للمريض: «لم يتم» مع ملاحظة ينتقل لسجل الرسائل.");
+              return warn("«لم يتم» تحتاج ملاحظة للمريض: اختر الملاحظة من القائمة، ثم اضغط حفظ.");
+            warnBox.hidden = true;
             sv.disabled = true; msg("جاري الحفظ…");
             try {
               await call({ action: "update", sheet, row: r.row, raw: r.raw, status: finalStatus, staffNote: finalNote });
@@ -715,6 +719,9 @@
 
           act.append(st, nt.el, sv);
           it.append(act);
+          const warnBox = node("p", "", "save-warn"); warnBox.hidden = true; warnBox.setAttribute("role", "alert");
+          it.append(warnBox);
+          function warn(t) { warnBox.textContent = t; warnBox.hidden = false; msg(t); warnBox.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
           if (nt.extra) it.append(nt.extra);
           if (conv) it.append(conv.el);
           if (r.employee) it.append(node("div", "آخر تعديل: " + r.employee + (r.changed ? " · " + fmt(r.changed) : ""), "muted"));
