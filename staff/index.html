@@ -281,7 +281,7 @@
         }
         async function refresh() {
           const [s, l, ro] = await Promise.all([
-            api.from("opd_team").select("id,name,employee_no,active").order("name"),
+            api.from("opd_team").select("id,name,employee_no,active,user_id,auto_created").order("name"),
             api.from("opd_team_leaves").select("*").order("start_date", { ascending: false }).limit(3000),
             api.from("opd_team_roster").select("*").order("sort").limit(5000),
           ]);
@@ -594,7 +594,7 @@
           tb.replaceChildren();
           ["الموظف", "الرقم الوظيفي", "الطلبات", "المعتمدة", "المرفوضة", "بانتظار", "اعتيادية (يوم)", "مرضية (يوم)", "تعويضية (يوم)", "آخر إجازة", "الحالة"].forEach((h) => hr.append(el("th", h)));
           tb.append(hr);
-          for (const s of STAFF) {
+          for (const s of STAFF.filter((x) => x.active || !x.auto_created)) {
             const st = stats(s.id, year),
               tr = el("tr");
             const nmTd = el("td"),
@@ -613,6 +613,32 @@
               s.name = v;
             };
             nmTd.append(nmIn);
+            /* سجل أنشأه الدليل لموظف ليس له اسم مربوط في الجدول: يُدمج مع اسمه مرة واحدة */
+            if (s.auto_created && s.active) {
+              const cands = STAFF.filter((x) => x.active && !x.user_id && !x.auto_created && x.id !== s.id);
+              const box = el("div"),
+                sel = el("select"),
+                mb = el("button", "دمج", "alt");
+              box.style.cssText = "display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap";
+              box.append(el("span", "أنشأه الدليل من حساب الموظف — ادمجه مع اسمه في الجدول:", "muted"));
+              sel.style.cssText = "width:auto;margin:0";
+              sel.setAttribute("aria-label", "اسم " + s.name + " في جدول الموظفين");
+              sel.append(new Option("— اختر اسمه في الجدول —", ""), ...cands.map((x) => new Option(x.name, x.id)));
+              mb.type = "button";
+              mb.style.minHeight = "30px";
+              mb.style.padding = "2px 10px";
+              mb.onclick = async () => {
+                if (!sel.value) return err({ message: "اختر اسم الموظف في الجدول" });
+                const into = STAFF.find((x) => x.id === sel.value);
+                if (!confirm("دمج «" + s.name + "» مع «" + into.name + "»؟ تنتقل إجازاته لهذا الاسم ويُربط حسابه به.")) return;
+                const { error } = await api.rpc("opd_team_merge", { p_from: s.id, p_into: sel.value });
+                if (error) return err(error);
+                msg("دُمج «" + s.name + "» مع «" + into.name + "».");
+                await refresh();
+              };
+              box.append(sel, mb);
+              nmTd.append(box);
+            }
             tr.append(nmTd);
             const noTd = el("td"),
               no = el("input", null, "empno");
