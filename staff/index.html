@@ -144,6 +144,15 @@
             </select>
           </div>
           <div id="reqList"></div>
+          <form class="addrow" id="admLeave" novalidate>
+            <span class="addlbl">تسجيل إجازة لموظف (تُسجَّل معتمدة مباشرة)</span>
+            <select id="admWho" aria-label="الموظف"></select>
+            <select id="admType" aria-label="نوع الإجازة"><option>اعتيادية</option><option>مرضية</option><option>تعويضية</option></select>
+            <input id="admFrom" type="date" aria-label="من تاريخ" />
+            <input id="admTo" type="date" aria-label="إلى تاريخ" />
+            <input id="admNote" maxlength="300" placeholder="ملاحظة (اختياري)" aria-label="ملاحظة" />
+            <button type="submit" id="admSave">تسجيل الإجازة</button>
+          </form>
         </section>
 
         <section class="card hidden" id="tab-week">
@@ -299,7 +308,10 @@
             else b.removeAttribute("aria-current");
           }
           for (const t of ["req", "week", "staff"]) hide("tab-" + t, t === tab);
-          if (tab === "req") await drawRequests();
+          if (tab === "req") {
+            fillAdmWho();
+            await drawRequests();
+          }
           if (tab === "week") await drawWeek();
           if (tab === "staff") drawStaff();
         }
@@ -427,6 +439,28 @@
           await refresh();
         }
         $("reqFilter").onchange = drawRequests;
+
+        /* تسجيل إجازة لموظف من المدير (معتمدة مباشرة) */
+        function fillAdmWho() {
+          const cur = $("admWho").value;
+          $("admWho").replaceChildren(new Option("— اختر الموظف —", ""), ...STAFF.filter((s) => s.active).map((s) => new Option(s.name, s.id)));
+          $("admWho").value = cur;
+        }
+        $("admFrom").oninput = () => ($("admTo").min = $("admFrom").value || "");
+        $("admLeave").onsubmit = async (e) => {
+          e.preventDefault();
+          const who = $("admWho").value, f = $("admFrom").value, t = $("admTo").value;
+          if (!who) return err({ message: "اختر الموظف" });
+          if (!f || !t) return err({ message: "حدد تاريخ البداية والنهاية" });
+          if (t < f) return err({ message: "تاريخ النهاية لازم يكون بعد البداية أو نفسها" });
+          $("admSave").disabled = true;
+          const { error } = await api.rpc("opd_team_leave_admin_add", { p_staff: who, p_type: $("admType").value, p_from: f, p_to: t, p_note: $("admNote").value });
+          $("admSave").disabled = false;
+          if (error) return err(error);
+          msg("سُجّلت إجازة " + staffName(who) + " من " + dmy(f) + " إلى " + dmy(t) + " معتمدة.");
+          $("admWho").value = $("admFrom").value = $("admTo").value = $("admNote").value = "";
+          await refresh();
+        };
 
         /* الجدول الشهري */
         /* الجدول الشهري: 4 أسابيع، أعمدة الشيت، والإجازات في عمود مستقل */
